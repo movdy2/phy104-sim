@@ -1,0 +1,46 @@
+  {
+    "constant  ": [
+      {
+        "symbol": "c",
+        "name": "Speed of Light in Vacuum",
+        "unit": "m/s",
+        "value": "3*10^8",
+        "Description":"Th e fundamental physical constant representing the propagation speed of all electromagnetic waves through a vacuum."
+      },
+      {
+        "symbol": "ε₀ ",
+        "name": "Vacuum permittivity",
+        "unit": "f/m",
+        "value": "8.854*10^-12",
+        "Description":"An electric constant describing the capability of a vacuum to permit electric field lines; relates electric charge to electric fields."
+      },
+       {
+        "symbol": "μ₀",
+        "name": "Vacuum permeability",
+        "unit": "t.m/a",
+        "value": "4π*10-7",
+        "Description": "* * A magnetic constant describing the ability of a vacuum to support magnetic field formation; relates magnetic flux density to electric current."
+      }, {
+        "symbol": "h",
+        "name": "Planck constant",
+        "unit": "",
+        "value": "6.62607015e-34,"
+      }, {
+        "symbol": "π",
+        "name": "pi",
+        "unit": "",
+        "value": "3.14159265358979"
+      }, {
+        "symbol": "e",
+        "name": "Elementary charge",
+        "unit": "c",
+        "value": " 1.602176634e-19"
+      }, {
+        "symbol": "h",
+        "name": "Planck constant",
+        "unit": "j.s",
+        "value": "6.62607015e-34"
+      }
+      
+    ]
+  }

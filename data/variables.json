@@ -1,0 +1,98 @@
+{
+  "variables": [
+    {
+      "symbol": "λ",
+      "name": "lambda",
+      "unit": "nm",
+      "description": "Light wavelength"
+    },
+    {
+      "symbol": "𝜆0",
+      "name": "Vacuum Wavelength",
+      "unit": "nm",
+      "description": "Wavelength of light wave in a vacuum before entering a medium"
+    }
+    ,{
+      "symbol": "𝑓",
+      "name": "Wave Frequency",
+      "unit": "hz",
+      "description": "Number of wave oscillations per second; remains constant across media."
+    },
+    {
+      "symbol": "𝑣",
+      "name": "Phase Velocity ",
+      "unit": "",
+      "description": "Ratio of the speed of light in vacuum to its speed in a medium."
+    },
+    {
+      "symbol": "𝑛",
+      "name": "Refractive Index",
+      "unit": "",
+      "description": " Ratio of the speed of light in vacuum to its speed in a medium."
+    },
+    {
+      "symbol": "𝑘",
+      "name": "Wave Number",
+      "unit": "nm",
+      "description": " Spatial frequency of a wave representing radians per unit length (2𝜋/𝜆)."
+    },
+    {
+      "symbol": "α",
+      "name": "Alpha",
+      "unit": "",
+      "description": "Small angle in paraxial approximation / Prism apex geometry"
+    },
+    {
+      "symbol": "β",
+      "name": "Beta",
+      "unit": "",
+      "description": "Total diffraction phase difference across single slit width"
+    },
+    {
+      "symbol": "γ",
+      "name": "Gamma",
+      "unit": "",
+      "description": "Ray angle in spherical surface refraction derivations"
+    },
+    {
+      "symbol": "δ",
+      "name": "Delta ",
+      "unit": "",
+      "description": "Angle of deviation in prisms"
+    },{
+      "symbol": "ε",
+      "name": "Epsilon",
+      "unit": "nm",
+      "description": "Permittivity of medium"
+    },{
+      "symbol": "φ",
+      "name": "Phi",
+      "unit": "",
+      "description": "Phase difference in wave interference / Polarization angle"
+    },{
+      "symbol": "θ",
+      "name": "Theta",
+      "unit": "",
+      "description": "Wavelength of light wave in a vacuum before entering a medium"
+    },{
+      "symbol": "Δ",
+      "name": "Capital Delta",
+      "unit": "",
+      "description": "Permittivity of medium"
+    },{
+      "symbol": "θ₁", 
+      "name": "theta1",
+      "unit": "deg",
+      "description":"Angle of incidence"
+    },{
+      "symbol": "θ₂", 
+      "name": "theta2",
+      "unit": "deg",
+      "description":"Angle of incidence"
+    },
+    
+  
+  ]
+
+  
+}

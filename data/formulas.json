@@ -1,0 +1,340 @@
+{
+  "formulas": [
+
+    {
+      "id": "refractive_index",
+      "name": "Index of Refraction",
+      "equation": "n=c/v",
+      "latex": "n=\\frac{c}{v}",
+      "chapter": "Light Propagation"
+    },
+
+    {
+      "id": "snell_law",
+      "name": "Snell Law",
+      "equation": "na*sin(thetaa)=nb*sin(thetab)",
+      "latex": "n_a\\sin\\theta_a=n_b\\sin\\theta_b",
+      "chapter": "Light Propagation"
+    },
+
+    {
+      "id": "wavelength_medium",
+      "name": "Wavelength Contraction",
+      "equation": "lambda=lambda0/n",
+      "latex": "\\lambda=\\frac{\\lambda_0}{n}",
+      "chapter": "Light Propagation"
+    },
+
+    {
+      "id": "wave_speed",
+      "name": "Wave Speed",
+      "equation": "v=f*lambda",
+      "latex": "v=f\\lambda",
+      "chapter": "Light Propagation"
+    },
+
+    {
+      "id": "vacuum_wave_speed",
+      "name": "Wave Speed In Vacuum",
+      "equation": "c=f*lambda0",
+      "latex": "c=f\\lambda_0",
+      "chapter": "Light Propagation"
+    },
+
+    {
+      "id": "speed_of_light",
+      "name": "Speed Of Light",
+      "equation": "c=1/sqrt(epsilon0*mu0)",
+      "latex": "c=\\frac{1}{\\sqrt{\\epsilon_0\\mu_0}}",
+      "chapter": "Electromagnetic Waves"
+    },
+
+    {
+      "id": "electric_magnetic_ratio",
+      "name": "Electric Magnetic Field Ratio",
+      "equation": "Emax=c*Bmax",
+      "latex": "E_{max}=cB_{max}",
+      "chapter": "Electromagnetic Waves"
+    },
+
+    {
+      "id": "poynting_vector",
+      "name": "Poynting Vector",
+      "equation": "S=(E*B)/mu0",
+      "latex": "\\vec{S}=\\frac{1}{\\mu_0}(\\vec{E}\\times\\vec{B})",
+      "chapter": "Electromagnetic Waves"
+    },
+
+    {
+      "id": "wave_intensity",
+      "name": "Wave Intensity",
+      "equation": "I=0.5*epsilon0*c*Emax^2",
+      "latex": "I=\\frac{1}{2}\\epsilon_0 c E_{max}^{2}",
+      "chapter": "Electromagnetic Waves"
+    },
+
+    {
+      "id": "first_polarizer",
+      "name": "First Polarizer",
+      "equation": "I1=I0/2",
+      "latex": "I_1=\\frac{1}{2}I_0",
+      "chapter": "Polarization"
+    },
+
+    {
+      "id": "malus_law",
+      "name": "Malus Law",
+      "equation": "I=Imax*cos(phi)^2",
+      "latex": "I=I_{max}\\cos^2\\phi",
+      "chapter": "Polarization"
+    },
+
+    {
+      "id": "brewster_law",
+      "name": "Brewster Law",
+      "equation": "tan(thetap)=nb/na",
+      "latex": "\\tan\\theta_p=\\frac{n_b}{n_a}",
+      "chapter": "Polarization"
+    },
+
+    {
+      "id": "critical_angle",
+      "name": "Critical Angle",
+      "equation": "sin(thetac)=nb/na",
+      "latex": "\\sin\\theta_c=\\frac{n_b}{n_a}",
+      "chapter": "Total Internal Reflection"
+    },
+
+    {
+      "id": "numerical_aperture",
+      "name": "Numerical Aperture",
+      "equation": "NA=sqrt(n1^2-n2^2)",
+      "latex": "NA=\\sqrt{n_1^2-n_2^2}",
+      "chapter": "Optical Fiber"
+    },
+
+    {
+      "id": "prism_deviation",
+      "name": "Prism Deviation",
+      "equation": "delta=thetaa1+thetaa2-A",
+      "latex": "\\delta=\\theta_{a1}+\\theta_{a2}-A",
+      "chapter": "Prisms"
+    },
+
+    {
+      "id": "minimum_deviation",
+      "name": "Minimum Deviation",
+      "equation": "sin((A+deltamin)/2)=n*sin(A/2)",
+      "latex": "\\sin\\left(\\frac{A+\\delta_{min}}{2}\\right)=n\\sin\\left(\\frac{A}{2}\\right)",
+      "chapter": "Prisms"
+    },
+
+    {
+      "id": "angular_dispersion",
+      "name": "Angular Dispersion",
+      "equation": "deltad=deltaViolet-deltaRed",
+      "latex": "\\Delta\\delta=\\delta_{violet}-\\delta_{red}",
+      "chapter": "Prisms"
+    },
+
+    {
+      "id": "mirror_focal_length",
+      "name": "Mirror Focal Length",
+      "equation": "f=R/2",
+      "latex": "f=\\frac{R}{2}",
+      "chapter": "Mirrors"
+    },
+
+    {
+      "id": "mirror_equation",
+      "name": "Mirror Equation",
+      "equation": "1/s+1/sp=1/f",
+      "latex": "\\frac{1}{s}+\\frac{1}{s'}=\\frac{1}{f}",
+      "chapter": "Mirrors"
+    },
+
+    {
+      "id": "mirror_magnification",
+      "name": "Mirror Magnification",
+      "equation": "m=-sp/s",
+      "latex": "m=-\\frac{s'}{s}",
+      "chapter": "Mirrors"
+    },
+
+    {
+      "id": "spherical_refraction",
+      "name": "Spherical Surface Refraction",
+      "equation": "na/s+nb/sp=(nb-na)/R",
+      "latex": "\\frac{n_a}{s}+\\frac{n_b}{s'}=\\frac{n_b-n_a}{R}",
+      "chapter": "Lenses"
+    },
+
+    {
+      "id": "apparent_depth",
+      "name": "Apparent Depth",
+      "equation": "sp=-(nb/na)*s",
+      "latex": "s'=-\\left(\\frac{n_b}{n_a}\\right)s",
+      "chapter": "Lenses"
+    },
+
+    {
+      "id": "lensmaker",
+      "name": "Lensmaker Equation",
+      "equation": "1/f=(n-1)*(1/R1-1/R2)",
+      "latex": "\\frac{1}{f}=(n-1)\\left(\\frac{1}{R_1}-\\frac{1}{R_2}\\right)",
+      "chapter": "Lenses"
+    },
+
+    {
+      "id": "thin_lens",
+      "name": "Thin Lens Equation",
+      "equation": "1/s+1/sp=1/f",
+      "latex": "\\frac{1}{s}+\\frac{1}{s'}=\\frac{1}{f}",
+      "chapter": "Lenses"
+    },
+
+    {
+      "id": "optical_power",
+      "name": "Lens Power",
+      "equation": "P=1/f",
+      "latex": "P=\\frac{1}{f}",
+      "chapter": "Lenses"
+    },
+
+    {
+      "id": "path_difference",
+      "name": "Path Difference",
+      "equation": "deltar=d*sin(theta)",
+      "latex": "\\Delta r=d\\sin\\theta",
+      "chapter": "Young Experiment"
+    },
+
+    {
+      "id": "constructive_interference",
+      "name": "Constructive Interference",
+      "equation": "d*sin(theta)=m*lambda",
+      "latex": "d\\sin\\theta=m\\lambda",
+      "chapter": "Young Experiment"
+    },
+
+    {
+      "id": "destructive_interference",
+      "name": "Destructive Interference",
+      "equation": "d*sin(theta)=(m+0.5)*lambda",
+      "latex": "d\\sin\\theta=\\left(m+\\frac{1}{2}\\right)\\lambda",
+      "chapter": "Young Experiment"
+    },
+
+    {
+      "id": "bright_fringe_position",
+      "name": "Bright Fringe Position",
+      "equation": "ym=R*m*lambda/d",
+      "latex": "y_m=R\\frac{m\\lambda}{d}",
+      "chapter": "Young Experiment"
+    },
+
+    {
+      "id": "fringe_spacing",
+      "name": "Fringe Spacing",
+      "equation": "deltaY=lambda*R/d",
+      "latex": "\\Delta y=\\frac{\\lambda R}{d}",
+      "chapter": "Young Experiment"
+    },
+
+    {
+      "id": "phase_difference",
+      "name": "Phase Difference",
+      "equation": "phi=(2*pi*d*sin(theta))/lambda",
+      "latex": "\\phi=\\frac{2\\pi d\\sin\\theta}{\\lambda}",
+      "chapter": "Young Experiment"
+    },
+
+    {
+      "id": "double_slit_intensity",
+      "name": "Double Slit Intensity",
+      "equation": "I=I0*cos(phi/2)^2",
+      "latex": "I=I_0\\cos^2\\left(\\frac{\\phi}{2}\\right)",
+      "chapter": "Young Experiment"
+    },
+
+    {
+      "id": "thin_film_constructive",
+      "name": "Thin Film Constructive",
+      "equation": "2*t=(m+0.5)*(lambda0/n)",
+      "latex": "2t=\\left(m+\\frac{1}{2}\\right)\\frac{\\lambda_0}{n}",
+      "chapter": "Thin Film"
+    },
+
+    {
+      "id": "thin_film_destructive",
+      "name": "Thin Film Destructive",
+      "equation": "2*t=m*(lambda0/n)",
+      "latex": "2t=m\\frac{\\lambda_0}{n}",
+      "chapter": "Thin Film"
+    },
+
+    {
+      "id": "newton_rings",
+      "name": "Newton Rings",
+      "equation": "rm=sqrt((m*lambda0*R)/nfilm)",
+      "latex": "r_m=\\sqrt{\\frac{m\\lambda_0 R}{n_{film}}}",
+      "chapter": "Thin Film"
+    },
+
+    {
+      "id": "michelson",
+      "name": "Michelson Interferometer",
+      "equation": "y=(m*lambda0)/2",
+      "latex": "y=m\\frac{\\lambda_0}{2}",
+      "chapter": "Michelson"
+    },
+
+    {
+      "id": "single_slit_dark",
+      "name": "Single Slit Dark Fringe",
+      "equation": "a*sin(theta)=m*lambda",
+      "latex": "a\\sin\\theta=m\\lambda",
+      "chapter": "Diffraction"
+    },
+
+    {
+      "id": "central_maximum_width",
+      "name": "Central Maximum Width",
+      "equation": "w=(2*R*lambda)/a",
+      "latex": "w=\\frac{2R\\lambda}{a}",
+      "chapter": "Diffraction"
+    },
+
+    {
+      "id": "diffraction_beta",
+      "name": "Diffraction Beta",
+      "equation": "beta=(2*pi*a*sin(theta))/lambda",
+      "latex": "\\beta=\\frac{2\\pi a\\sin\\theta}{\\lambda}",
+      "chapter": "Diffraction"
+    },
+
+    {
+      "id": "single_slit_intensity",
+      "name": "Single Slit Intensity",
+      "equation": "I=I0*(sin(beta/2)/(beta/2))^2",
+      "latex": "I=I_0\\left[\\frac{\\sin(\\beta/2)}{\\beta/2}\\right]^2",
+      "chapter": "Diffraction"
+    },
+
+    {
+      "id": "grating_maxima",
+      "name": "Diffraction Grating",
+      "equation": "d*sin(theta)=m*lambda",
+      "latex": "d\\sin\\theta=m\\lambda",
+      "chapter": "Diffraction Grating"
+    },
+
+    {
+      "id": "grating_spacing",
+      "name": "Grating Spacing",
+      "equation": "d=1/N",
+      "latex": "d=\\frac{1}{N}",
+      "chapter": "Diffraction Grating"
+    }
+  ]
+}
