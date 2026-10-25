@@ -4,7 +4,7 @@
 
 namespace phy104 {
 
-class jsonloader {
+class Jsonloader {
     public:
     static QJsonObject loadObject(const QString& path );
 };

@@ -1,45 +1,63 @@
   {
     "constant  ": [
       {
+        "id":"c",
         "symbol": "c",
         "name": "Speed of Light in Vacuum",
         "unit": "m/s",
-        "value": "3*10^8",
-        "Description":"Th e fundamental physical constant representing the propagation speed of all electromagnetic waves through a vacuum."
+        "value": 299792458,
+        "Description":"Speed of all electromagnetic waves in vacuum."
       },
       {
+         "id":"epsilon0",
         "symbol": "ε₀ ",
         "name": "Vacuum permittivity",
-        "unit": "f/m",
-        "value": "8.854*10^-12",
+        "unit": "F/m",
+        "value":  8.8541878128e-12,
         "Description":"An electric constant describing the capability of a vacuum to permit electric field lines; relates electric charge to electric fields."
       },
        {
+         "id":"mu0",
         "symbol": "μ₀",
         "name": "Vacuum permeability",
-        "unit": "t.m/a",
-        "value": "4π*10-7",
-        "Description": "* * A magnetic constant describing the ability of a vacuum to support magnetic field formation; relates magnetic flux density to electric current."
+        "unit": "H/m",
+        "value": 1.25663706212e-06,
+        "Description": "Magnetic constant (about 4π×10⁻⁷). Related to c by c² = 1/(ε₀μ₀)."
       }, {
-        "symbol": "h",
-        "name": "Planck constant",
-        "unit": "",
-        "value": "6.62607015e-34,"
-      }, {
-        "symbol": "π",
-        "name": "pi",
-        "unit": "",
-        "value": "3.14159265358979"
-      }, {
-        "symbol": "e",
-        "name": "Elementary charge",
-        "unit": "c",
-        "value": " 1.602176634e-19"
-      }, {
+        "id":"h",
         "symbol": "h",
         "name": "Planck constant",
         "unit": "j.s",
-        "value": "6.62607015e-34"
+        "value": 6.62607015e-34,
+        "description": "Relates photon energy and frequency: E = hf."
+
+      }, {
+        "id":"pi",
+        "symbol": "π",
+        "name": "pi",
+        "unit": "",
+        "value": "3.14159265358979",
+        "description": "Ratio of a circle's circumference to its diameter."
+
+      }, {
+        "id":"qe",
+        "symbol": "e",
+        "name": "Elementary charge",
+        "unit": "C",
+        "value": 1.602176634e-19,
+        "description": "Magnitude of the charge of a proton or electron."
+
+
+      }, {
+        "id":"",
+        "symbol": "h",
+        "name": "Planck constant",
+        "unit": "j.s",
+        "value": 6.62607015e-34,
+        "description": "Relates photon energy and frequency: E = hf."
+
+
+        
       }
       
     ]

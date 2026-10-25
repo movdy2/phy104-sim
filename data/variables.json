@@ -1,98 +1,389 @@
 {
   "variables": [
     {
+      "id": "n",
+      "symbol": "n",
+      "name": "Refractive index",
+      "unit": "",
+      "description": "Ratio of the speed of light in vacuum to its speed in the medium"
+    },
+    {
+      "id": "na",
+      "symbol": "n_a",
+      "name": "Refractive index of medium a",
+      "unit": "",
+      "description": "Index of the first medium (light comes from here)"
+    },
+    {
+      "id": "nb",
+      "symbol": "n_b",
+      "name": "Refractive index of medium b",
+      "unit": "",
+      "description": "Index of the second medium"
+    },
+    {
+      "id": "n1",
+      "symbol": "n₁",
+      "name": "Refractive index 1 (core)",
+      "unit": "",
+      "description": "Index of the first medium or fibre core"
+    },
+    {
+      "id": "n2",
+      "symbol": "n₂",
+      "name": "Refractive index 2 (cladding)",
+      "unit": "",
+      "description": "Index of the second medium or fibre cladding"
+    },
+    {
+      "id": "nfilm",
+      "symbol": "n_film",
+      "name": "Refractive index of the film",
+      "unit": "",
+      "description": "Index of the thin film or the medium between lens and plate"
+    },
+    {
+      "id": "NA",
+      "symbol": "NA",
+      "name": "Numerical aperture",
+      "unit": "",
+      "description": "Light-gathering ability of an optical fibre"
+    },
+    {
+      "id": "c",
+      "symbol": "c",
+      "name": "Speed of light in vacuum",
+      "unit": "m/s",
+      "description": "About 3×10⁸ m/s"
+    },
+    {
+      "id": "v",
+      "symbol": "v",
+      "name": "Phase velocity",
+      "unit": "m/s",
+      "description": "Speed of the wave in the medium"
+    },
+    {
+      "id": "f",
+      "symbol": "f",
+      "name": "Frequency / focal length",
+      "unit": "Hz",
+      "description": "Wave oscillations per second (for mirror formulas f is the focal length in m)"
+    },
+    {
+      "id": "lambda",
       "symbol": "λ",
-      "name": "lambda",
-      "unit": "nm",
-      "description": "Light wavelength"
+      "name": "Wavelength in the medium",
+      "unit": "m",
+      "description": "Distance between two successive crests"
     },
     {
-      "symbol": "𝜆0",
-      "name": "Vacuum Wavelength",
-      "unit": "nm",
-      "description": "Wavelength of light wave in a vacuum before entering a medium"
-    }
-    ,{
-      "symbol": "𝑓",
-      "name": "Wave Frequency",
-      "unit": "hz",
-      "description": "Number of wave oscillations per second; remains constant across media."
+      "id": "lambda0",
+      "symbol": "λ₀",
+      "name": "Vacuum wavelength",
+      "unit": "m",
+      "description": "Wavelength before the wave enters a medium"
     },
     {
-      "symbol": "𝑣",
-      "name": "Phase Velocity ",
-      "unit": "",
-      "description": "Ratio of the speed of light in vacuum to its speed in a medium."
+      "id": "epsilon0",
+      "symbol": "ε₀",
+      "name": "Vacuum permittivity",
+      "unit": "F/m",
+      "description": "Electric constant"
     },
     {
-      "symbol": "𝑛",
-      "name": "Refractive Index",
-      "unit": "",
-      "description": " Ratio of the speed of light in vacuum to its speed in a medium."
+      "id": "mu0",
+      "symbol": "μ₀",
+      "name": "Vacuum permeability",
+      "unit": "H/m",
+      "description": "Magnetic constant"
     },
     {
-      "symbol": "𝑘",
-      "name": "Wave Number",
-      "unit": "nm",
-      "description": " Spatial frequency of a wave representing radians per unit length (2𝜋/𝜆)."
+      "id": "Emax",
+      "symbol": "E_max",
+      "name": "Peak electric field",
+      "unit": "V/m",
+      "description": "Amplitude of the electric field"
     },
     {
-      "symbol": "α",
-      "name": "Alpha",
-      "unit": "",
-      "description": "Small angle in paraxial approximation / Prism apex geometry"
+      "id": "Bmax",
+      "symbol": "B_max",
+      "name": "Peak magnetic field",
+      "unit": "T",
+      "description": "Amplitude of the magnetic field"
     },
     {
-      "symbol": "β",
-      "name": "Beta",
-      "unit": "",
-      "description": "Total diffraction phase difference across single slit width"
+      "id": "E",
+      "symbol": "E",
+      "name": "Electric field",
+      "unit": "V/m",
+      "description": "Instantaneous electric field"
     },
     {
-      "symbol": "γ",
-      "name": "Gamma",
-      "unit": "",
-      "description": "Ray angle in spherical surface refraction derivations"
+      "id": "B",
+      "symbol": "B",
+      "name": "Magnetic field",
+      "unit": "T",
+      "description": "Instantaneous magnetic field"
     },
     {
-      "symbol": "δ",
-      "name": "Delta ",
-      "unit": "",
-      "description": "Angle of deviation in prisms"
-    },{
-      "symbol": "ε",
-      "name": "Epsilon",
-      "unit": "nm",
-      "description": "Permittivity of medium"
-    },{
-      "symbol": "φ",
-      "name": "Phi",
-      "unit": "",
-      "description": "Phase difference in wave interference / Polarization angle"
-    },{
+      "id": "S",
+      "symbol": "S",
+      "name": "Poynting vector magnitude",
+      "unit": "W/m²",
+      "description": "Power per unit area carried by the wave"
+    },
+    {
+      "id": "I",
+      "symbol": "I",
+      "name": "Intensity",
+      "unit": "W/m²",
+      "description": "Power per unit area"
+    },
+    {
+      "id": "I0",
+      "symbol": "I₀",
+      "name": "Initial / maximum intensity",
+      "unit": "W/m²",
+      "description": "Intensity before the element or at the central maximum"
+    },
+    {
+      "id": "I1",
+      "symbol": "I₁",
+      "name": "Intensity after first polarizer",
+      "unit": "W/m²",
+      "description": "Intensity of light after passing the first polarizer"
+    },
+    {
+      "id": "Imax",
+      "symbol": "I_max",
+      "name": "Maximum intensity",
+      "unit": "W/m²",
+      "description": "Intensity transmitted when the axes are aligned"
+    },
+    {
+      "id": "thetaa",
+      "symbol": "θ_a",
+      "name": "Angle in medium a",
+      "unit": "deg",
+      "description": "Angle of incidence measured from the normal"
+    },
+    {
+      "id": "thetab",
+      "symbol": "θ_b",
+      "name": "Angle in medium b",
+      "unit": "deg",
+      "description": "Angle of refraction measured from the normal"
+    },
+    {
+      "id": "thetap",
+      "symbol": "θ_p",
+      "name": "Brewster angle",
+      "unit": "deg",
+      "description": "Angle at which reflected light is fully polarized"
+    },
+    {
+      "id": "thetac",
+      "symbol": "θ_c",
+      "name": "Critical angle",
+      "unit": "deg",
+      "description": "Smallest angle of incidence giving total internal reflection"
+    },
+    {
+      "id": "theta",
       "symbol": "θ",
-      "name": "Theta",
-      "unit": "",
-      "description": "Wavelength of light wave in a vacuum before entering a medium"
-    },{
-      "symbol": "Δ",
-      "name": "Capital Delta",
-      "unit": "",
-      "description": "Permittivity of medium"
-    },{
-      "symbol": "θ₁", 
-      "name": "theta1",
+      "name": "Angle",
       "unit": "deg",
-      "description":"Angle of incidence"
-    },{
-      "symbol": "θ₂", 
-      "name": "theta2",
-      "unit": "deg",
-      "description":"Angle of incidence"
+      "description": "Angle from the central axis to the point on the screen"
     },
-    
-  
+    {
+      "id": "thetaa1",
+      "symbol": "θ_a1",
+      "name": "Angle of incidence at first face",
+      "unit": "deg",
+      "description": "Angle at the first prism face"
+    },
+    {
+      "id": "thetaa2",
+      "symbol": "θ_a2",
+      "name": "Angle at second face",
+      "unit": "deg",
+      "description": "Angle at the second prism face"
+    },
+    {
+      "id": "A",
+      "symbol": "A",
+      "name": "Prism apex angle",
+      "unit": "deg",
+      "description": "Angle between the two refracting faces"
+    },
+    {
+      "id": "delta",
+      "symbol": "δ",
+      "name": "Deviation angle",
+      "unit": "deg",
+      "description": "Angle between incoming and outgoing ray"
+    },
+    {
+      "id": "deltamin",
+      "symbol": "δ_min",
+      "name": "Minimum deviation",
+      "unit": "deg",
+      "description": "Smallest deviation produced by the prism"
+    },
+    {
+      "id": "deltad",
+      "symbol": "δ_d",
+      "name": "Angular dispersion",
+      "unit": "deg",
+      "description": "Difference in deviation between violet and red"
+    },
+    {
+      "id": "deltaViolet",
+      "symbol": "δ_violet",
+      "name": "Deviation of violet light",
+      "unit": "deg",
+      "description": "Deviation angle for violet"
+    },
+    {
+      "id": "deltaRed",
+      "symbol": "δ_red",
+      "name": "Deviation of red light",
+      "unit": "deg",
+      "description": "Deviation angle for red"
+    },
+    {
+      "id": "phi",
+      "symbol": "φ",
+      "name": "Phase difference",
+      "unit": "rad",
+      "description": "Phase difference between the two waves (degrees in Malus' law: polarizer angle)"
+    },
+    {
+      "id": "beta",
+      "symbol": "β",
+      "name": "Single-slit phase",
+      "unit": "rad",
+      "description": "Phase parameter of single-slit diffraction"
+    },
+    {
+      "id": "R",
+      "symbol": "R",
+      "name": "Radius / screen distance",
+      "unit": "m",
+      "description": "Radius of curvature, or distance from slits to screen"
+    },
+    {
+      "id": "R1",
+      "symbol": "R₁",
+      "name": "Radius of first surface",
+      "unit": "m",
+      "description": "Radius of curvature of the first lens surface"
+    },
+    {
+      "id": "R2",
+      "symbol": "R₂",
+      "name": "Radius of second surface",
+      "unit": "m",
+      "description": "Radius of curvature of the second lens surface"
+    },
+    {
+      "id": "s",
+      "symbol": "s",
+      "name": "Object distance",
+      "unit": "m",
+      "description": "Distance from object to mirror or lens"
+    },
+    {
+      "id": "sp",
+      "symbol": "s'",
+      "name": "Image distance",
+      "unit": "m",
+      "description": "Distance from image to mirror or lens"
+    },
+    {
+      "id": "m",
+      "symbol": "m",
+      "name": "Order / magnification",
+      "unit": "",
+      "description": "Fringe or maximum order (integer); for mirrors, magnification"
+    },
+    {
+      "id": "P",
+      "symbol": "P",
+      "name": "Optical power",
+      "unit": "D",
+      "description": "Power in dioptres (1/m)"
+    },
+    {
+      "id": "deltar",
+      "symbol": "Δr",
+      "name": "Path difference",
+      "unit": "m",
+      "description": "Difference in path length between the two rays"
+    },
+    {
+      "id": "d",
+      "symbol": "d",
+      "name": "Slit or grating separation",
+      "unit": "m",
+      "description": "Distance between adjacent slits"
+    },
+    {
+      "id": "ym",
+      "symbol": "y_m",
+      "name": "Position of fringe m",
+      "unit": "m",
+      "description": "Distance of the m-th bright fringe from the centre"
+    },
+    {
+      "id": "deltaY",
+      "symbol": "Δy",
+      "name": "Fringe spacing",
+      "unit": "m",
+      "description": "Distance between adjacent bright fringes"
+    },
+    {
+      "id": "t",
+      "symbol": "t",
+      "name": "Thickness",
+      "unit": "m",
+      "description": "Thickness of the thin film"
+    },
+    {
+      "id": "rm",
+      "symbol": "r_m",
+      "name": "Radius of m-th ring",
+      "unit": "m",
+      "description": "Radius of the m-th Newton ring"
+    },
+    {
+      "id": "y",
+      "symbol": "y",
+      "name": "Mirror displacement",
+      "unit": "m",
+      "description": "Distance the Michelson mirror moves"
+    },
+    {
+      "id": "a",
+      "symbol": "a",
+      "name": "Slit width",
+      "unit": "m",
+      "description": "Width of the single slit"
+    },
+    {
+      "id": "w",
+      "symbol": "w",
+      "name": "Width of central maximum",
+      "unit": "m",
+      "description": "Full width of the central bright band"
+    },
+    {
+      "id": "N",
+      "symbol": "N",
+      "name": "Lines per metre",
+      "unit": "1/m",
+      "description": "Number of grating lines per metre"
+    }
   ]
-
-  
 }

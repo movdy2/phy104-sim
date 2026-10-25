@@ -1,0 +1,355 @@
+{
+  "notes": [
+    {
+      "id": "ch1_propagation_snell",
+      "chapter": "Ch1 Reflection & Refraction",
+      "type": "summary",
+      "title": "Light Propagation, Speed & Snell's Law",
+      "content": [
+        "Light travels in straight ray paths within a homogeneous optical medium (Ray Approximation Model).[cite: 2]",
+        "The Law of Reflection states that the incident ray, reflected ray, and normal lie in the same plane, with θi = θr measured strictly from the surface normal.[cite: 2]",
+        "Refractive index (n) represents the factor by which the phase velocity of light is reduced in a medium (n = c / v >= 1.00).[cite: 2]",
+        "Snell's Law governs wave bending at planar interfaces: n_a sin(θ_a) = n_b sin(θ_b). When moving to a denser medium (n_b > n_a), rays bend TOWARD the normal (θ_b < θ_a).[cite: 2]",
+        "Wave frequency (f) remains invariant across media boundaries, while wavelength shrinks in denser media (λ = λ₀ / n).[cite: 2]"
+      ],
+      "equations": [
+        "n = \\frac{c}{v}",
+        "n_a \\sin\\theta_a = n_b \\sin\\theta_b",
+        "\\lambda = \\frac{\\lambda_0}{n}",
+        "v = f \\lambda \\quad \\text{and} \\quad c = f \\lambda_0"
+      ]
+    },
+    {
+      "id": "ch1_tir_fiber_porro",
+      "chapter": "Ch1 Reflection & Refraction",
+      "type": "concept",
+      "title": "Total Internal Reflection & Fiber Optics",
+      "content": [
+        "Total Internal Reflection (TIR) occurs exclusively when light propagates from an optically denser medium to a less dense medium (n_a > n_b).[cite: 2]",
+        "At the critical angle (θ_crit), the refracted ray emerges at 90° along the boundary surface: sin(θ_crit) = n_b / n_a.[cite: 2]",
+        "If the angle of incidence exceeds θ_crit, no light refracts into the second medium and 100% of the wave energy is reflected back.[cite: 2]",
+        "Porro Prisms (45°-45°-90°) utilize TIR at 45° (since glass-air θ_crit ≈ 41.1°) to invert image rays in binoculars without reflection losses.[cite: 2]",
+        "Optical Fibers transmit signals via core TIR. The Numerical Aperture (NA = sin θ_i = √(n_core² - n_clad²)) defines the acceptance cone angle for internal guiding.[cite: 2]"
+      ],
+      "equations": [
+        "\\sin\\theta_{\\text{crit}} = \\frac{n_b}{n_a} \\quad (n_a > n_b)",
+        "\\text{NA} = \\sin\\theta_i = \\sqrt{n_1^2 - n_2^2}"
+      ]
+    },
+    {
+      "id": "ch1_dispersion_prism_deviation",
+      "chapter": "Ch1 Reflection & Refraction",
+      "type": "concept",
+      "title": "Chromatic Dispersion & Prism Deviation",
+      "content": [
+        "Chromatic Dispersion occurs because a material's refractive index varies inversely with wavelength n(λ).[cite: 2]",
+        "In normal dispersion, shorter wavelengths (violet, ~400 nm) experience a higher refractive index n and slower speed v than longer wavelengths (red, ~700 nm).[cite: 2]",
+        "When white light enters a prism, violet light undergoes the maximum deviation angle δ, separating white light into a rainbow spectrum.[cite: 2]",
+        "Minimum Deviation (δ_min) occurs when light travels symmetrically through a prism with apex angle A (θ_a1 = θ_a2 and θ_b1 = θ_b2).[cite: 2]",
+        "Angular Dispersion Spread (Δδ = δ_violet - δ_red) quantifies the angular rainbow separation produced by a prism.[cite: 2]"
+      ],
+      "equations": [
+        "\\sin\\left(\\frac{A + \\delta_{\\min}}{2}\\right) = n \\sin\\left(\\frac{A}{2}\\right)",
+        "\\delta = \\theta_{a1} + \\theta_{a2} - A",
+        "\\Delta\\delta = \\delta_{\\text{violet}} - \\delta_{\\text{red}}"
+      ]
+    },
+    {
+      "id": "ch1_exam_traps",
+      "chapter": "Ch1 Reflection & Refraction",
+      "type": "exam",
+      "title": "Exam Pitfalls: Refraction & Media Transitions",
+      "content": [
+        "ALWAYS measure incidence and refraction angles from the normal (perpendicular axis), NOT the glass surface.[cite: 2]",
+        "When light passes through a slab with parallel boundaries, the emerging ray travels parallel to the original incident ray (θ_emerge = θ_incident).[cite: 2]",
+        "Do NOT change frequency f when calculating wave parameters in a new medium; only velocity v and wavelength λ change.[cite: 2]",
+        "TIR is mathematically IMPOSSIBLE if n_a < n_b (e.g., light traveling from air into glass cannot undergo TIR).[cite: 2]"
+      ],
+      "equations": [
+        "n_a \\sin\\theta_a = n_b \\sin\\theta_b",
+        "\\theta_{\\text{crit}} = \\arcsin\\left(\\frac{n_b}{n_a}\\right)"
+      ]
+    },
+    {
+      "id": "ch2_em_wave_poynting",
+      "chapter": "Ch2 Polarization & EM Waves",
+      "type": "summary",
+      "title": "Electromagnetic Wave Properties & Intensity",
+      "content": [
+        "Electromagnetic waves are transverse waves consisting of mutually perpendicular electric (E) and magnetic (B) fields oscillating in phase.[cite: 2]",
+        "The wave propagation speed in vacuum is governed by fundamental constants: c = 1 / √(ε₀ μ₀) ≈ 3.00 × 10⁸ m/s.[cite: 2]",
+        "Field magnitudes are strictly coupled by E_max = c B_max at every instant.[cite: 2]",
+        "The Poynting Vector S = (E × B) / μ₀ represents the directional instantaneous energy flux density in W/m².[cite: 2]",
+        "Wave Intensity (I) is the time-averaged magnitude of the Poynting vector: I = S_av = 1/2 ε₀ c E_max² = E_max² / (2 μ₀ c).[cite: 2]"
+      ],
+      "equations": [
+        "c = \\frac{1}{\\sqrt{\\epsilon_0 \\mu_0}}",
+        "E_{\\max} = c B_{\\max}",
+        "\\vec{S} = \\frac{1}{\\mu_0} (\\vec{E} \\times \\vec{B})",
+        "I = S_{\\text{av}} = \\frac{1}{2} \\epsilon_0 c E_{\\max}^2 = \\frac{E_{\\max}^2}{2 \\mu_0 c}"
+      ]
+    },
+    {
+      "id": "ch2_polarization_states",
+      "chapter": "Ch2 Polarization & EM Waves",
+      "type": "concept",
+      "title": "Polarization States & Superposition",
+      "content": [
+        "Linear Polarization: E-field vector oscillates in a single fixed plane along the propagation path.[cite: 2]",
+        "Superposition of two orthogonal linearly polarized waves E_x and E_y with zero phase difference (Δφ = 0) yields a linearly polarized wave at angle θ = arctan(E_0y / E_0x).[cite: 2]",
+        "Circular Polarization: Formed by combining two orthogonal waves with equal amplitudes (E_0x = E_0y) and a phase difference of Δφ = ±π/2 (90°).[cite: 2]",
+        "Elliptical Polarization: Results when orthogonal waves have unequal amplitudes (E_0x ≠ E_0y) or arbitrary phase shifts (Δφ ≠ 0, π/2, π).[cite: 2]"
+      ],
+      "equations": [
+        "\\vec{E}_1 = E_0 \\cos(kz - \\omega t)\\hat{x}, \\quad \\vec{E}_2 = E_0 \\cos(kz - \\omega t)\\hat{y}",
+        "\\vec{E}_2 = E_0 \\cos\\left(kz - \\omega t - \\frac{\\pi}{2}\\right)\\hat{y} = E_0 \\sin(kz - \\omega t)\\hat{y}"
+      ]
+    },
+    {
+      "id": "ch2_malus_brewster",
+      "chapter": "Ch2 Polarization & EM Waves",
+      "type": "concept",
+      "title": "Polarizing Filters, Malus's Law & Brewster's Law",
+      "content": [
+        "Unpolarized light passing through a single ideal polarizer loses 50% of its intensity, becoming linearly polarized: I_1 = 0.5 I_0.[cite: 2]",
+        "Polarized light passing through an analyzer follows Malus's Law: I = I_max cos²(φ), where φ is the relative angle between transmission axes.[cite: 2]",
+        "Polarization by Reflection: When unpolarized light strikes a flat surface at Brewster's Angle (θ_p), the reflected ray becomes 100% linearly polarized perpendicular to the plane of incidence.[cite: 2]",
+        "Brewster's Condition: Brewster's angle satisfies tan(θ_p) = n_b / n_a. At this exact angle, the reflected ray and refracted ray are mutually perpendicular (θ_p + θ_b = 90°).[cite: 2]"
+      ],
+      "equations": [
+        "I_1 = \\frac{1}{2} I_0 \\quad (\\text{unpolarized incident})",
+        "I = I_{\\max} \\cos^2\\phi \\quad (\\text{polarized incident})",
+        "\\tan\\theta_p = \\frac{n_b}{n_a}",
+        "\\theta_p + \\theta_b = 90^\\circ"
+      ]
+    },
+    {
+      "id": "ch2_exam_polarization_stacks",
+      "chapter": "Ch2 Polarization & EM Waves",
+      "type": "exam",
+      "title": "Exam Tips: Multi-Polarizer Stacks",
+      "content": [
+        "Two crossed polarizers at 90° block ALL light transmission (I = 0).[cite: 2]",
+        "Inserting a 3rd polarizer at an intermediate angle θ between two crossed 90° polarizers ALLOWS light to pass through! Calculate sequentially using Malus's Law.[cite: 2]",
+        "For a 3-filter stack where Filter 1 is at 0°, Filter 2 is at θ, and Filter 3 is at 90°: I_final = (1/2 I_0) * cos²(θ) * cos²(90° - θ) = 1/8 I_0 sin²(2θ).[cite: 2]",
+        "When glass is immersed in water (n = 1.33), Brewster's angle CHANGES because n_a is no longer 1.00: tan(θ_p) = n_glass / n_water.[cite: 2]"
+      ],
+      "equations": [
+        "I_3 = \\frac{1}{2} I_0 \\cos^2(\\theta_2 - \\theta_1) \\cos^2(\\theta_3 - \\theta_2)",
+        "\\theta_p = \\arctan\\left(\\frac{n_{\\text{glass}}}{n_{\\text{water}}}\\right)"
+      ]
+    },
+    {
+      "id": "ch3_spherical_mirrors",
+      "chapter": "Ch3 Mirrors & Lenses",
+      "type": "summary",
+      "title": "Spherical Mirror Image Formation",
+      "content": [
+        "Concave Mirrors (f > 0, R > 0) converge parallel rays to a real focal point in front of the mirror.[cite: 2]",
+        "Convex Mirrors (f < 0, R < 0) diverge parallel rays away from a virtual focal point behind the mirror.[cite: 2]",
+        "Paraxial Approximation assumes small ray angles α relative to the optic axis, focusing all rays to a single point f = R / 2.[cite: 2]",
+        "Spherical Aberration occurs for non-paraxial rays, smearing out point images.[cite: 2]",
+        "The Mirror Equation relates object distance s, image distance s', and focal length f: 1/s + 1/s' = 1/f = 2/R.[cite: 2]"
+      ],
+      "equations": [
+        "f = \\frac{R}{2}",
+        "\\frac{1}{s} + \\frac{1}{s'} = \\frac{1}{f} = \\frac{2}{R}",
+        "m = \\frac{y'}{y} = -\\frac{s'}{s}"
+      ]
+    },
+    {
+      "id": "ch3_refraction_spherical_surface",
+      "chapter": "Ch3 Mirrors & Lenses",
+      "type": "concept",
+      "title": "Refraction at Spherical Surfaces & Apparent Depth",
+      "content": [
+        "Light refracting across a curved spherical boundary between media n_a and n_b forms an image according to: n_a/s + n_b/s' = (n_b - n_a)/R.[cite: 2]",
+        "Lateral magnification at a single spherical refracting boundary is given by: m = y'/y = -(n_a s') / (n_b s).[cite: 2]",
+        "Apparent Depth: For a flat surface (R -> ∞), the equation simplifies to n_a/s + n_b/s' = 0, giving s' = -(n_b / n_a) s.[cite: 2]",
+        "Looking straight down into a swimming pool (n_a = 1.33 water into n_b = 1.00 air), the water appears shallower by a factor of 3/4.[cite: 2]"
+      ],
+      "equations": [
+        "\\frac{n_a}{s} + \\frac{n_b}{s'} = \\frac{n_b - n_a}{R}",
+        "m = -\\frac{n_a s'}{n_b s}",
+        "s' = -\\left(\\frac{n_b}{n_a}\\right) s \\quad (\\text{flat surface, } R \\to \\infty)"
+      ]
+    },
+    {
+      "id": "ch3_thin_lenses_lensmaker",
+      "chapter": "Ch3 Mirrors & Lenses",
+      "type": "concept",
+      "title": "Thin Lenses & Lensmaker's Equation",
+      "content": [
+        "A Thin Lens consists of two spherical refracting surfaces whose thickness is negligible compared to image distances.[cite: 2]",
+        "Lensmaker's Equation calculates focal length f from refractive index n and surface radii: 1/f = (n - 1)(1/R_1 - 1/R_2).[cite: 2]",
+        "Converging Lenses (f > 0, thicker in center) focus parallel incident rays to a real focal point behind the lens.[cite: 2]",
+        "Diverging Lenses (f < 0, thinner in center) bend parallel incident rays away from a virtual focal point in front of the lens.[cite: 2]",
+        "Optical Power (P) measures light-bending strength in Diopters (D = m⁻¹): P = 1 / f (in meters).[cite: 2]"
+      ],
+      "equations": [
+        "\\frac{1}{f} = (n - 1) \\left( \\frac{1}{R_1} - \\frac{1}{R_2} \\right)",
+        "\\frac{1}{s} + \\frac{1}{s'} = \\frac{1}{f}",
+        "m = \\frac{y'}{y} = -\\frac{s'}{s}",
+        "P = \\frac{1}{f}"
+      ]
+    },
+    {
+      "id": "ch3_sign_conventions_master",
+      "chapter": "Ch3 Mirrors & Lenses",
+      "type": "exam",
+      "title": "Master Sign Conventions (Mirrors & Lenses)",
+      "content": [
+        "Object Distance s: Positive if object is on incoming light side (Real Object). Negative for Virtual Object.[cite: 2]",
+        "Image Distance s': Positive if image is on OUTGOING light side (Real Image). Negative if on incoming side (Virtual Image).[cite: 2]",
+        "Radius of Curvature R: Positive if center of curvature C is on OUTGOING light side. Negative if C is on incoming side.[cite: 2]",
+        "For Mirrors: Real images (s' > 0) are in FRONT of mirror. For Lenses: Real images (s' > 0) are BEHIND lens.[cite: 2]",
+        "Magnification m: Negative m = Inverted image. Positive m = Upright image. |m| > 1 = Enlarged, |m| < 1 = Diminished.[cite: 2]"
+      ],
+      "equations": [
+        "\\text{Real Image: } s' > 0, \\quad \\text{Virtual Image: } s' < 0",
+        "\\text{Inverted: } m < 0, \\quad \\text{Upright: } m > 0"
+      ]
+    },
+    {
+      "id": "ch4_young_double_slit",
+      "chapter": "Ch4 Wave Optics",
+      "type": "summary",
+      "title": "Young's Double-Slit Interference",
+      "content": [
+        "Thomas Young's experiment proved the wave nature of light using two coherent monochromatic slit sources S1 and S2 separated by distance d.[cite: 2]",
+        "Path Difference Δr = d sin(θ) creates bright and dark interference bands on a distant screen at distance R (where R >> d).[cite: 2]",
+        "Constructive Interference (Bright Maxima): Waves arrive in phase when path difference is an integral multiple of wavelength: d sin(θ) = m λ (m = 0, ±1, ±2...).[cite: 2]",
+        "Destructive Interference (Dark Minima): Waves arrive 180° out of phase when path difference is a half-integral multiple: d sin(θ) = (m + 0.5) λ.[cite: 2]",
+        "Under small-angle approximation (tan θ ≈ sin θ ≈ y / R), fringe spacing Δy = λ R / d is constant across central screen regions.[cite: 2]"
+      ],
+      "equations": [
+        "d \\sin\\theta = m \\lambda \\quad (\\text{bright, } m = 0, \\pm 1, \\pm 2)",
+        "d \\sin\\theta = \\left(m + \\frac{1}{2}\\right) \\lambda \\quad (\\text{dark, } m = 0, \\pm 1, \\pm 2)",
+        "y_m = R \\frac{m \\lambda}{d}",
+        "\\Delta y = \\frac{\\lambda R}{d}"
+      ]
+    },
+    {
+      "id": "ch4_double_slit_intensity",
+      "chapter": "Ch4 Wave Optics",
+      "type": "concept",
+      "title": "Double-Slit Intensity & Phase Shift Distribution",
+      "content": [
+        "Total Phase Difference φ between two overlapping waves: φ = (2π / λ) d sin(θ) = (2π d y) / (λ R).[cite: 2]",
+        "Interference Intensity Formula: I = I_0 cos²(φ / 2) = I_0 cos²[(π d y) / (λ R)].[cite: 2]",
+        "Peak Intensity I_0 represents the central maximum intensity, which is four times greater than the intensity from a single isolated slit (I_0 = 4 I_single).[cite: 2]",
+        "Energy Conservation: Energy is redistributed from dark minima (I = 0) to bright maxima (I = 4 I_single), preserving total spatial power.[cite: 2]"
+      ],
+      "equations": [
+        "\\phi = \\frac{2\\pi}{\\lambda} d \\sin\\theta = \\frac{2\\pi d y}{\\lambda R}",
+        "I = I_0 \\cos^2\\left(\\frac{\\phi}{2}\\right) = I_0 \\cos^2\\left(\\frac{\\pi d y}{\\lambda R}\\right)"
+      ]
+    },
+    {
+      "id": "ch4_thin_film_reflection_phase",
+      "chapter": "Ch4 Wave Optics",
+      "type": "concept",
+      "title": "Thin-Film Interference & Reflection Phase Rules",
+      "content": [
+        "Reflection Phase Shift Rule: An EM wave undergoing reflection at an interface experiences a half-cycle phase reversal (180° or π rad shift) ONLY IF reflecting off an optically denser medium (n_inc < n_refl).[cite: 2]",
+        "No phase reversal (0 rad shift) occurs when reflecting off a lower refractive index medium (n_inc > n_refl).[cite: 2]",
+        "Light travels an extra round-trip distance of 2t inside a film of thickness t and index n_film, where internal wavelength is contracted: λ_film = λ₀ / n_film.[cite: 2]",
+        "ONE Relative Phase Shift (e.g., Air [1.00] -> Oil [1.40] -> Water [1.33]): Constructive Reflection: 2 t n_film = (m + 0.5) λ₀. Destructive Reflection: 2 t n_film = m λ₀.[cite: 2]",
+        "ZERO or TWO Relative Phase Shifts (e.g., Air [1.00] -> Soap [1.33] -> Glass [1.52]): Constructive Reflection: 2 t n_film = m λ₀. Destructive Reflection: 2 t n_film = (m + 0.5) λ₀.[cite: 2]"
+      ],
+      "equations": [
+        "2 t n_{\\text{film}} = \\left(m + \\frac{1}{2}\\right) \\lambda_0 \\quad (\\text{1 shift, bright})",
+        "2 t n_{\\text{film}} = m \\lambda_0 \\quad (\\text{1 shift, dark})",
+        "2 t n_{\\text{film}} = m \\lambda_0 \\quad (\\text{0 or 2 shifts, bright})"
+      ]
+    },
+    {
+      "id": "ch4_newton_michelson",
+      "chapter": "Ch4 Wave Optics",
+      "type": "concept",
+      "title": "Newton's Rings & Michelson Interferometer",
+      "content": [
+        "Newton's Rings: Formed by an air/liquid wedge film between a plano-convex lens (radius R) and a flat plate.[cite: 2]",
+        "The central contact point O is strictly DARK in reflection because path length is zero but top reflection undergoes a 180° phase shift.[cite: 2]",
+        "Radii of Newton's Dark Rings: r_m ≈ √(m λ₀ R / n_film).[cite: 2]",
+        "Michelson Interferometer uses a beam splitter to divide light along two perpendicular mirror paths (fixed M1, movable M2).[cite: 2]",
+        "Displacing mirror M2 by distance y causes a path change of 2y, moving m bright fringes across the viewing crosshairs: y = m λ₀ / 2.[cite: 2]"
+      ],
+      "equations": [
+        "r_m \\approx \\sqrt{\\frac{m \\lambda_0 R}{n_{\\text{film}}}} \\quad (\\text{Newton's dark rings})",
+        "y = m \\frac{\\lambda_0}{2} \\iff \\lambda_0 = \\frac{2y}{m} \\quad (\\text{Michelson mirror displacement})"
+      ]
+    },
+    {
+      "id": "ch5_single_slit_diffraction",
+      "chapter": "Ch5 Diffraction & Gratings",
+      "type": "summary",
+      "title": "Single-Slit Fraunhofer Diffraction",
+      "content": [
+        "Diffraction is the bending of wave fronts around aperture obstacles, explained via Huygens's principle where every point on an open slit acts as a source of secondary wavelets.[cite: 2]",
+        "Fraunhofer Diffraction assumes parallel incident light and a distant observation screen (R >> a).[cite: 2]",
+        "Single-Slit Minima Condition: Dark fringes occur at angles satisfying a sin(θ) = m λ, where m = ±1, ±2, ±3... (m ≠ 0).[cite: 2]",
+        "The Central Bright Maximum is centered at m = 0 and is TWICE as wide as secondary side maxima.[cite: 2]",
+        "Total linear width of central bright maximum on screen: w = 2 y_1 = 2 R λ / a.[cite: 2]"
+      ],
+      "equations": [
+        "a \\sin\\theta = m \\lambda \\quad (\\text{dark minima, } m = \\pm 1, \\pm 2, \\dots)",
+        "w = 2 R \\frac{\\lambda}{a}",
+        "y_m = R \\frac{m \\lambda}{a} \\quad (\\text{for small angles})"
+      ]
+    },
+    {
+      "id": "ch5_diffraction_intensity",
+      "chapter": "Ch5 Diffraction & Gratings",
+      "type": "concept",
+      "title": "Single-Slit Intensity & Phasor Derivation",
+      "content": [
+        "Dividing a single slit of width a into infinitely many strip wavelets yields a phasor arc sum.[cite: 2]",
+        "Total phase difference β between wavelets from top and bottom edges: β = (2π / λ) a sin(θ).[cite: 2]",
+        "Single-Slit Intensity Formula: I = I_0 [ sin(β / 2) / (β / 2) ]² = I_0 [ sin(π a sin θ / λ) / (π a sin θ / λ) ]².[cite: 2]",
+        "Most wave power (>90%) is concentrated inside the central maximum peak between the m = -1 and m = +1 minima.[cite: 2]",
+        "Secondary side maxima intensities drop rapidly: I_1 ≈ 0.047 I_0, I_2 ≈ 0.017 I_0, I_3 ≈ 0.008 I_0.[cite: 2]"
+      ],
+      "equations": [
+        "\\beta = \\frac{2\\pi}{\\lambda} a \\sin\\theta",
+        "I = I_0 \\left[ \\frac{\\sin(\\beta / 2)}{\\beta / 2} \\right]^2 = I_0 \\left[ \\frac{\\sin(\\pi a \\sin\\theta / \\lambda)}{\\pi a \\sin\\theta / \\lambda} \\right]^2"
+      ]
+    },
+    {
+      "id": "ch5_diffraction_gratings",
+      "chapter": "Ch5 Diffraction & Gratings",
+      "type": "concept",
+      "title": "Diffraction Gratings & Envelope Modulation",
+      "content": [
+        "Diffraction Grating: An array of N closely spaced parallel slits with slit separation distance d = 1 / N.[cite: 2]",
+        "Grating Principal Maxima Condition: d sin(θ) = m λ (m = 0, ±1, ±2...).[cite: 2]",
+        "Peak Intensity scaling: Principal maximum intensity scales as N² (I_max ∝ N²), while line width sharpens proportionally to 1/N.[cite: 2]",
+        "Finite Slit Width Envelope: Real double slits or gratings exhibit combined interference and diffraction: I = I_0 cos²(φ/2) [sin(β/2) / (β/2)]².[cite: 2]",
+        "Missing Orders occur when an interference maximum coincides with a single-slit diffraction minimum: m_interference / m_diffraction = d / a.[cite: 2]"
+      ],
+      "equations": [
+        "d = \\frac{1}{N}",
+        "d \\sin\\theta = m \\lambda \\quad (\\text{grating principal maxima})",
+        "\\frac{m_i}{m_d} = \\frac{d}{a} \\quad (\\text{missing orders condition})"
+      ]
+    },
+    {
+      "id": "ch5_exam_master_traps",
+      "chapter": "Ch5 Diffraction & Gratings",
+      "type": "exam",
+      "title": "Master Exam Equations: Single vs Double Slit",
+      "content": [
+        "CRITICAL DISTINCTION: 'a' is single slit aperture width; 'd' is center-to-center slit separation distance.[cite: 2]",
+        "Equation Trap: 'a sin θ = m λ' yields DARK MINIMA for single-slit diffraction.[cite: 2]",
+        "Equation Trap: 'd sin θ = m λ' yields BRIGHT MAXIMA for double slits and diffraction gratings.[cite: 2]",
+        "Maximum Observable Orders: Find m_max by setting sin(θ) ≤ 1.00: m_max = floor(d / λ) or floor(a / λ).[cite: 2]",
+        "If a slit is narrower than the wavelength (a < λ), no diffraction minima can form and only one broad central maximum spreads across the screen.[cite: 2]"
+      ],
+      "equations": [
+        "m_{\\max} = \\left\\lfloor \\frac{d}{\\lambda} \\right\\rfloor \\quad \\text{or} \\quad m_{\\max} = \\left\\lfloor \\frac{a}{\\lambda} \\right\\rfloor",
+        "a \\sin\\theta = m \\lambda \\quad (\\text{Single Slit DARK})",
+        "d \\sin\\theta = m \\lambda \\quad (\\text{Double Slit / Grating BRIGHT})"
+      ]
+    }
+  ]
+}
