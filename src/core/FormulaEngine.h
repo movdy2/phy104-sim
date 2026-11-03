@@ -1,17 +1,10 @@
 #pragma once
+#include "Models.h"
+#include "Repositories.h"
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
-#include <utility>
-#include "models.h"
-#include "Repositories.h"
-//------------------------------------------------
-
-using std::unique_ptr;
-using std::string;
-using std::vector;
-using std::optional;
 
 namespace phy104 {
 
@@ -20,24 +13,24 @@ namespace phy104 {
 /// (units, display symbols, descriptions) and with the constants (default values).
 class FormulaEngine {
 public:
-    FormulaEngine(unique_ptr<IFormulaRepository> formulas,
+    FormulaEngine(std::unique_ptr<IFormulaRepository> formulas,
                   const IVariableRepository& variables,
                   const IConstantsRepository& constants);
 
-    const vector<Formula>& formulas() const { return m_formulas; }
-    const Formula* findById(const string& id) const;
-    vector<string> chapters() const;
-    vector<const Formula*> byChapter(const string& chapter) const;
+    const std::vector<Formula>& formulas() const { return m_formulas; }
+    const Formula* findById(const std::string& id) const;
+    std::vector<std::string> chapters() const;
+    std::vector<const Formula*> byChapter(const std::string& chapter) const;
 
     /// Data problems found while loading (e.g. a variable missing from the dictionary).
-    const vector<string>& warnings() const { return m_warnings; }
+    const std::vector<std::string>& warnings() const { return m_warnings; }
 
     /// Checks one '=' and that both sides parse. Returns an error text or nullopt.
-    static optional<string> validate(const Formula& formula);
+    static std::optional<std::string> validate(const Formula& formula);
 
 private:
-    vector<Formula> m_formulas;
-    vector<string> m_warnings;
+    std::vector<Formula> m_formulas;
+    std::vector<std::string> m_warnings;
 };
 
 } // namespace phy104

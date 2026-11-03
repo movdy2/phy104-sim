@@ -1,45 +1,61 @@
 #pragma once
+
 #include "Models.h"
-#include <iostream>
+#include "SessionLog.h"
 #include <string>
 #include <vector>
-#include <unordered_map>
-using std::string;
-using std::vector;
-using std::unordered_map;
-
-//---------------------------------------------------------------------------------------------------------------------
 
 namespace phy104 {
 
 class IFormulaRepository {
 public:
     virtual ~IFormulaRepository() = default;
-    virtual vector<Formula> loadAll() const = 0;
+    virtual std::vector<Formula> loadAll() const = 0;
 };
 
 class IVariableRepository {
 public:
     virtual ~IVariableRepository() = default;
-    virtual vector<Variable> loadAll() const = 0;
+    virtual std::vector<Variable> loadAll() const = 0;
+};
+
+class IChapterRepository {
+public:
+    virtual ~IChapterRepository() = default;
+    virtual std::vector<Chapter> loadAll() const = 0;
 };
 
 class IConstantsRepository {
 public:
     virtual ~IConstantsRepository() = default;
-    virtual vector<PhysicsConstant> loadAll() const = 0;
+    virtual std::vector<PhysicsConstant> loadAll() const = 0;
 };
 
-class ISummaryRepository {
+class IPresetsRepository {
 public:
-    virtual ~ISummaryRepository() = default;
-    virtual vector<NoteEntry> loadAll() const = 0;
+    virtual ~IPresetsRepository() = default;
+    virtual OpticsPresets load() const = 0;
+};
+
+class IReferenceRepository {
+public:
+    virtual ~IReferenceRepository() = default;
+    virtual std::vector<ReferenceTopic> loadAll() const = 0;
+    virtual std::string unitDiscipline() const = 0;
+};
+
+/// Saves/loads the lab session (runs + notes) - the "optics_lab.phy" file.
+class ISessionStore {
+public:
+    virtual ~ISessionStore() = default;
+    virtual bool save(const SessionLog& log) const = 0;
+    virtual bool load(SessionLog& log) const = 0;
 };
 
 class IKeyboardRepository {
 public:
     virtual ~IKeyboardRepository() = default;
-    virtual vector<KeyboardGroup> loadAll() const = 0;
+    virtual std::vector<KeyboardGroup> loadAll() const = 0;
 };
 
 } // namespace phy104

@@ -15,7 +15,8 @@ struct Variable {
     string id;
     string display;
     string name;
-    string unit; // "m", "deg", "rad", "" ... (SI; angles may be deg or rad)
+    string unit; 
+    string latex; // "m", "deg", "rad", "" ... (SI; angles may be deg or rad)
     string description;
     string defaultValue; // pre-filled text, e.g. the value of c (filled from constants)
 };
@@ -28,6 +29,7 @@ struct Formula {
     string equation; // "na*sin(thetaa)=nb*sin(thetab)"
     string latex;
     string chapter;
+    string noSolutionHint;
     map<string, string> unitOverrides; // e.g. {"phi","deg"} for Malus' law
     vector<Variable> variables;
 
@@ -61,5 +63,42 @@ struct KeyboardGroup {
     string name;
     vector<string> keys; // text inserted when pressed (e.g. "sin(")
 };
+struct Chapter {
+    string id;
+    string title;
+    int order = 0;
+};
+struct OpticalMedium {
+    string id;
+    string name;          // "Glass · crown"
+    double n = 1.0;
+    double cauchyA = 0.0;
+    double cauchyB = 0.0;
+};
+
+/// A monochromatic light source preset for the double-slit experiment.
+struct LightSource {
+    string id;
+    string name;          // "Green laser · 532 nm"
+    double wavelengthNm = 550.0;
+};
+
+struct OpticsPresets {
+   vector<OpticalMedium> media;
+    vector<LightSource> sources;
+
+    const OpticalMedium* findMedium(const string& id) const {
+        for (const auto& m : media) if (m.id == id) return &m;
+        return nullptr;
+    }
+};
+
+/// A formula topic of the "Formulas & Notes" page.
+struct ReferenceTopic {
+    string title;
+    vector<std::string> equations;
+    string note;
+};
+
 
 } // namespace phy104

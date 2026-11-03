@@ -5,23 +5,23 @@
 #include <string>
 #include <vector>
 #include <utility>
-using std::string;
-using std::map;
-using std::vector;
-using std::pair;
-//---------------------------------------------------------------------------------------------------------------------
+
 namespace phy104 {
 
 struct SolveResult {
     bool ok = false;
-    string error; // filled when ok == false
-    string formulaText;
-    string unknownId; // "thetab"
-    string unknownDisplay; // "θ_b"
-    double value = 0.0; // in the unknown's unit (degrees for angles in deg)
-    string unit;
-    vector<double> otherSolutions;// extra solutions in the search range (same unit)
-    vector<string> steps; // readable solution steps
+    std::string error;                 // filled when ok == false
+    std::string formulaText;
+    std::string unknownId;             // "thetab"
+    std::string unknownDisplay;        // "θ_b"
+    double value = 0.0;                // in the unknown's unit (degrees for angles in deg)
+    std::string unit;
+    std::vector<double> otherSolutions;// extra solutions in the search range (same unit)
+    std::vector<std::string> steps;    // readable solution steps
+    std::string hint;                  // physics warning or explanation
+    std::string answerLatex;           // "\\theta_{b}=19.4712^{\\circ}"
+    std::string checkSummary;          // "left side = 0.5, right side = 0.5"
+    bool physical = false;             // true: no/undefined solution (a physics warning), false: bad input
 };
 
 /// Solves a Formula for its single unknown:
@@ -31,22 +31,22 @@ struct SolveResult {
 class SolverEngine {
 public:
     /// `constants` lets users type c, ε₀, μ₀, h ... inside input fields.
-    explicit SolverEngine(vector<PhysicsConstant> constants = {});
+    explicit SolverEngine(std::vector<PhysicsConstant> constants = {});
 
     /// inputs: variable id -> text typed by the user (empty text = the unknown)
-    SolveResult solve(const Formula& formula, const map<string, string>& inputs) const;
+    SolveResult solve(const Formula& formula, const std::map<std::string, std::string>& inputs) const;
 
     /// Number formatting used everywhere (6 significant digits).
-    static string formatNumber(double value);
+    static std::string formatNumber(double value);
 
     /// Replaces variable ids in `text` by the given replacement strings (functions untouched).
-    static string substitute(const string& text, const map<string, string>& replacements);
+    static std::string substitute(const std::string& text, const std::map<std::string, std::string>& replacements);
 
 private:
-    string prepareInput(const string& text, const string& unit) const;
+    std::string prepareInput(const std::string& text, const std::string& unit) const;
 
     VariableMap m_constants; // id -> value
-    vector<pair<string, string>> m_aliases; // "ε₀" -> "epsilon0"
+    std::vector<std::pair<std::string, std::string>> m_aliases; // "ε₀" -> "epsilon0"
 };
 
 } // namespace phy104

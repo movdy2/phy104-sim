@@ -1,0 +1,55 @@
+{
+  "unitDiscipline": {
+    "title": "Unit discipline",
+    "text": "Convert nm and mm to metres before substitution. Export headers preserve the selected display units."
+  },
+  "topics": [
+    {
+      "title": "Refraction & TIR",
+      "equations": [
+        "n₁ sin θ₁ = n₂ sin θ₂",
+        "θc = asin(n₂ / n₁)"
+      ],
+      "note": "For n₁ > n₂; angles from normal."
+    },
+    {
+      "title": "Lenses & mirrors",
+      "equations": [
+        "1/f = 1/dₒ + 1/dᵢ",
+        "m = -dᵢ/dₒ = hᵢ/hₒ"
+      ],
+      "note": "Real-is-positive; R = 2f for mirrors."
+    },
+    {
+      "title": "Prism / minimum deviation",
+      "equations": [
+        "δ = i₁ + i₂ - A",
+        "n = sin[(A+δmin)/2] / sin(A/2)"
+      ],
+      "note": "At minimum: r₁ = r₂ = A/2."
+    },
+    {
+      "title": "Double-slit interference",
+      "equations": [
+        "β = λL/d  ·  yₘ = mλL/d",
+        "I/I₀ = cos²(πdy/λL)"
+      ],
+      "note": "Small angles; coherent equal slits."
+    },
+    {
+      "title": "Study note · total internal reflection",
+      "equations": [
+        "sin θc = n₂/n₁"
+      ],
+      "note": "Occurs only from a denser to a less dense medium (n₁ > n₂). Used in optical fibres and prisms."
+    },
+    {
+      "title": "Study note · exam tips",
+      "equations": [
+        "s' > 0: real image",
+        "m < 0: inverted"
+      ],
+      "note": "State your sign convention first. |m| > 1 means the image is enlarged."
+    }
+  ]
+}

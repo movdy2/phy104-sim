@@ -1,0 +1,74 @@
+{
+  "media": [
+    {
+      "id": "air",
+      "name": "Air · standard",
+      "n": 1.0,
+      "cauchyA": 1.0,
+      "cauchyB": 0.0
+    },
+    {
+      "id": "crown",
+      "name": "Glass · crown",
+      "n": 1.5,
+      "cauchyA": 1.487905821,
+      "cauchyB": 0.0042
+    },
+    {
+      "id": "flint",
+      "name": "Glass · flint",
+      "n": 1.62,
+      "cauchyA": 1.594083901,
+      "cauchyB": 0.009
+    },
+    {
+      "id": "acrylic",
+      "name": "Acrylic · PMMA",
+      "n": 1.49,
+      "cauchyA": 1.475602167,
+      "cauchyB": 0.005
+    },
+    {
+      "id": "water",
+      "name": "Water · 20 °C",
+      "n": 1.333,
+      "cauchyA": 1.324188526,
+      "cauchyB": 0.00306
+    }
+
+
+    
+  ],
+  "sources": [
+    {
+      "id": "green",
+      "name": "Green laser · 532 nm",
+      "wavelengthNm": 532.0
+    },
+    {
+      "id": "red_laser",
+      "name": "Red laser · 650 nm",
+      "wavelengthNm": 650.0
+    },
+    {
+      "id": "hene",
+      "name": "He-Ne laser · 632.8 nm",
+      "wavelengthNm": 632.8
+    },
+    {
+      "id": "sodium",
+      "name": "Sodium lamp · 589.3 nm",
+      "wavelengthNm": 589.3
+    },
+    {
+      "id": "blue",
+      "name": "Blue laser · 450 nm",
+      "wavelengthNm": 450.0
+    },
+    {
+      "id": "violet",
+      "name": "Violet laser · 405 nm",
+      "wavelengthNm": 405.0
+    }
+  ]
+}

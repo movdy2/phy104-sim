@@ -1,0 +1,46 @@
+<RCC>
+    <qresource prefix="/diagrams">
+        <file alias="refraction.svg">diagrams/refraction.svg</file>
+        <file alias="tir.svg">diagrams/tir.svg</file>
+        <file alias="thin_lens.svg">diagrams/thin_lens.svg</file>
+        <file alias="spherical_mirror.svg">diagrams/spherical_mirror.svg</file>
+        <file alias="double_slit.svg">diagrams/double_slit.svg</file>
+        <file alias="prism.svg">diagrams/prism.svg</file>
+    </qresource>
+    <qresource prefix="/fonts">
+        <file alias="Inter-Regular.otf">fonts/Inter-Regular.otf</file>
+        <file alias="Inter-Medium.otf">fonts/Inter-Medium.otf</file>
+        <file alias="Inter-SemiBold.otf">fonts/Inter-SemiBold.otf</file>
+        <file alias="JetBrainsMono-Regular.ttf">fonts/JetBrainsMono-Regular.ttf</file>
+        <file alias="JetBrainsMono-Bold.ttf">fonts/JetBrainsMono-Bold.ttf</file>
+    </qresource>
+    <qresource prefix="/icons">
+        <file alias="arrow-up-right.svg">icons/arrow-up-right.svg</file>
+        <file alias="bold.svg">icons/bold.svg</file>
+        <file alias="book-open.svg">icons/book-open.svg</file>
+        <file alias="calculator.svg">icons/calculator.svg</file>
+        <file alias="check.svg">icons/check.svg</file>
+        <file alias="chevron-down-dark.svg">icons/chevron-down-dark.svg</file>
+        <file alias="chevron-down-light.svg">icons/chevron-down-light.svg</file>
+        <file alias="chevron-down.svg">icons/chevron-down.svg</file>
+        <file alias="chevron-up.svg">icons/chevron-up.svg</file>
+        <file alias="chevrons-up-down.svg">icons/chevrons-up-down.svg</file>
+        <file alias="file-spreadsheet.svg">icons/file-spreadsheet.svg</file>
+        <file alias="focus.svg">icons/focus.svg</file>
+        <file alias="image.svg">icons/image.svg</file>
+        <file alias="italic.svg">icons/italic.svg</file>
+        <file alias="keyboard.svg">icons/keyboard.svg</file>
+        <file alias="layout-dashboard.svg">icons/layout-dashboard.svg</file>
+        <file alias="link.svg">icons/link.svg</file>
+        <file alias="list.svg">icons/list.svg</file>
+        <file alias="moon.svg">icons/moon.svg</file>
+        <file alias="notebook-pen.svg">icons/notebook-pen.svg</file>
+        <file alias="ruler.svg">icons/ruler.svg</file>
+        <file alias="scan-line.svg">icons/scan-line.svg</file>
+        <file alias="sigma.svg">icons/sigma.svg</file>
+        <file alias="split.svg">icons/split.svg</file>
+        <file alias="sun.svg">icons/sun.svg</file>
+        <file alias="triangle.svg">icons/triangle.svg</file>
+        <file alias="waves.svg">icons/waves.svg</file>
+    </qresource>
+</RCC>
