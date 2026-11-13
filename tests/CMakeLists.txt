@@ -15,7 +15,7 @@ endif()
 
 # UI-level checks: LaTeX renderer, SVG diagrams, theme, fonts, Markdown highlighter (offscreen, no window)
 if(TARGET phy104_ui)
-    find_package(Qt6 REQUIRED COMPONENTS Widgets Svg)
+    find_package(Qt6 REQUIRED COMPONENTS Widgets Svg PrintSupport)
     add_executable(test_ui test_ui.cpp ${CMAKE_SOURCE_DIR}/assets/assets.qrc)
     target_link_libraries(test_ui PRIVATE phy104_ui)
     target_compile_definitions(test_ui PRIVATE

@@ -17,6 +17,7 @@
 #include "ui/MainWindow.h"
 #include "ui/MathSolverPage.h"
 #include "ui/NotesExportPage.h"
+#include "ui/ReportPage.h"
 #include "ui/SolverPage.h"
 
 namespace phy104 {
@@ -82,6 +83,9 @@ App::App(const Paths& paths) {
     m_window->addPage("Optical Setups", "image", diagrams, 1);
     exportPage = new ExportPage(m_context.get());
     const int exportIndex = m_window->addPage("Export (Excel/CSV)", "file-spreadsheet", exportPage, 1);   // tools entry, as in Figma
+    reportPage = new ReportPage(m_context.get());
+    m_window->addPage("PDF Report", "printer", reportPage, 1);
+    reportPage->setSources({refraction, lenses, prisms, wave, polarization, singleSlit, grating, thinFilm, michelson, newton});
     dashboard->setNotesPage(notesIndex);
     dashboard->setExportPage(exportIndex);
     for (BasePage* page : std::initializer_list<BasePage*>{polarization, singleSlit, grating, thinFilm, michelson, newton})

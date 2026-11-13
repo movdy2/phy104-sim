@@ -94,6 +94,12 @@ formula/variable, 25 random data sets), Qt UI, five experiments, notes, theme.
   and dashed rays in the drawing; Malus/Brewster switches to the interface at θB, `R_p = 0`, `R_s = 0.1479` (14.8 % reflected
   at θB, 4 % at normal incidence) and plots `R_p(θ)` from 0.04 down to 0 at 56.31° and up to 1 — all six model screens now
   react to their tabs (`orderList`, `geometry`, `brewster`).
+* **PDF Report** page (print): one document with the header, every experiment's headline, diagram and chart
+  (captured live from the screens at 2x), the parameters, the LCD registers, the session notes (Markdown rendered)
+  and the table of saved calculations. Ticks choose what goes in, A4 portrait or landscape, a live preview on the
+  right, **Save PDF** into the chosen folder and **Print…** through the system dialog. The HTML is built by the
+  tested core module `ReportDocument` (escaping, options, `img://` keys); the Qt layer only attaches the pixmaps.
+  The written file lands in the same "recent export" card and `.phy` session as the Excel/CSV exports.
 * **Draw Space** page: whiteboard for optics sketches (pen, line, ray, rectangle/ellipse, lens, mirror, prism, interface,
   axis, normal, text and LaTeX labels), select/move, Delete, undo/redo, 8 px grid snap, six colours, three widths, PNG (2x)
   and SVG export. The sketch autosaves into the `.phy` session and is restored on start (`Drawing` engine unchanged).

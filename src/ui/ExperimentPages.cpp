@@ -107,6 +107,22 @@ void ExperimentPage::setNormalHint(const QString& text) {
     if (!m_restore->isVisible()) m_hint->setText(text);
 }
 
+QWidget* ExperimentPage::diagramCanvas() const {
+    if (!m_diagramPanel) return nullptr;
+    QVBoxLayout* body = m_diagramPanel->body();
+    for (int i = 0; i < body->count(); ++i)
+        if (QWidget* w = body->itemAt(i)->widget()) return w;      // the canvas inside the panel
+    return nullptr;
+}
+
+QWidget* ExperimentPage::chartWidget() const {
+    if (!m_chartPanel) return nullptr;
+    QVBoxLayout* body = m_chartPanel->body();
+    for (int i = 0; i < body->count(); ++i)
+        if (QWidget* w = body->itemAt(i)->widget()) return w;      // the LineChart inside the panel
+    return nullptr;
+}
+
 void ExperimentPage::buildButtons(QVBoxLayout* fields, const QString& hint, bool withSend) {
     m_calc = new QPushButton("Calculate && Simulate");
     m_calc->setObjectName("primary");
