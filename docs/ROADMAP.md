@@ -39,8 +39,12 @@
   `Spectrum` modules, tested in `test_core`.
 * **Study Hub** (v2.7): `data/study_hub.json` is a **JSON array** of ten chapters in course order - summary, rules
   (formula + why it holds) and the constants of the chapter; the Formula Solver stays a separate page.
-* **The calculator takes plain text**: `keyboard.json` groups as ordinary keys (`sin(`, `π`, `θ`, `√(`, `ln(`, `^`);
-  LaTeX stays in the Equation Lab. The light theme is darker and the dark theme's small text is brighter (v2.7).
+* **Input stays mode-specific**: Calculator uses plain-text math and its focused keypad; LaTeX stays in Equation Lab and
+  Notes. The shared scientific keyboards are unchanged. The light theme is darker and the dark theme's small text is brighter (v2.7).
+* **Unified tools & dashboard (v2.9)**: all main-page headers share **Save + one Export menu** (PDF / Excel / CSV);
+  the Study Hub tabs now include the shared Notes workspace, Optical Setups and global Constants (Notes keeps its sidebar
+  shortcut; the other two move into the Hub); the dashboard keeps four featured cards and adds a Browse all 11 menu;
+  Calculator is a cleaner expression/result screen with just its math keypad and high-contrast text.
 * Tests: core numbers of every Figma frame (plus both modes of Newton, Michelson and thin film), the report HTML
   builder (escaping, options, image keys), data round trips,
   UI (colours, fonts, highlighter), click-through tests of every screen (now including the second tabs of

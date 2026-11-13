@@ -6,6 +6,7 @@
 #include "Plots.h"
 #include "ThemeManager.h"
 
+#include <QAction>
 #include <QComboBox>
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -16,6 +17,8 @@
 #include <QSignalBlocker>
 #include <QStackedWidget>
 #include <QTableWidget>
+#include <QToolButton>
+#include <QMenu>
 #include <QVBoxLayout>
 #include <algorithm>
 #include <cmath>
@@ -51,6 +54,20 @@ const CardInfo kCards[4] = {
     {"03 / MINIMUM DEVIATION", "Prisms", "Trace an optical path and determine the refractive index.", PreviewIcon::Prism, "Prisms", 3},
     {"04 / WAVE OPTICS", "Wave Interference (Double-Slit)", "Young's experiment, fringe spacing and intensity profiles.", PreviewIcon::Waves, "Wave Interference", 4}};
 
+struct ExperimentLink { const char* title; const char* description; const char* icon; int page; };
+const ExperimentLink kAllExperiments[11] = {
+    {"Refraction & TIR", "Snell's law, critical angle and total internal reflection.", "split", 1},
+    {"Lenses & Mirrors", "Thin lenses, mirrors and principal-ray imaging.", "focus", 2},
+    {"Prisms", "Minimum deviation, index and dispersion.", "triangle", 3},
+    {"Wave Interference (Double-Slit)", "Young's double slit, fringe spacing and intensity.", "waves", 4},
+    {"Polarization (Malus & Brewster)", "Malus' law, Fresnel reflection and Brewster angle.", "contrast", 5},
+    {"Single-Slit Diffraction", "First minimum, screen geometry and two-slit envelope.", "slit", 6},
+    {"Diffraction Grating", "Orders, resolving power and free spectral range.", "align-justify", 7},
+    {"Thin-Film Interference", "Reflection, transmission and visible film colours.", "layers", 8},
+    {"Michelson Interferometry", "Fringes, mirror motion and wavelength.", "git-merge", 9},
+    {"Newton's Rings", "Ring radii, contact and wavelength.", "circle-dot", 10},
+    {"Thick Lens & Aberration", "Principal planes, focal lengths and spherical aberration.", "aperture", 11}};
+
 QWidget* metricCard(const QString& value, const QString& title, const QString& text, QLabel** valueOut = nullptr) {
     auto* card = new QFrame;
     card->setObjectName("card");
@@ -83,12 +100,45 @@ DashboardPage::DashboardPage(AppContext* ctx, QWidget* parent)
     // --- metrics
     auto* metrics = new QHBoxLayout;
     metrics->setSpacing(12);
-    metrics->addWidget(metricCard("04", "EXPERIMENT MODULES", "Geometrical & wave optics"));
+    QLabel* experimentCount = nullptr;
+    metrics->addWidget(metricCard("11", "EXPERIMENTS", "Geometrical & wave optics", &experimentCount));
+    experimentCount->setObjectName("experimentCount");
     metrics->addWidget(metricCard("00", "SAVED CALCULATIONS", "Current lab session", &m_savedValue));
     metrics->addWidget(metricCard("00", "DATA SERIES", "Ready for Excel / CSV", &m_seriesValue));
     content()->addLayout(metrics);
 
-    // --- experiment cards
+    auto* browseRow = new QHBoxLayout;
+    browseRow->addStretch();
+    m_browseExperiments = new QToolButton;
+    m_browseExperiments->setObjectName("browseExperiments");
+    m_browseExperiments->setText("Browse all 11");
+    m_browseExperiments->setPopupMode(QToolButton::InstantPopup);
+    m_browseExperiments->setToolTip("Open any of the 11 experiment screens");
+    auto* experimentMenu = new QMenu(m_browseExperiments);
+    experimentMenu->setObjectName("allExperimentsMenu");
+    for (int i = 0; i < 11; ++i) {
+        const ExperimentLink& experiment = kAllExperiments[i];
+        const Theme& theme = ThemeManager::instance().theme();
+        QAction* action = experimentMenu->addAction(
+            Icons::get(experiment.icon, theme.text, theme.amber, 18),
+            QString("%1 · %2").arg(i + 1, 2, 10, QChar('0')).arg(QString::fromUtf8(experiment.title)));
+        action->setToolTip(QString::fromUtf8(experiment.description));
+        const int page = experiment.page;
+        connect(action, &QAction::triggered, this, [this, page] { emit openPageRequested(page); });
+    }
+    m_browseExperiments->setMenu(experimentMenu);
+    connect(&ThemeManager::instance(), &ThemeManager::themeChanged, this, [experimentMenu] {
+        const Theme& theme = ThemeManager::instance().theme();
+        const auto actions = experimentMenu->actions();
+        for (int i = 0; i < 11; ++i) {
+            const ExperimentLink& experiment = kAllExperiments[i];
+            actions[i]->setIcon(Icons::get(experiment.icon, theme.text, theme.amber, 18));
+        }
+    });
+    browseRow->addWidget(m_browseExperiments);
+    content()->addLayout(browseRow);
+
+    // --- four featured experiment cards
     auto* grid = new QGridLayout;
     grid->setSpacing(12);
     for (int i = 0; i < 4; ++i) {

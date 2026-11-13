@@ -10,11 +10,6 @@
 #include <utility>
 
 namespace phy104 {
-namespace {
-const char* const kStarterNotes =
-    "# Lab notes\n\n## Refraction & TIR\n\n### Snell's law\n- $n₁ sin θ₁ = n₂ sin θ₂$\n- compare the fitted index with the reference value\n\n"
-    "#### Exam warning\nAngles are measured from the normal, not from the surface.\n";
-}
 
 NotesPage::NotesPage(AppContext* ctx, std::vector<ScientificPage> keyboardPages, QWidget* parent)
     : BasePage("Notes", "MARKDOWN STUDY WORKSPACE / Write, edit and preview your lab notes", ctx, parent) {
@@ -22,7 +17,7 @@ NotesPage::NotesPage(AppContext* ctx, std::vector<ScientificPage> keyboardPages,
     m_notesPanel = new Panel("Session notes", "SAVED " + ctx->lastSavedTime());
     m_notes = new MarkdownWorkspace;
     const QString saved = QString::fromStdString(ctx->log.notes());
-    m_notes->setMarkdown(saved.isEmpty() ? QString::fromUtf8(kStarterNotes) : saved);
+    m_notes->setMarkdown(saved.isEmpty() ? MarkdownWorkspace::starterNotes() : saved);
 
     // the same scientific keyboard as the Equation Lab, docked under the note and writing LaTeX into it
     m_keyboard = new ScientificKeyboard(std::move(keyboardPages), this);
@@ -52,6 +47,8 @@ NotesPage::NotesPage(AppContext* ctx, std::vector<ScientificPage> keyboardPages,
     connect(m_notes, &MarkdownWorkspace::contentChanged, ctx, &AppContext::setNotes);
     connect(ctx, &AppContext::notesAppended, this, [this] { m_notes->setMarkdown(QString::fromStdString(m_ctx->log.notes())); });
     connect(ctx, &AppContext::notesSaved, this, [this] {
+        const QString latest = QString::fromStdString(m_ctx->log.notes());
+        if (m_notes->markdown() != latest) m_notes->setMarkdown(latest);   // keep the Study Hub editor in sync
         m_notesPanel->setMeta("SAVED " + m_ctx->lastSavedTime());
         m_notes->setSavedText("Saved " + m_ctx->lastSavedTime());
     });

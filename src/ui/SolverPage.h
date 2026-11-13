@@ -2,7 +2,7 @@
 #include "FormulaEngine.h"
 #include "FormulaManager.h"
 #include "SolverEngine.h"
-#include <QWidget>
+#include "BasePage.h"
 #include <map>
 #include <memory>
 
@@ -21,11 +21,11 @@ class LatexWidget;
 /// Formula Solver page.
 ///  left : search box, chapter filter, paged list of formula cards (screen limit)
 ///  right: LaTeX formula on an LCD, LCD input fields, status line, LCD answer + steps
-class SolverPage : public QWidget {
+class SolverPage : public BasePage {
     Q_OBJECT
 public:
     SolverPage(std::shared_ptr<FormulaEngine> engine, std::shared_ptr<FormulaManager> manager,
-               std::shared_ptr<SolverEngine> solver, QWidget* parent = nullptr);
+               std::shared_ptr<SolverEngine> solver, AppContext* context, QWidget* parent = nullptr);
 
 public slots:
     /// Selects a formula by id (also makes sure it is visible in the list).

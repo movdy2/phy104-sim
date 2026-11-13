@@ -33,15 +33,18 @@ BasePage::BasePage(const QString& title, const QString& subtitle, AppContext* co
     titles->setSpacing(4);
     auto* t = new QLabel(title);
     t->setObjectName("pageTitle");
-    auto* s = new QLabel(subtitle);
-    s->setObjectName("pageSubtitle");
     titles->addWidget(t);
-    titles->addWidget(s);
+    if (!subtitle.isEmpty()) {
+        auto* s = new QLabel(subtitle);
+        s->setObjectName("pageSubtitle");
+        titles->addWidget(s);
+    }
     m_units = new QLabel("SI UNITS · DEG");
     m_units->setObjectName("unitsTag");
     auto* units = m_units;
-    auto* save = new QPushButton("Save session");
+    auto* save = new QPushButton("Save");
     m_saveButton = save;
+    save->setMinimumWidth(130);
     save->setObjectName("outline");
     save->setCursor(Qt::PointingHandCursor);
     // one icon, three formats: PDF report / Excel / CSV (the menu is attached below)
@@ -85,7 +88,9 @@ BasePage::BasePage(const QString& title, const QString& subtitle, AppContext* co
 void BasePage::setUnitsTag(const QString& text) { m_units->setText(text); }
 
 void BasePage::useSaveExportHeader() {
-    m_units->hide();
+    // Retained for existing page constructors: every BasePage now has this same header by default.
+    // Keep the header helpers idempotent in case a derived page calls this more than once.
+    m_units->show();
     m_saveButton->setText("Save");
     m_saveButton->setMinimumWidth(130);
 }

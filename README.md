@@ -25,7 +25,7 @@ into the session, into every snapshot's `notesContent`, and into the `.phy` file
 
 | Sidebar item | What it does |
 |---|---|
-| **Dashboard** | metrics, the four experiment cards with their last result, recent calculations (**Recent / Compare**: overlay two saved runs, delete a run), lab notebook |
+| **Dashboard** | 11-experiment count, four featured cards and a **Browse all 11** menu, recent calculations (**Recent / Compare**: overlay two saved runs, delete a run), lab notebook |
 | **Refraction & TIR** | Snell's law and total internal reflection: two incidence cases, regression chart, LCD registers |
 | **Lenses & Mirrors** | thin lens and spherical mirror (same equations), principal rays, image properties |
 | **Prisms** | ray path, minimum deviation, deviation curve, dispersion mode (red / λ / violet rays) |
@@ -33,13 +33,12 @@ into the session, into every snapshot's `notesContent`, and into the `.phy` file
 | **Polarization**, **Single slit**, **Grating**, **Thin film**, **Michelson**, **Newton's rings** | the six screens of the second Figma batch (Save + export icon, Send to Notes); **every tab of every screen works** (thin-film transmission **and its colour swatch**, Michelson fringe count, grating orders **and resolving power**, slit geometry **and the two-slit envelope**, Malus/Brewster) and Newton's viewing-mode dropdown switches to the transmitted rings |
 | **Thick Lens & Aberration** | a real glass element: signed `R₁ R₂`, centre thickness, aperture → paraxial power, **principal planes**, BFL/FFL, imaging from `H₂`, **third-order spherical aberration** (`ΔSA ∝ D²`) and a **Spectrum** tab with the Cauchy focal spread and Abbe number |
 | **Notes** | the clean Markdown study workspace of the design: editor + snippet toolbar + live LaTeX preview, autosaved; **⌨ Keyboard** opens the scientific keyboard (from `keyboard.json`) and types LaTeX straight into the note |
-| **Export icon** (every page header) | one download button with **PDF report / Excel (.xlsx) / CSV (.csv)**: it opens the matching screen with the format already selected |
+| **Page actions** | every main-page header uses the same **Save** button plus one **Export** menu for PDF report / Excel (.xlsx) / CSV (.csv); export destinations omit the duplicate menu |
 | *Tools:* **PDF Report** | printable laboratory report: every experiment's headline, diagram and chart, the registers, the notes and the saved runs in one A4 document (Save PDF / Print…) |
 | *Tools:* **Export (Excel/CSV)** | data series and what it contains, every row of the table, workbook/CSV settings, **Print…** (paper or PDF), remembered recent export |
 | *Tools:* **Formula Solver** | 42 formulas in 7 chapters: search, chapter filter, paging, LaTeX, LCD input/answer |
-| *Tools:* **Calculator** | plain calculator: free expressions (`sin`, `sqrt`, `pi`, `e`, `Ans`, DEG/RAD) plus a **plain-text scientific keypad** (Greek, constants, functions, operators, numbers, variables - no LaTeX), bounded history |
-| *Tools:* **Study Hub** | revision material from `data/study_hub.json`: ten chapters in course order, each with a summary, its rules (formula + why it holds) and the constants of that chapter |
-| *Tools:* **Constants**, **Optical Setups** | constants with search/copy; six SVG diagrams with PNG export |
+| *Tools:* **Calculator** | clean expression → result layout with recent history, DEG/RAD, `Ans`, and a focused math keypad (numbers, operators, parentheses, powers, roots, trig and logs); no extra physics-variable browser |
+| *Tools:* **Study Hub** | tabs for ten chapters (summary, rules and chapter constants), shared autosaving Notes, six Optical Setups (PNG export), and searchable/copyable global Constants; the Notes shortcut stays in the sidebar, while Constants and Optical Setups move here |
 
 Common to the experiment pages: live update while typing, **Calculate & Simulate** saves a run to the session,
 **Reset parameters**, invalid input never shows `NaN` - a red field, an `E_...` register with the

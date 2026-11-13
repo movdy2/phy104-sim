@@ -12,7 +12,7 @@ namespace phy104 {
 
 class AppContext;
 
-/// Page with the Figma header: big title, subtitle, "SI UNITS · DEG" tag and a Save session button.
+/// Shared page shell: title, subtitle, units tag, Save button and one Export menu (PDF / Excel / CSV).
 class BasePage : public QWidget {
     Q_OBJECT
 public:
@@ -28,7 +28,7 @@ public:
     const StatusInfo& statusInfo() const { return m_status; }
     bool isPaused() const { return m_paused; }
     void setUnitsTag(const QString& text);
-    /// Header of the second Figma batch: "Save" (outline) instead of the units tag + "Save session".
+    /// Kept for page compatibility; the shared Save + Export header is already applied by the base constructor.
     void useSaveExportHeader();
     /// The download icon of the header: one button, three formats (PDF report, Excel, CSV).
     QToolButton* exportButton() const { return m_exportButton; }
