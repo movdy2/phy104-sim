@@ -86,6 +86,7 @@ void ThemeManager::apply(QApplication& app, bool dark) {
     p.setColor(QPalette::Disabled, QPalette::Text, t.dim);
     p.setColor(QPalette::Disabled, QPalette::ButtonText, t.dim);
     app.setPalette(p);
+    // A universal stylesheet font-family would override per-widget LCD segment fonts.
     app.setStyleSheet(styleSheet(t));
     emit themeChanged();
 }
@@ -118,7 +119,6 @@ void ThemeManager::polishLcdInput(QLineEdit* edit) {
 QString ThemeManager::styleSheet(const Theme& t) {
     // MSVC rejects a single string literal over 16380 bytes (C2026): the sheet is appended in three parts.
     QString css = R"CSS(
-* { font-family: 'Inter'; }
 QMainWindow, QWidget#central, QWidget#pageArea { background: @bg@; }
 QToolTip { background: @card@; color: @text@; border: 1px solid @amber@; padding: 4px 6px; }
 

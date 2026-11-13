@@ -398,6 +398,10 @@ private slots:
         QCOMPARE(family(calculatorInput), QString("DSEG14 Classic"));
         QCOMPARE(family(calculatorResult), QString("DSEG7 Classic"));
         QCOMPARE(family(calculatorHistory), QString("DSEG14 Classic"));
+        const bool initialTheme = ThemeManager::instance().isDark();
+        ThemeManager::instance().apply(*qApp, !initialTheme);
+        QCOMPARE(family(calculatorResult), QString("DSEG7 Classic"));
+        ThemeManager::instance().apply(*qApp, initialTheme);
 
         goTo(m_app->solver);
         auto* solverInput = m_app->solver->findChild<QLineEdit*>("lcdInput");
