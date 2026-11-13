@@ -5,6 +5,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QUrl>
+#include <QVBoxLayout>
 
 namespace phy104 {
 namespace {

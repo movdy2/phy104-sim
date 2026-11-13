@@ -20,6 +20,7 @@
 #include <QStandardPaths>
 #include <QTableWidget>
 #include <QTextDocument>
+#include <QToolButton>
 #include <QVBoxLayout>
 #include <cmath>
 
