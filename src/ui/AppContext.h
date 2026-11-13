@@ -4,6 +4,7 @@
 
 #include <QObject>
 #include <QString>
+#include <map>
 #include <memory>
 
 namespace phy104 {
@@ -26,6 +27,8 @@ public:
     void publish(const Snapshot& snapshot);
     /// "Calculate & Simulate": appends a run to the session and autosaves.
     void recordRun(const QString& experiment, const QString& description, const QString& result, bool valid);
+    /// Dashboard: drops a saved calculation (and its sweep). Returns false when the id is unknown.
+    bool deleteRun(int id);
     void setNotes(const QString& markdown);      // autosaves
     /// "Send to Notes": appends a Markdown block to the session notes, saves, and tells the notes page to reload.
     void appendNotes(const QString& markdown);
@@ -46,6 +49,7 @@ signals:
     void message(const QString& text);           // shown in the status bar
 
 private:
+    std::map<std::string, DataSeries> m_lastSeries;            // the sweep each screen published last
     std::unique_ptr<ISessionStore> m_store;
     QString m_lastSaved = "--:--";
 };

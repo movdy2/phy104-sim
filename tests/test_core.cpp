@@ -397,6 +397,11 @@ int main() {
         CHECK(log.snapshot("Prisms") == nullptr);
         log.setSnapshot({"Prisms", {{"A", "60 °"}}, {}, "δ", {}, ""});
         CHECK(log.snapshot("Prisms")->parameters.size() == 1);
+        // the dashboard's "delete selected run"
+        log.addRun("Prisms", "Second sweep", "n = 1.5", true);
+        CHECK(log.runs().size() == 3 && log.removeRun(2));
+        CHECK(log.runs().size() == 2 && log.runs()[0].id == 1 && log.runs()[1].id == 3);
+        CHECK(!log.removeRun(2) && !log.removeRun(9999) && log.runs().size() == 2);   // unknown ids are refused
     }
     // --- notes travel with the snapshots
     {

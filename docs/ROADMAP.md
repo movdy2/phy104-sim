@@ -23,7 +23,12 @@
   autosaves into the `.phy` session.
 * **Markdown Study Workspace** (Notes & Formula Jotter): Gruvbox highlighter (H1-H4, formulas, bullets), snippet toolbar,
   problem template, Edit/Split/Preview, autosave into `Snapshot.notesContent` and the `.phy` file.
-* Session file (`.phy`): runs, notes, snapshots (parameters + calculator registers), equations and drawing storage.
+* **Compare saved runs**: dashboard **Recent / Compare** switch - two run pickers overlay their sweeps on one chart
+  (kept with the run as `RunRecord::series`, session format version 5); rows are selectable and **Delete selected run**
+  drops a run and autosaves.
+* **CI**: GitHub Actions build matrix (Linux Qt 6 + ctest, Windows MSVC + Qt 6.7.2, Qt-free `g++` core test).
+* Session file (`.phy`): runs (with their sweep), notes, snapshots (parameters + calculator registers), equations, drawing
+  and the recent export.
 * Tests: core numbers of every Figma frame (plus both modes of Newton, Michelson and thin film), the report HTML
   builder (escaping, options, image keys), data round trips,
   UI (colours, fonts, highlighter), click-through tests of every screen (now including the second tabs of
@@ -36,10 +41,10 @@
 ## Should add next (priority order)
 1. Experiment extras: thick lens, spherical aberration, single-slit diffraction envelope, thin-film colours,
    grating resolving power / free spectral range - the formulas already exist in `formulas.json`.
-2. Compare runs: overlay two saved runs on one chart; edit/delete saved runs from the dashboard.
+2. Editing a saved run (the description/result of a run) next to the delete that is already there.
 3. Notes: note templates per chapter, search, export to .md/.pdf (LaTeX formula images in the preview are done).
 4. Keyboard shortcuts (Ctrl+Enter calculate, Ctrl+S save, Ctrl+1..9 pages, Ctrl+P print), undo for field edits,
    drag-and-drop of data files.
 5. Units: unit dropdown per field (nm/µm/mm/cm/m), significant-figures setting, copy-as-LaTeX for every register.
 6. Accessibility and polish: high-contrast theme, font-size setting, window-size tests (1080x700), translations (Arabic UI).
-7. Packaging: Windows installer (windeployqt + NSIS), Linux AppImage, GitHub Actions build matrix.
+7. Packaging: Windows installer (windeployqt + NSIS), Linux AppImage (the GitHub Actions build matrix is done).

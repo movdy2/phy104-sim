@@ -7,6 +7,7 @@
 #include <QJsonDocument>
 #include <QSaveFile>
 #include <QJsonObject>
+#include <cmath>
 
 namespace phy104 {
 namespace {
@@ -173,6 +174,35 @@ QJsonObject snapshotToJson(const Snapshot& s) {
             {"parameters", params}, {"registers", regs}, {"notesContent", QString::fromStdString(s.notesContent)}};
 }
 
+/// A saved run keeps the sweep it produced, so two runs can be overlaid later.
+QJsonObject seriesToJson(const DataSeries& s) {
+    QJsonArray headers, rows;
+    for (const auto& h : s.headers) headers.append(QString::fromStdString(h));
+    for (const auto& row : s.rows) {
+        QJsonArray cells;
+        for (double v : row) cells.append(std::isfinite(v) ? QJsonValue(v) : QJsonValue(QJsonValue::Null));
+        rows.append(cells);
+    }
+    return {{"id", QString::fromStdString(s.id)}, {"name", QString::fromStdString(s.name)},
+            {"description", QString::fromStdString(s.description)}, {"note", QString::fromStdString(s.note)},
+            {"headers", headers}, {"rows", rows}};
+}
+
+DataSeries seriesFromJson(const QJsonObject& o) {
+    DataSeries s;
+    s.id = o.value("id").toString().toStdString();
+    s.name = o.value("name").toString().toStdString();
+    s.description = o.value("description").toString().toStdString();
+    s.note = o.value("note").toString().toStdString();
+    for (const auto& h : o.value("headers").toArray()) s.headers.push_back(h.toString().toStdString());
+    for (const auto& rv : o.value("rows").toArray()) {
+        std::vector<double> row;
+        for (const auto& cell : rv.toArray()) row.push_back(cell.isNull() ? kNaN : cell.toDouble());
+        s.rows.push_back(std::move(row));
+    }
+    return s;
+}
+
 Snapshot snapshotFromJson(const QJsonObject& o) {
     Snapshot s;
     s.experiment = o.value("experiment").toString().toStdString();
@@ -190,10 +220,13 @@ Snapshot snapshotFromJson(const QJsonObject& o) {
 
 bool JsonSessionStore::save(const SessionLog& log) const {
     QJsonArray runs;
-    for (const RunRecord& r : log.runs())
-        runs.append(QJsonObject{{"id", r.id}, {"experiment", QString::fromStdString(r.experiment)},
-                                {"description", QString::fromStdString(r.description)},
-                                {"result", QString::fromStdString(r.result)}, {"valid", r.valid}});
+    for (const RunRecord& r : log.runs()) {
+        QJsonObject run{{"id", r.id}, {"experiment", QString::fromStdString(r.experiment)},
+                        {"description", QString::fromStdString(r.description)},
+                        {"result", QString::fromStdString(r.result)}, {"valid", r.valid}};
+        if (!r.series.rows.empty() || !r.series.headers.empty()) run.insert("series", seriesToJson(r.series));
+        runs.append(run);
+    }
     QJsonArray equations;
     for (const std::string& e : log.equations()) equations.append(QString::fromStdString(e));
     QJsonArray shapes;
@@ -207,7 +240,7 @@ bool JsonSessionStore::save(const SessionLog& log) const {
                         {"series", QString::fromStdString(e.series)}, {"when", QString::fromStdString(e.when)},
                         {"rows", e.rows}, {"columns", e.columns}};
     }
-    const QJsonObject root{{"format", "phy104-session"}, {"version", 4}, {"session", log.sessionNumber()},
+    const QJsonObject root{{"format", "phy104-session"}, {"version", 5}, {"session", log.sessionNumber()},
                            {"notes", QString::fromStdString(log.notes())}, {"runs", runs}, {"snapshots", snapshots},
                            {"equations", equations}, {"drawing", QJsonObject{{"shapes", shapes}}},
                            {"recentExport", recentExport}};
@@ -227,8 +260,14 @@ bool JsonSessionStore::load(SessionLog& log) const {
     std::vector<RunRecord> runs;
     for (const auto& item : root.value("runs").toArray()) {
         const QJsonObject o = item.toObject();
-        runs.push_back({o.value("id").toInt(), str(o, "experiment", false), str(o, "description", false),
-                        str(o, "result", false), o.value("valid").toBool(true)});
+        RunRecord run;
+        run.id = o.value("id").toInt();
+        run.experiment = str(o, "experiment", false);
+        run.description = str(o, "description", false);
+        run.result = str(o, "result", false);
+        run.valid = o.value("valid").toBool(true);
+        if (o.contains("series")) run.series = seriesFromJson(o.value("series").toObject());   // version 5
+        runs.push_back(std::move(run));
     }
     log.restoreRuns(std::move(runs));
     log.setNotes(root.value("notes").toString().toStdString());

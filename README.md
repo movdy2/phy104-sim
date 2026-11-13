@@ -1,5 +1,7 @@
 # PHY104 Optical Assistant
 
+[![build](https://github.com/movdy2/phy104-sim/actions/workflows/build.yml/badge.svg)](https://github.com/movdy2/phy104-sim/actions/workflows/build.yml)
+
 Desktop application (C++20, Qt 6 Widgets, CMake, JSON data) for PHY104 - Optics and Wave Optics.
 Windows and Linux. No database, no network. The UI follows the Figma design `optics_lab.phy`
 (see [docs/FIGMA_MAPPING.md](docs/FIGMA_MAPPING.md)).
@@ -23,7 +25,7 @@ into the session, into every snapshot's `notesContent`, and into the `.phy` file
 
 | Sidebar item | What it does |
 |---|---|
-| **Dashboard** | metrics, the four experiment cards with their last result, recent calculations, lab notebook |
+| **Dashboard** | metrics, the four experiment cards with their last result, recent calculations (**Recent / Compare**: overlay two saved runs, delete a run), lab notebook |
 | **Refraction & TIR** | Snell's law and total internal reflection: two incidence cases, regression chart, LCD registers |
 | **Lenses & Mirrors** | thin lens and spherical mirror (same equations), principal rays, image properties |
 | **Prisms** | ray path, minimum deviation, deviation curve, dispersion mode (red / λ / violet rays) |
@@ -54,6 +56,8 @@ ctest --test-dir build              # core + real-data round trips + UI/LaTeX/SV
 Needs Qt 6 **Widgets and Svg** (Ubuntu: `qt6-base-dev qt6-svg-dev`). Fonts (Inter, JetBrains Mono) and icons
 (Lucide) are bundled in `assets/` - nothing to install. Windows: add `-DCMAKE_PREFIX_PATH=C:/Qt/6.x.x/msvc2019_64`.
 Core only (no Qt): `-DPHY104_BUILD_GUI=OFF`.
+CI (`.github/workflows/build.yml`) builds Linux (Qt 6 + ctest), Windows (MSVC + Qt 6.7.2) and a Qt-free `g++` core
+test on every push and pull request - the badge above shows the last run.
 
 Developer option: `PHY104OpticalAssistant --screenshots <folder>` drives the UI (saves runs, exports a workbook,
 triggers error states) and writes a PNG of every page in both themes.
