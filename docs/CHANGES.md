@@ -78,4 +78,6 @@ formula/variable, 25 random data sets), Qt UI, five experiments, notes, theme.
   with Save/Export header and Send to Notes; Equation Lab; "Scientific input" keyboard (Greek / Math operators / Functions / Variables).
 * keyboard.json: Figma layout + all 55 variables of variables.json. LaTeX-rendered formulas (notes preview, formula reference).
 * Fixed: formulas typed half-way (e.g. \frac{1}) crashed the LaTeX renderer.
-* KNOWN: the notes-preview LaTeX-image check in the interaction test was still being debugged when this patch was cut.
+* Fixed: the notes preview showed no formulas. Qt's Markdown importer silently drops an image with an empty alt text
+  (`![](…)`), so every generated formula image is now `![formula](latex://N)`; an image the student writes without alt
+  text is rescued to `![image](…)` before import (fenced code is left alone). The interaction test asserts both.

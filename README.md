@@ -14,8 +14,10 @@ Windows and Linux. No database, no network. The UI follows the Figma design `opt
 Markdown editor with live preview (Edit / Split / Preview) and Gruvbox colour coding: `#` yellow 18 pt, `##` orange 14 pt,
 `###` green 12 pt, `####` red 11 pt (exam warning), formulas (`$...$`, `$$...$$`, `` `code` ``, bracketed maths) aqua in JetBrains Mono,
 bullets light grey. Snippet toolbar (θ λ φ δ Δ n₁ n₂ sin arcsin ... and a formulas menu) and a **Problem template**
-(`### Given:` / `### Formula:` / `### Substitution & Solution:`). Notes autosave ~0.7 s after typing into the session,
-into every snapshot's `notesContent`, and into the `.phy` file.
+(`### Given:` / `### Formula:` / `### Substitution & Solution:`). In the preview every formula is drawn as a LaTeX image
+by `LatexRenderer`; Qt's Markdown importer drops images with an empty alt text, so each formula image carries an alt text
+(`![formula](latex://N)`) and an image written as `![](…)` is given one before import. Notes autosave ~0.7 s after typing
+into the session, into every snapshot's `notesContent`, and into the `.phy` file.
 
 ## Screens
 

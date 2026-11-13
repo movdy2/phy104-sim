@@ -411,6 +411,25 @@ private slots:
         QVERIFY(w->editor()->isVisible() && !w->preview()->isVisible());
         click(findButton(w, "Split"));
     }
+    void previewKeepsImagesWithoutAltText() {
+        auto* w = workspace();
+        w->setMode(MarkdownWorkspace::Preview);
+        w->setMarkdown("![](file:///tmp/phy104-diagram.png)");
+        int images = 0;                                                       // Qt drops ![](...), so the preview must rescue it
+        for (QTextBlock b = w->preview()->document()->begin(); b.isValid(); b = b.next())
+            for (auto it = b.begin(); !it.atEnd(); ++it)
+                if (it.fragment().charFormat().isImageFormat()) ++images;
+        QCOMPARE(images, 1);
+        w->setMarkdown("```\n![](not-an-image-in-a-fence.png)\n```");
+        int fenced = 0;                                                       // code blocks keep their text untouched
+        for (QTextBlock b = w->preview()->document()->begin(); b.isValid(); b = b.next())
+            for (auto it = b.begin(); !it.atEnd(); ++it)
+                if (it.fragment().charFormat().isImageFormat()) ++fenced;
+        QCOMPARE(fenced, 0);
+        QVERIFY(w->preview()->toPlainText().contains("![](not-an-image-in-a-fence.png)"));
+        w->setMarkdown("");
+        w->setMode(MarkdownWorkspace::Split);
+    }
     void toolbarFromPreviewModeSwitchesToSplit() {
         auto* w = workspace();
         w->setMode(MarkdownWorkspace::Preview);
