@@ -78,29 +78,40 @@ ModelReport newtonRings(const NewtonInput& in, const ReportContext& ctx) {
 
     const int m = static_cast<int>(std::lround(in.order));
     const double lam = in.lambdaNm * 1e-9;
-    const double r2 = m * lam * in.radiusM / in.n;                  // r_m² = mλR/n
+    // Transmitted light: both surfaces reverse the phase, the contact point is bright and the dark
+    // rings sit at half orders, so the same r² relation is evaluated at m + ½.
+    const double order = in.transmitted ? m + 0.5 : double(m);
+    const double r2 = order * lam * in.radiusM / in.n;              // r_m² = m'λR/n
     const double r = std::sqrt(r2);
-    const double t = m * lam / (2 * in.n);                          // film thickness at ring m
+    const double t = order * lam / (2 * in.n);                      // film thickness at ring m
     const std::string ms = sub(m);
+    const std::string orderExpr = in.transmitted ? "(" + std::to_string(m) + " + ½)" : std::to_string(m);
 
     ModelReport out;
     Report& rep = out.report;
     LcdRegister a;
-    a.title = "REFLECTED DARK RING";
-    a.lines = {"rₘ² = mλR / n", " = " + std::to_string(m) + " × " + num(in.lambdaNm) + "×10⁻⁹ × " + num(in.radiusM) + " / " + num(in.n),
+    a.title = in.transmitted ? "TRANSMITTED DARK RING" : "REFLECTED DARK RING";
+    a.lines = {std::string("rₘ² = ") + (in.transmitted ? "(m + ½)λR / n" : "mλR / n"),
+               " = " + orderExpr + " × " + num(in.lambdaNm) + "×10⁻⁹ × " + num(in.radiusM) + " / " + num(in.n),
                " = " + NF::scientific(r2, 4) + " m²", "r" + ms + " = √(" + NF::scientificCompact(r2).substr(0, 0) + NF::general(r2 * 1e6, 5) + "×10⁻⁶) m"};
     a.resultLabel = "RADIUS · r" + ms;
     a.resultValue = fx(r * 1e3) + " mm";
     LcdRegister b;
     b.title = "DIAMETER / FILM THICKNESS";
-    b.lines = {"D" + ms + " = 2r" + ms, "t" + ms + " = mλ/(2n) = " + NF::general(t * 1e9, 6) + " nm", "m = 0 → r₀ = 0 (dark)"};
+    b.lines = {"D" + ms + " = 2r" + ms,
+               "t" + ms + " = " + (in.transmitted ? std::string("(m+½)λ/(2n)") : std::string("mλ/(2n)")) + " = " + NF::general(t * 1e9, 6) + " nm",
+               in.transmitted ? "m = 0 → bright center, first dark at ½ order" : "m = 0 → r₀ = 0 (dark)"};
     b.resultLabel = "DIAMETER · D" + ms;
     b.resultValue = fx(2 * r * 1e3) + " mm";
     rep.registers = {a, b};
-    rep.notices = {interpretation("One reflection phase reversal makes the contact point dark. Squared radius, not radius, grows linearly with dark-ring order."), guard(guardText)};
+    rep.notices = {interpretation(in.transmitted
+                       ? "On transmission both surfaces reverse the phase, so the contact point is bright and the dark rings sit at half orders: squared radii still grow linearly, but with an offset of ½λR/n."
+                       : "One reflection phase reversal makes the contact point dark. Squared radius, not radius, grows linearly with dark-ring order."),
+                   guard(guardText)};
     rep.headline = "r" + ms + " = " + fx(r * 1e3) + " mm";
     rep.retained = retained({"λ = " + NF::fixed(in.lambdaNm, 1) + " nm · R = " + NF::fixed(in.radiusM, 4) + " m", "n = " + NF::fixed(in.n, 4) + " · m = " + std::to_string(m)}, "RETAINED RADIUS · r" + ms, a.resultValue);
-    rep.parameters = {{"λ", num(in.lambdaNm) + " nm"}, {"R", num(in.radiusM) + " m"}, {"m", std::to_string(m)}, {"n", num(in.n)}};
+    rep.parameters = {{"λ", num(in.lambdaNm) + " nm"}, {"R", num(in.radiusM) + " m"}, {"m", std::to_string(m)}, {"n", num(in.n)},
+                      {"mode", in.transmitted ? "transmitted" : "reflected"}};
 
     const double slope = lam * in.radiusM / in.n * 1e6;             // mm² per order
     ChartData& c = out.chart;
@@ -109,7 +120,7 @@ ModelReport newtonRings(const NewtonInput& in, const ReportContext& ctx) {
     c.yMin = 0; c.yMax = slope * c.xMax;
     c.xTicks = static_cast<int>(c.xMax); c.yTicks = 2; c.xDecimals = 0; c.yDecimals = 1;
     c.curve = {{0, 0}, {c.xMax, slope * c.xMax}};
-    c.marker = {{double(m), slope * m}};
+    c.marker = {{double(m), slope * order}};                            // transmitted: half-order ring
     c.legend = "Slope = λR/n = " + fx(slope) + " mm²/order   ● m = " + std::to_string(m);
     return out;
 }
@@ -132,6 +143,46 @@ ModelReport michelson(const MichelsonInput& in, const ReportContext& ctx) {
 
     ModelReport out;
     Report& rep = out.report;
+    if (in.fringes) {
+        // Second tab: hold the mirror and read the pattern itself — spacing, count and contrast.
+        const double spacingNm = in.lambdaNm / (2 * in.n);          // mirror travel per fringe
+        const double sweepUm = 2.0;                                 // the chart spans ±2 µm
+        const double count = 2 * in.n * (2 * sweepUm * 1e3) / in.lambdaNm;
+        LcdRegister a;
+        a.title = "FRINGE SPACING";
+        a.lines = {"Δx = λ / (2n) per fringe", " = " + num(in.lambdaNm) + " nm / (2 × " + fx(in.n) + ")",
+                   " = " + fx(spacingNm) + " nm of mirror travel", "2n/λ = " + fx(2 * in.n / (in.lambdaNm * 1e-3)) + " fringes per µm"};
+        a.resultLabel = "MIRROR MOTION PER FRINGE";
+        a.resultValue = fx(spacingNm) + " nm";
+        LcdRegister b;
+        b.title = "COUNT ACROSS A ±2 µm SWEEP";
+        b.lines = {"N = 2nΔx / λ", " = 2 × " + fx(in.n) + " × " + NF::fixed(2 * sweepUm * 1e3, 1) + " nm / " + num(in.lambdaNm) + " nm",
+                   "V = " + NF::fixed(v, 2) + (v >= 1 ? "  (equal beams)" : "  (unequal beams)"),
+                   "I/Imax = (1 + V cos 2πN)/(1 + V)"};
+        b.resultLabel = "FRINGES IN ±2 µm";
+        b.resultValue = fx(count) + " fringes";
+        rep.registers = {a, b};
+        rep.notices = {interpretation("Every λ/(2n) = " + fx(spacingNm) + " nm of mirror travel adds one round-trip wavelength, so one more fringe crosses the detector. Unequal beams change only the contrast V = " + NF::fixed(v, 2) + ", never the spacing."),
+                       guard(guardText)};
+        rep.headline = fx(count) + " fringes in ±2 µm";
+        rep.retained = retained({"λ = " + NF::fixed(in.lambdaNm, 1) + " nm · n = " + fx(in.n),
+                                 "sweep Δx = ±" + NF::fixed(sweepUm, 1) + " µm · V = " + NF::fixed(v, 2)},
+                                "RETAINED FRINGE SPACING", a.resultValue);
+        rep.parameters = {{"λ", num(in.lambdaNm) + " nm"}, {"Δx", num(in.displacementUm) + " µm"}, {"n", num(in.n)},
+                          {"V", num(v)}, {"mount", in.piezo ? "piezo scan" : "micrometer"}, {"mode", "fringes"}};
+
+        ChartData& c = out.chart;
+        c.xLabel = "Δx (µm)"; c.yLabel = "I / Imax";
+        c.xMin = -sweepUm; c.xMax = sweepUm; c.yMin = 0; c.yMax = 1; c.xTicks = 4; c.yTicks = 2; c.xDecimals = 1; c.yDecimals = 1;
+        for (int k = 0; k <= 600; ++k) {
+            const double x = -sweepUm + 2 * sweepUm * k / 600.0;
+            c.curve.push_back({x, (1 + v * std::cos(2 * std::numbers::pi * (2 * in.n * x * 1e3) / in.lambdaNm)) / (1 + v)});
+        }
+        const double marked = std::clamp(in.displacementUm, -sweepUm, sweepUm);
+        c.marker = {{marked, (1 + v * std::cos(2 * std::numbers::pi * (2 * in.n * marked * 1e3) / in.lambdaNm)) / (1 + v)}};
+        c.legend = "λ/(2n) = " + fx(spacingNm) + " nm per fringe   ● current Δx";
+        return out;
+    }
     LcdRegister a;
     a.title = "ROUND-TRIP PATH CHANGE";
     a.lines = {"ΔOPD = 2nΔx", " = 2 × " + fx(in.n) + " × " + NF::signedFixed(in.displacementUm) + " µm", " = " + NF::signedFixed(opd / 1e3) + " µm",
@@ -147,7 +198,8 @@ ModelReport michelson(const MichelsonInput& in, const ReportContext& ctx) {
     rep.notices = {interpretation("Moving one mirror by λ/(2n) = " + NF::fixed(in.lambdaNm / (2 * in.n) / 1e3, 4) + " µm adds one full round-trip wavelength and shifts the pattern by one fringe."), guard(guardText)};
     rep.headline = "ΔN = " + NF::signedFixed(shift) + " fringes";
     rep.retained = retained({"λ = " + NF::fixed(in.lambdaNm, 1) + " nm · n = " + fx(in.n), "Δx = " + NF::signedFixed(in.displacementUm) + " µm"}, "RETAINED FRINGE SHIFT · ΔN", a.resultValue);
-    rep.parameters = {{"λ", num(in.lambdaNm) + " nm"}, {"Δx", num(in.displacementUm) + " µm"}, {"n", num(in.n)}, {"V", num(v)}};
+    rep.parameters = {{"λ", num(in.lambdaNm) + " nm"}, {"Δx", num(in.displacementUm) + " µm"}, {"n", num(in.n)}, {"V", num(v)},
+                      {"mount", in.piezo ? "piezo scan" : "micrometer"}, {"mode", "displacement"}};
 
     ChartData& c = out.chart;
     c.xLabel = "Δx (µm)"; c.yLabel = "I / Imax";
@@ -179,6 +231,40 @@ ModelReport thinFilm(const ThinFilmInput& in, const ReportContext& ctx) {
 
     ModelReport out;
     Report& rep = out.report;
+    if (in.transmission) {
+        const double trans = 1.0 - refl;                            // lossless, equal-amplitude interfaces
+        const double firstDark = in.lambdaNm / (4 * in.n);
+        LcdRegister a;
+        a.title = "OPTICAL PATH / PHASE";
+        a.lines = {"OPD = 2nt", " = 2 × " + num(in.n) + " × " + num(in.thicknessNm) + " nm", " = " + num(opd) + " nm",
+                   "I_t/I_t,max = cos²(2πnt/λ)"};
+        a.resultLabel = "NORMALIZED TRANSMISSION";
+        a.resultValue = fx(trans);
+        LcdRegister b;
+        b.title = "NO NET PHASE REVERSAL";
+        b.lines = {"Bright: 2nt = qλ", "Dark: 2nt = (q + ½)λ", "q = 0, 1, 2, …"};
+        b.resultLabel = "FIRST DARK THICKNESS";
+        b.resultValue = fx(firstDark) + " nm";
+        rep.registers = {a, b};
+        rep.notices = {interpretation("Both surfaces reverse the phase on transmission, so the transmitted beams leave in phase: 2nt = qλ is bright and 2nt = (q + ½)λ is dark — the exact complement of the reflection tab, I_t = 1 − I_r."),
+                       guard(guardText)};
+        rep.headline = "I_t/I_t,max = " + fx(trans);
+        rep.retained = retained({"λ = " + NF::fixed(in.lambdaNm, 1) + " nm · n = " + fx(in.n), "t = " + NF::fixed(in.thicknessNm, 2) + " nm"},
+                                "RETAINED TRANSMISSION", a.resultValue);
+        rep.parameters = {{"λ", num(in.lambdaNm) + " nm"}, {"n", num(in.n)}, {"t", num(in.thicknessNm) + " nm"}, {"mode", "transmission"}};
+
+        ChartData& c = out.chart;
+        c.xLabel = "t (nm)"; c.yLabel = "I_t / I_t,max";
+        c.xMin = 0; c.xMax = std::max(400.0, std::ceil(in.thicknessNm / 100.0) * 100.0); c.yMin = 0; c.yMax = 1;
+        c.xTicks = static_cast<int>(c.xMax / 100); c.yTicks = 2; c.xDecimals = 0; c.yDecimals = 1;
+        for (int k = 0; k <= 400; ++k) {
+            const double t = c.xMax * k / 400.0;
+            c.curve.push_back({t, std::pow(std::cos(2 * std::numbers::pi * in.n * t / in.lambdaNm), 2)});
+        }
+        c.marker = {{in.thicknessNm, trans}};
+        c.legend = "I_t = cos²(2πnt/λ)   ● t = " + num(in.thicknessNm) + " nm";
+        return out;
+    }
     LcdRegister a;
     a.title = "OPTICAL PATH / PHASE";
     a.lines = {"OPD = 2nt", " = 2 × " + num(in.n) + " × " + num(in.thicknessNm) + " nm", " = " + num(opd) + " nm",
@@ -194,7 +280,7 @@ ModelReport thinFilm(const ThinFilmInput& in, const ReportContext& ctx) {
     rep.notices = {interpretation("With one reflection phase reversal, thickness λ/(4n) gives the first bright reflection; thickness λ/(2n) returns to dark."), guard(guardText)};
     rep.headline = "I_r/I_r,max = " + fx(refl);
     rep.retained = retained({"λ = " + NF::fixed(in.lambdaNm, 1) + " nm · n = " + fx(in.n), "t = " + NF::fixed(in.thicknessNm, 2) + " nm"}, "RETAINED REFLECTION", a.resultValue);
-    rep.parameters = {{"λ", num(in.lambdaNm) + " nm"}, {"n", num(in.n)}, {"t", num(in.thicknessNm) + " nm"}};
+    rep.parameters = {{"λ", num(in.lambdaNm) + " nm"}, {"n", num(in.n)}, {"t", num(in.thicknessNm) + " nm"}, {"mode", "reflection"}};
 
     ChartData& c = out.chart;
     c.xLabel = "t (nm)"; c.yLabel = "I_r / I_r,max";

@@ -96,6 +96,27 @@ QString bigValue(QWidget* page, int index = 0) {
     return index < bigs.size() ? bigs[index]->text() : QString();
 }
 
+/// The real tab buttons inside a ModeTabs strip (objectName "modeTab").
+QPushButton* modeTab(QWidget* page, const QString& label) {
+    for (auto* b : page->findChildren<QPushButton*>(QStringLiteral("modeTab")))
+        if (b->text() == label) return b;
+    return nullptr;
+}
+
+QComboBox* comboWith(QWidget* page, const QString& itemText) {
+    for (auto* c : page->findChildren<QComboBox*>())
+        for (int i = 0; i < c->count(); ++i)
+            if (c->itemText(i) == itemText) return c;
+    return nullptr;
+}
+
+/// Picks an item the way the pages listen to it: `activated` is only emitted for user choices.
+void chooseItem(QComboBox* c, int index) {
+    QVERIFY2(c, "combo not found");
+    c->setCurrentIndex(index);
+    c->activated(index);
+}
+
 } // namespace
 
 class InteractionTest : public QObject {
@@ -518,6 +539,46 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->singleSlit, 1), QString("10.0001 mm"), 1500);
         goTo(m_app->newton);
         QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->newton, 1), QString("3.0984 mm"), 1500);
+    }
+    void secondTabsAndDropdownsDriveTheDiagram() {
+        // --- thin film: the Transmission tab flips to the complementary intensity and re-captions both panels
+        goTo(m_app->thinFilm);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->thinFilm), QString("1.0000"), 1500);
+        click(modeTab(m_app->thinFilm, "Transmission"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->thinFilm), QString("0.0000"), 1500);          // t = 100 nm is dark in transmission
+        QVERIFY2(allLabelTexts(m_app->thinFilm).contains("Film layers / transmitted beam"), "diagram title did not follow the tab");
+        QVERIFY(allLabelTexts(m_app->thinFilm).contains("Transmitted intensity vs thickness"));
+        click(modeTab(m_app->thinFilm, "Reflection"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->thinFilm), QString("1.0000"), 1500);
+        QVERIFY(allLabelTexts(m_app->thinFilm).contains("Film layers / two reflected rays"));
+
+        // --- Michelson: the Fringes tab shows the pattern numbers instead of the displacement numbers
+        goTo(m_app->michelson);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->michelson), QString("+2.3704"), 1500);
+        click(modeTab(m_app->michelson, "Fringes"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->michelson), QString("316.4000 nm"), 1500);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->michelson, 1), QString("12.6422 fringes"), 1500);
+        QVERIFY2(allLabelTexts(m_app->michelson).contains("Optical bench / fringe pattern"), "bench title did not follow the tab");
+        // beam balance sets the contrast, not the fringe spacing
+        chooseItem(comboWith(m_app->michelson, "Unequal beams · V = 0.60"), 1);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->michelson), QString("316.4000 nm"), 1500);
+        QTRY_VERIFY_WITH_TIMEOUT(allLabelTexts(m_app->michelson).join(QStringLiteral(" ")).contains("contrast V = 0.60"), 1500);
+        // reference-arm dropdown: M1 on a piezo, and the diagram says so
+        chooseItem(comboWith(m_app->michelson, "M1 on a piezo (static)"), 1);
+        QTRY_VERIFY_WITH_TIMEOUT(allLabelTexts(m_app->michelson).contains("Optical bench / piezo scan of M1"), 1500);
+        click(modeTab(m_app->michelson, "Displacement"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->michelson), QString("+2.3704"), 1500);
+        click(findButton(m_app->michelson, "Reset parameters"));                                  // back to the defaults for later tests
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->michelson), QString("+2.3704"), 1500);
+
+        // --- Newton's rings: the viewing-mode dropdown now reaches the physics and the diagram
+        goTo(m_app->newton);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->newton), QString("1.5492 mm"), 1500);
+        chooseItem(comboWith(m_app->newton, "Transmitted light"), 1);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->newton), QString("1.6432 mm"), 1500);
+        QVERIFY(allLabelTexts(m_app->newton).contains("Lens on plate / transmitted rings"));
+        chooseItem(comboWith(m_app->newton, "Reflected light"), 0);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->newton), QString("1.5492 mm"), 1500);
     }
     void newScreensHaveTheSaveExportHeader() {
         for (QWidget* page : QList<QWidget*>{m_app->newton, m_app->michelson, m_app->thinFilm, m_app->grating, m_app->singleSlit, m_app->polarization}) {

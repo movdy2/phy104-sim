@@ -77,6 +77,12 @@ void ModelPage::build(const QString& diagramTitle, QWidget* canvas, const QStrin
     setPanels(m_diagram, m_chartPanel, nullptr, "", "");
 }
 
+void ModelPage::retitle(const QString& diagramTitle, const QString& chartTitle) {
+    m_diagramTitle = diagramTitle;
+    if (m_diagram) m_diagram->setTitle(diagramTitle);
+    if (m_chartPanel) m_chartPanel->setTitle(chartTitle);
+}
+
 void ModelPage::showChart(const ChartData& c) {
     ChartSeries curve, marker;
     curve.line = true;
@@ -134,7 +140,7 @@ void ModelPage::apply(bool record) {
 
 // ============================================================================ Newton's rings
 NewtonRingsPage::NewtonRingsPage(AppContext* ctx, QWidget* parent)
-    : ModelPage("Newton's Rings", "EXPERIMENT 10 / Reflected dark rings in a thin air film", "Newton's Rings", ctx, parent) {
+    : ModelPage("Newton's Rings", "EXPERIMENT 10 / Dark rings in a thin air film, reflected or transmitted", "Newton's Rings", ctx, parent) {
     addTabs({"Reflected", "Dark rings"});
     m_lambda = addField("lambda", "Vacuum wavelength · λ", "nm", 600, 2);
     m_radius = addField("R", "Radius of curvature · R", "m", 1.0, 4);
@@ -142,19 +148,28 @@ NewtonRingsPage::NewtonRingsPage(AppContext* ctx, QWidget* parent)
     m_medium = addCombo("Film medium", {"Air · n = 1.0000", "Water · n = 1.3330", "Oil · n = 1.4000"}, {1.0, 1.333, 1.4});
     m_viewing = addCombo("Viewing mode", {"Reflected light", "Transmitted light"}, {0, 1});
     m_canvas = new NewtonCanvas;
-    build("Lens on plate / concentric reflected rings", m_canvas, "Dark-ring radius squared vs order", "Order m = 0 is the dark contact center. The film is thin: t ≈ r²/(2R).");
+    build("Lens on plate / concentric reflected rings", m_canvas, "Dark-ring radius squared vs order", "Reflected: m = 0 is the dark contact center. Transmitted: it is bright and the dark rings sit at half orders. t ≈ r²/(2R).");
     reset();
 }
 ModelReport NewtonRingsPage::compute(const ReportContext& ctx) {
-    return WE::newtonRings({m_lambda->value(), m_radius->value(), m_order->value(), m_medium->currentData().toDouble()}, ctx);
+    return WE::newtonRings({m_lambda->value(), m_radius->value(), m_order->value(), m_medium->currentData().toDouble(),
+                            m_viewing->currentData().toDouble() > 0.5}, ctx);
 }
-void NewtonRingsPage::updateCanvas() { m_canvas->setInput({m_lambda->value(), m_radius->value(), m_order->value(), m_medium->currentData().toDouble()}); }
+void NewtonRingsPage::updateCanvas() {
+    const bool transmitted = m_viewing->currentData().toDouble() > 0.5;
+    m_canvas->setInput({m_lambda->value(), m_radius->value(), m_order->value(), m_medium->currentData().toDouble(), transmitted});
+    retitle(transmitted ? "Lens on plate / transmitted rings" : "Lens on plate / reflected rings",
+            transmitted ? "Transmitted dark-ring radius squared vs half order" : "Dark-ring radius squared vs order");
+}
 void NewtonRingsPage::resetFields() { m_lambda->setValue(600, 2); m_radius->setValue(1.0, 4); m_order->setValue(4, 0); m_medium->setCurrentIndex(0); m_viewing->setCurrentIndex(0); m_tabs->setCurrent(0); }
-QString NewtonRingsPage::runDescription() const { return QString("m = %1 · λ %2 nm · R %3 m").arg(m_order->text(), m_lambda->text(), m_radius->text()); }
+QString NewtonRingsPage::runDescription() const {
+    return QString("m = %1 · λ %2 nm · R %3 m · %4").arg(m_order->text(), m_lambda->text(), m_radius->text(),
+                                                         m_viewing->currentData().toDouble() > 0.5 ? "transmitted" : "reflected");
+}
 
 // ============================================================================ Michelson
 MichelsonPage::MichelsonPage(AppContext* ctx, QWidget* parent)
-    : ModelPage("Michelson Interferometry", "EXPERIMENT 09 / Mirror displacement and fringe shift", "Michelson Interferometry", ctx, parent) {
+    : ModelPage("Michelson Interferometry", "EXPERIMENT 09 / Mirror displacement, fringe shift and fringe count", "Michelson Interferometry", ctx, parent) {
     addTabs({"Displacement", "Fringes"});
     m_lambda = addField("lambda", "Wavelength · λ", "nm", 632.8, 2);
     m_dx = addField("dx", "Mirror displacement · Δx", "µm", 0.75, 4, true, true, 0.05);
@@ -166,27 +181,45 @@ MichelsonPage::MichelsonPage(AppContext* ctx, QWidget* parent)
     reset();
 }
 ModelReport MichelsonPage::compute(const ReportContext& ctx) {
-    return WE::michelson({m_lambda->value(), m_dx->value(), m_medium->currentData().toDouble(), m_balance->currentData().toDouble()}, ctx);
+    return WE::michelson({m_lambda->value(), m_dx->value(), m_medium->currentData().toDouble(), m_balance->currentData().toDouble(),
+                          m_tabs->current() == 1, m_reference->currentData().toDouble() > 0.5}, ctx);
 }
-void MichelsonPage::updateCanvas() { m_canvas->setInput({m_lambda->value(), m_dx->value(), m_medium->currentData().toDouble(), m_balance->currentData().toDouble()}); }
+void MichelsonPage::updateCanvas() {
+    const bool fringes = m_tabs->current() == 1;
+    const bool piezo = m_reference->currentData().toDouble() > 0.5;
+    m_canvas->setInput({m_lambda->value(), m_dx->value(), m_medium->currentData().toDouble(), m_balance->currentData().toDouble(), fringes, piezo});
+    retitle(fringes ? (piezo ? "Optical bench / piezo scan of M1" : "Optical bench / fringe pattern") : "Optical bench / detector fringes",
+            fringes ? "Intensity across a ±2 µm mirror sweep" : "Detector intensity vs mirror displacement");
+}
 void MichelsonPage::resetFields() { m_lambda->setValue(632.8, 2); m_dx->setValue(0.75, 4); m_medium->setCurrentIndex(0); m_reference->setCurrentIndex(0); m_balance->setCurrentIndex(0); m_tabs->setCurrent(0); }
-QString MichelsonPage::runDescription() const { return QString("Δx %1 µm · λ %2 nm").arg(m_dx->text(), m_lambda->text()); }
+QString MichelsonPage::runDescription() const {
+    return QString("Δx %1 µm · λ %2 nm · %3").arg(m_dx->text(), m_lambda->text(), m_tabs->current() == 1 ? "fringes" : "displacement");
+}
 
 // ============================================================================ thin film
 ThinFilmPage::ThinFilmPage(AppContext* ctx, QWidget* parent)
-    : ModelPage("Thin-Film Interference", "EXPERIMENT 08 / Reflection from a single film at normal incidence", "Thin-Film Interference", ctx, parent) {
+    : ModelPage("Thin-Film Interference", "EXPERIMENT 08 / Single film at normal incidence: reflection and transmission", "Thin-Film Interference", ctx, parent) {
     addTabs({"Reflection", "Transmission"});
     m_lambda = addField("lambda", "Vacuum wavelength · λ", "nm", 600, 2);
     m_n = addField("n", "Film index · n", "", 1.5, 4, false, true, 0.01);
     m_t = addField("t", "Film thickness · t", "nm", 100, 2, false, true, 5);
     m_canvas = new ThinFilmCanvas;
-    build("Film layers / two reflected rays", m_canvas, "Reflected intensity vs thickness", "One phase reversal at the top surface. Bright: 2nt = (q + ½)λ.");
+    build("Film layers / two reflected rays", m_canvas, "Reflected intensity vs thickness", "Reflection: one phase reversal, bright at 2nt = (q + ½)λ. Transmission: no net reversal, bright at 2nt = qλ.");
     reset();
 }
-ModelReport ThinFilmPage::compute(const ReportContext& ctx) { return WE::thinFilm({m_lambda->value(), m_n->value(), m_t->value()}, ctx); }
-void ThinFilmPage::updateCanvas() { m_canvas->setInput({m_lambda->value(), m_n->value(), m_t->value()}); }
+ModelReport ThinFilmPage::compute(const ReportContext& ctx) {
+    return WE::thinFilm({m_lambda->value(), m_n->value(), m_t->value(), m_tabs->current() == 1}, ctx);
+}
+void ThinFilmPage::updateCanvas() {
+    const bool transmission = m_tabs->current() == 1;
+    m_canvas->setInput({m_lambda->value(), m_n->value(), m_t->value(), transmission});
+    retitle(transmission ? "Film layers / transmitted beam" : "Film layers / two reflected rays",
+            transmission ? "Transmitted intensity vs thickness" : "Reflected intensity vs thickness");
+}
 void ThinFilmPage::resetFields() { m_lambda->setValue(600, 2); m_n->setValue(1.5, 4); m_t->setValue(100, 2); m_tabs->setCurrent(0); }
-QString ThinFilmPage::runDescription() const { return QString("t %1 nm · n %2").arg(m_t->text(), m_n->text()); }
+QString ThinFilmPage::runDescription() const {
+    return QString("t %1 nm · n %2 · %3").arg(m_t->text(), m_n->text(), m_tabs->current() == 1 ? "transmission" : "reflection");
+}
 
 // ============================================================================ diffraction grating
 GratingPage::GratingPage(AppContext* ctx, QWidget* parent)
