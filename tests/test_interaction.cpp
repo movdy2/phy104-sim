@@ -34,6 +34,7 @@
 #include <QKeySequence>
 #include <QSignalSpy>
 #include <QListWidget>
+#include <QMenu>
 #include <QPushButton>
 #include <QStandardPaths>
 #include <QTableWidget>

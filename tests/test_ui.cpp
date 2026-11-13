@@ -194,7 +194,7 @@ int main(int argc, char** argv) {
         ThemeManager::instance().apply(app, darkMode);
         for (const QString& name : files) {
             QFile file(assets + "/diagrams/" + name);
-            file.open(QIODevice::ReadOnly);
+            check(file.open(QIODevice::ReadOnly), name + ": cannot be opened");    // open() is [[nodiscard]]
             const QByteArray raw = file.readAll();
             auto it = token.globalMatch(QString::fromUtf8(raw));
             while (it.hasNext()) check(allowed.contains(it.next().captured()), name + ": unknown colour token");
