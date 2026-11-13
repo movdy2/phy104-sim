@@ -1,5 +1,15 @@
 # What changed compared with the first commit
 
+## Draw Space model and persistence removed
+* Removed the unused `Drawing`/`DrawingHistory` core engine, its build entry and unit tests. Physics diagrams and chart drawing
+  remain separate UI functionality.
+* `.phy` format is now version 6 and no longer writes a `drawing` field. Existing session files still restore their other
+  data, but legacy sketch data is ignored and cannot be saved again.
+
+## Shared export flow and Notes cleanup
+* Excel/CSV and PDF pages now share `ExportService` for file naming, recent-export metadata and atomic spreadsheet writes,
+  plus one `RecentExportPanel`; Notes remains a Markdown workspace with no export table/history or formula-reference panel.
+
 ## Code that did not compile (fixed)
 | File | Problem | Fix |
 |---|---|---|
@@ -135,7 +145,8 @@ formula/variable, 25 random data sets), Qt UI, five experiments, notes, theme.
   Formula Solver page, the settings on the Export page; the session notes, snippet toolbar, live LaTeX preview and
   autosave are unchanged.
 * **Draw Space removed** at the author's request: the page, its sidebar entry, its sources and its click-through tests
-  are gone. The `Drawing` core model stays (the `.phy` file keeps its `drawing` key, older sessions still load).
+  are gone. At that point its `Drawing` model and `.phy` payload remained; both were removed later (see the format-v6
+  cleanup at the top of this file).
 * Tests updated: the header test checks the three menu entries, a new test drives them (Excel, CSV, PDF) and checks the
   Notes page carries no export UI, and the icon list of `test_ui` follows `download`/`pen-tool`.
 

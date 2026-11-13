@@ -142,31 +142,6 @@ std::string JsonReferenceRepository::unitDiscipline() const {
 
 namespace {
 
-const char* const kShapeNames[] = {"pen", "line", "ray", "rect", "ellipse", "text", "equation", "lens", "mirror", "prism", "interface", "axis", "normal"};
-
-QJsonObject shapeToJson(const Shape& s) {
-    QJsonArray pts;
-    for (const Point& p : s.points) pts.append(QJsonArray{p.x, p.y});
-    return {{"type", kShapeNames[static_cast<int>(s.type)]}, {"points", pts}, {"color", QString::fromStdString(s.color)},
-            {"width", s.width}, {"dashed", s.dashed}, {"flag", s.flag}, {"text", QString::fromStdString(s.text)}};
-}
-
-Shape shapeFromJson(const QJsonObject& o) {
-    Shape s;
-    const QString type = o.value("type").toString();
-    for (int i = 0; i < 13; ++i) if (type == kShapeNames[i]) s.type = static_cast<ShapeType>(i);
-    for (const auto& v : o.value("points").toArray()) {
-        const QJsonArray xy = v.toArray();
-        s.points.push_back({xy.at(0).toDouble(), xy.at(1).toDouble()});
-    }
-    s.color = o.value("color").toString("#d79921").toStdString();
-    s.width = o.value("width").toDouble(2.0);
-    s.dashed = o.value("dashed").toBool();
-    s.flag = o.value("flag").toBool(true);
-    s.text = o.value("text").toString().toStdString();
-    return s;
-}
-
 QJsonObject registerToJson(const LcdRegister& r) {
     auto list = [](const std::vector<std::string>& v) { QJsonArray a; for (const auto& s : v) a.append(QString::fromStdString(s)); return a; };
     return {{"title", QString::fromStdString(r.title)}, {"mode", QString::fromStdString(r.mode)}, {"resultFirst", r.resultFirst},
@@ -251,8 +226,6 @@ bool JsonSessionStore::save(const SessionLog& log) const {
     }
     QJsonArray equations;
     for (const std::string& e : log.equations()) equations.append(QString::fromStdString(e));
-    QJsonArray shapes;
-    for (const Shape& sh : log.drawing().shapes) shapes.append(shapeToJson(sh));
     QJsonArray snapshots;
     for (const auto& [name, snap] : log.snapshots()) snapshots.append(snapshotToJson(snap));
     QJsonObject recentExport;                                  // the "recent export" card of the Export page
@@ -262,10 +235,9 @@ bool JsonSessionStore::save(const SessionLog& log) const {
                         {"series", QString::fromStdString(e.series)}, {"when", QString::fromStdString(e.when)},
                         {"rows", e.rows}, {"columns", e.columns}};
     }
-    const QJsonObject root{{"format", "phy104-session"}, {"version", 5}, {"session", log.sessionNumber()},
+    const QJsonObject root{{"format", "phy104-session"}, {"version", 6}, {"session", log.sessionNumber()},
                            {"notes", QString::fromStdString(log.notes())}, {"runs", runs}, {"snapshots", snapshots},
-                           {"equations", equations}, {"drawing", QJsonObject{{"shapes", shapes}}},
-                           {"recentExport", recentExport}};
+                           {"equations", equations}, {"recentExport", recentExport}};
     QDir().mkpath(QFileInfo(m_path).absolutePath());
     QSaveFile file(m_path);                                   // atomic: never leaves a half-written file
     if (!file.open(QIODevice::WriteOnly)) return false;
@@ -303,9 +275,6 @@ bool JsonSessionStore::load(SessionLog& log) const {
     std::vector<std::string> equations;
     for (const auto& e : root.value("equations").toArray()) equations.push_back(e.toString().toStdString());
     log.setEquations(std::move(equations));
-    Drawing drawing;
-    for (const auto& sh : root.value("drawing").toObject().value("shapes").toArray()) drawing.shapes.push_back(shapeFromJson(sh.toObject()));
-    log.setDrawing(std::move(drawing));
     const QJsonObject recent = root.value("recentExport").toObject();      // absent in version 3 files
     if (!recent.isEmpty()) {
         ExportRecord e;

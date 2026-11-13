@@ -3,6 +3,8 @@
 #include "Components.h"
 #include "ExperimentPages.h"
 #include "ReportDocument.h"
+#include "ExportService.h"
+#include "RecentExportPanel.h"
 #include "ThemeManager.h"
 
 #include <QCheckBox>
@@ -138,17 +140,8 @@ ReportPage::ReportPage(AppContext* ctx, QWidget* parent)
     body->addStretch();
     cols.right->addWidget(m_exportPanel, 1);
 
-    auto* recent = new Panel("Recent export", "REMEMBERED");
-    m_recentFile = new QLabel("No export yet");
-    m_recentFile->setObjectName("sectionTitle");
-    m_recentFile->setWordWrap(true);
-    m_recentMeta = new QLabel("The report you write last is remembered here and in the .phy session.");
-    m_recentMeta->setObjectName("hint");
-    m_recentMeta->setWordWrap(true);
-    recent->body()->setSpacing(6);
-    recent->body()->addWidget(m_recentFile);
-    recent->body()->addWidget(m_recentMeta);
-    cols.right->addWidget(recent, 0);
+    m_recent = new RecentExportPanel;
+    cols.right->addWidget(m_recent, 0);
 
     connect(m_save, &QPushButton::clicked, this, &ReportPage::savePdf);
     connect(m_print, &QPushButton::clicked, this, &ReportPage::printReport);
@@ -280,12 +273,8 @@ void ReportPage::savePdf() {
         emit m_ctx->message("Choose a destination folder first");
         return;
     }
-    QString name = m_fileName->text().trimmed();
-    if (name.isEmpty()) name = suggestedName();
-    if (name.endsWith(".pdf", Qt::CaseInsensitive)) name.chop(4);
-    if (name.isEmpty()) name = suggestedName();
+    const QString path = ExportService::outputPath(dir, m_fileName->text(), suggestedName(), ".pdf");
     QDir().mkpath(dir);
-    const QString path = dir + "/" + name + ".pdf";
 
     QPrinter printer(QPrinter::HighResolution);
     printer.setOutputFormat(QPrinter::PdfFormat);
@@ -298,13 +287,8 @@ void ReportPage::savePdf() {
         return;
     }
 
-    ExportRecord rec;
-    rec.path = path.toStdString();
-    rec.format = "PDF report";
-    rec.series = "report";
-    rec.when = QDateTime::currentDateTime().toString("d MMM yyyy · HH:mm").toStdString();
-    rec.rows = static_cast<int>(m_ctx->log.runs().size());
-    rec.columns = m_sections;
+    const ExportRecord rec = ExportService::makeRecord(
+        path, "PDF report", "report", static_cast<int>(m_ctx->log.runs().size()), m_sections);
     m_ctx->recordExport(rec);
     emit m_ctx->message("PDF report written: " + QFileInfo(path).fileName());
     refreshRecent();
@@ -322,15 +306,7 @@ void ReportPage::printReport() {
 }
 
 void ReportPage::refreshRecent() {
-    if (!m_ctx->log.hasExport()) {
-        m_recentFile->setText("No export yet");
-        m_recentMeta->setText("The report you write last is remembered here and in the .phy session.");
-        return;
-    }
-    const ExportRecord& rec = m_ctx->log.lastExport();
-    m_recentFile->setText(QFileInfo(QString::fromStdString(rec.path)).fileName());
-    m_recentMeta->setText(QString::fromStdString(rec.format) + " · " + QString::fromStdString(rec.when) + " · " +
-                          QFileInfo(QString::fromStdString(rec.path)).absolutePath());
+    m_recent->setRecord(m_ctx->log.lastExport());
 }
 
 } // namespace phy104

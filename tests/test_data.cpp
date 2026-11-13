@@ -9,6 +9,9 @@
 #include "PhysicsCalculator.h"
 #include <QDir>
 #include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <cmath>
 #include <iomanip>
 #include <iostream>
@@ -117,12 +120,18 @@ int main() {
             recent.columns = 3;
             log.setLastExport(recent);
             expect(store.save(log), "session saved");
+            QFile savedFile(path);
+            const bool savedFileOpened = savedFile.open(QIODevice::ReadOnly);
+            expect(savedFileOpened, "saved session can be inspected");
+            const QJsonObject savedSession = QJsonDocument::fromJson(savedFile.readAll()).object();
+            expect(savedSession.value("version").toInt() == 6, "drawing-free session format is version 6");
+            expect(!savedSession.contains("drawing"), "saved session omits removed drawing data");
             SessionLog back;
             expect(store.load(back) && back.runs().size() == 2 && back.runs()[1].id == 2 && !back.runs()[1].valid, "session runs restored");
             expect(back.notes() == log.notes(), "session notes restored (UTF-8)");
             const RunRecord& kept = back.runs()[0];
             expect(kept.series.id == "prism_sweep" && kept.series.headers.size() == 2 && kept.series.rows.size() == 3,
-                   "the sweep of a saved run survives the .phy file (version 5)");
+                   "the sweep of a saved run survives the .phy file (version 6)");
             expect(kept.series.rows[2][1] != kept.series.rows[2][1], "a missing cell comes back as NaN, not 0");
             expect(back.runs()[1].series.rows.empty(), "a run without a sweep stays empty");
             const Snapshot* snap = back.snapshot("Refraction & TIR");
@@ -133,6 +142,18 @@ int main() {
             expect(back.hasExport() && back.lastExport().path == recent.path && back.lastExport().format == recent.format &&
                    back.lastExport().series == "refraction" && back.lastExport().when == recent.when &&
                    back.lastExport().rows == 8 && back.lastExport().columns == 3, "recent export restored from the .phy file");
+
+            savedFile.close();
+            QJsonObject legacySession = savedSession;
+            legacySession.insert("version", 5);
+            legacySession.insert("drawing", QJsonObject{{"shapes", QJsonArray{QJsonObject{{"type", "pen"}}}}});
+            QFile legacyFile(path);
+            expect(legacyFile.open(QIODevice::WriteOnly), "legacy session can be written for compatibility check");
+            legacyFile.write(QJsonDocument(legacySession).toJson());
+            legacyFile.close();
+            SessionLog legacyBack;
+            expect(store.load(legacyBack) && legacyBack.notes() == log.notes() && legacyBack.runs().size() == log.runs().size(),
+                   "legacy session data loads while its drawing payload is ignored");
             QFile::remove(path);
             SessionLog none;
             expect(!JsonSessionStore(QDir::tempPath() + "/does_not_exist.phy").load(none), "missing session file is not an error");

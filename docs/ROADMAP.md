@@ -24,13 +24,13 @@
 * **One export icon** in every page header: PDF report / Excel (.xlsx) / CSV (.csv), opening the matching screen with the
   format preselected. Every page fills the whole window (the old 1500-px content cap is gone); the Draw Space page is gone.
 * **Compare saved runs**: dashboard **Recent / Compare** switch - two run pickers overlay their sweeps on one chart
-  (kept with the run as `RunRecord::series`, session format version 5); rows are selectable and **Delete selected run**
+  (kept with the run as `RunRecord::series`, session format version 6); rows are selectable and **Delete selected run**
   drops a run and autosaves.
 * **Keyboard shortcuts**: Ctrl+S save, Ctrl+Enter calculate/solve, Ctrl+P PDF report, Ctrl+1..9 pages, Ctrl+Tab next
   page, F11 full screen; the pages fill the window (tested at 1920 px wide).
 * **CI**: GitHub Actions build matrix (Linux Qt 6 + ctest, Windows MSVC + Qt 6.7.2, Qt-free `g++` core test).
-* Session file (`.phy`): runs (with their sweep), notes, snapshots (parameters + calculator registers), equations, drawing
-  and the recent export.
+* Session file (`.phy`, format version 6): runs (with their sweep), notes, snapshots (parameters + calculator registers),
+  equations and the recent export. The removed Draw Space sketch is no longer saved; legacy drawing payloads are ignored.
 * **Experiment extras** (v2.8): **Thick Lens & Aberration** page (power with a finite thickness, principal planes,
   BFL/FFL, principal-plane imaging, third-order spherical aberration ∝ D², f/#; a **Spectrum** tab with Cauchy's law and
   the Abbe number), **Thin-Film Colours** tab (CIE 1931 integration of `R(λ)`, a swatch, visibility and order count),
@@ -51,8 +51,7 @@
   thin film and Michelson and Newton's viewing-mode dropdown).
 
 ## Built in the core, UI still missing
-* Nothing right now: `EquationLabPage` (LaTeX lab) and `DrawSpacePage` (sketchpad) are both built on top of their
-  tested engines (`EquationText`/`EquationSolver`, `Drawing`/`DrawingHistory`).
+* Nothing right now: `EquationLabPage` (LaTeX lab) is built on top of the tested `EquationText`/`EquationSolver` engine.
 
 ## Should add next (priority order)
 1. Experiment extras, part 2: coma / astigmatism for the thick lens (the spherical aberration is done), a chromatic

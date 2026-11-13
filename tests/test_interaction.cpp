@@ -9,6 +9,8 @@
 #include "ui/MainWindow.h"
 #include "ui/EquationLabPage.h"
 #include "ui/ExportPage.h"
+#include "ui/ExportService.h"
+#include "ui/RecentExportPanel.h"
 #include "ui/MarkdownHighlighter.h"
 #include "ui/LatexRenderer.h"
 #include "ui/ModelExperimentPages.h"
@@ -1181,6 +1183,16 @@ private slots:
         for (auto* l : m_app->notes->findChildren<QLabel*>()) texts << l->text();
         QVERIFY2(!texts.contains("Formula reference"), "the formula reference is still on the notes page");
         QVERIFY2(!texts.contains("Export preview"), "the export preview is still on the notes page");
+        QVERIFY2(m_app->notes->findChildren<RecentExportPanel*>().isEmpty(), "an export-history panel is still on the notes page");
+        QVERIFY2(m_app->notes->findChildren<QTableWidget*>().isEmpty(), "an export table is still on the notes page");
+    }
+
+    void exportPagesShareTheRecentExportPanelAndServiceNames() {
+        QCOMPARE(m_app->exportPage->findChildren<RecentExportPanel*>().size(), 1);
+        QCOMPARE(m_app->reportPage->findChildren<RecentExportPanel*>().size(), 1);
+        QCOMPARE(ExportService::fileStem("PHY104_refraction.CSV", "fallback"), QString("PHY104_refraction"));
+        QCOMPARE(ExportService::outputPath("exports", "report.pdf", "fallback", ".pdf"),
+                 QDir("exports").filePath("report.pdf"));
     }
 
     // ------------------------------------------------------------------ dedicated Export (Excel/CSV) page

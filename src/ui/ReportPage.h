@@ -8,7 +8,6 @@
 
 class QCheckBox;
 class QComboBox;
-class QLabel;
 class QPrinter;
 class QPushButton;
 class QShowEvent;
@@ -21,6 +20,7 @@ class ExperimentPage;
 class ModeTabs;
 class NoticeCard;
 class Panel;
+class RecentExportPanel;
 class UnitField;
 struct ReportContent;
 struct ReportOptions;
@@ -70,7 +70,7 @@ private:
     QComboBox* m_folder = nullptr;
     QPushButton *m_save = nullptr, *m_print = nullptr;
     NoticeCard* m_ready = nullptr;
-    QLabel *m_recentFile = nullptr, *m_recentMeta = nullptr;
+    RecentExportPanel* m_recent = nullptr;
     QString m_html;
     int m_sections = 0;
 };

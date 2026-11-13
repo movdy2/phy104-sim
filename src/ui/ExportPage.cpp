@@ -2,16 +2,13 @@
 #include "AppContext.h"
 #include "Components.h"
 #include "DataExport.h"
+#include "ExportService.h"
+#include "RecentExportPanel.h"
 #include "ThemeManager.h"
 
 #include <QCheckBox>
 #include <QComboBox>
-#include <QDateTime>
-#include <QDesktopServices>
-#include <QDir>
-#include <QFile>
 #include <QFileDialog>
-#include <QFileInfo>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
@@ -23,27 +20,10 @@
 #include <QStandardPaths>
 #include <QTableWidget>
 #include <QTextDocument>
-#include <QToolButton>
-#include <QUrl>
 #include <QVBoxLayout>
 #include <cmath>
 
 namespace phy104 {
-namespace {
-
-QString formatName(bool excel) { return excel ? "Excel (.xlsx)" : "CSV (.csv)"; }
-
-/// "912 B", "12.4 KB", "1.3 MB" - used by the recent-export card.
-QString fileSize(qint64 bytes) {
-    if (bytes < 1024) return QString("%1 B").arg(bytes);
-    const double size = static_cast<double>(bytes);
-    if (bytes < 1024 * 1024) return QString("%1 KB").arg(size / 1024.0, 0, 'f', 1);
-    return QString("%1 MB").arg(size / (1024.0 * 1024.0), 0, 'f', 1);
-}
-
-QString seriesBaseName(const std::string& id) { return "PHY104_" + QString::fromStdString(id).section('_', 0, 0); }
-
-} // namespace
 
 ExportPage::ExportPage(AppContext* ctx, QWidget* parent)
     : BasePage("Export (Excel/CSV)", "REPORT DATA / What the series contains, every row of the table, and the file you last wrote",
@@ -135,24 +115,8 @@ ExportPage::ExportPage(AppContext* ctx, QWidget* parent)
     sb->addStretch();
     cols.right->addWidget(settings, 1);
 
-    auto* recent = new Panel("Recent export", "REMEMBERED");
-    m_recentFile = new QLabel("No export yet");
-    m_recentFile->setObjectName("sectionTitle");
-    m_recentFile->setWordWrap(true);
-    m_recentMeta = new QLabel("—");
-    m_recentMeta->setObjectName("caption");
-    m_recentMeta->setWordWrap(true);
-    m_recentWhen = new QLabel("The file you export last is remembered here and in the .phy session.");
-    m_recentWhen->setObjectName("hint");
-    m_recentWhen->setWordWrap(true);
-    m_openFolder = new QPushButton("Open folder");
-    m_openFolder->setObjectName("secondary");
-    recent->body()->setSpacing(6);
-    recent->body()->addWidget(m_recentFile);
-    recent->body()->addWidget(m_recentMeta);
-    recent->body()->addWidget(m_recentWhen);
-    recent->body()->addWidget(m_openFolder);
-    cols.right->addWidget(recent, 0);
+    m_recent = new RecentExportPanel;
+    cols.right->addWidget(m_recent, 0);
 
     connect(m_format, &ModeTabs::currentChanged, this, &ExportPage::onFormatChanged);
     connect(m_series, &QListWidget::currentRowChanged, this, [this](int) { refreshPreview(); });
@@ -168,7 +132,6 @@ ExportPage::ExportPage(AppContext* ctx, QWidget* parent)
     connect(m_primary, &QPushButton::clicked, this, &ExportPage::exportPrimary);
     connect(m_secondary, &QPushButton::clicked, this, &ExportPage::exportSecondary);
     connect(m_print, &QPushButton::clicked, this, &ExportPage::printTable);
-    connect(m_openFolder, &QPushButton::clicked, this, &ExportPage::openDestination);
     connect(ctx, &AppContext::snapshotChanged, this, &ExportPage::refreshSeries);
     connect(ctx, &AppContext::exportRecorded, this, &ExportPage::refreshRecent);
     connect(&ThemeManager::instance(), &ThemeManager::themeChanged, this, [this] { refreshPreview(); refreshRecent(); });
@@ -230,7 +193,6 @@ void ExportPage::refreshPreview() {
         m_primary->setEnabled(false);
         m_secondary->setEnabled(false);
         m_print->setEnabled(false);
-        m_openFolder->setEnabled(m_ctx->log.hasExport());
         return;
     }
 
@@ -271,7 +233,7 @@ void ExportPage::refreshPreview() {
     m_previewFoot->setText(QString("%1 rows × %2 columns · every row shown · full precision retained").arg(rows).arg(cols));
 
     // ---- file name + what the export will contain
-    const QString base = seriesBaseName(s.id);
+    const QString base = QString::fromStdString(DataExport::suggestedFileName(s, ""));
     if (m_fileName->text().isEmpty() || m_fileName->text().startsWith("PHY104_")) m_fileName->setText(base);
     const ExportOptions opt{m_chkParams->isChecked(), m_chkSteps->isChecked(), m_chkData->isChecked(), m_chkNotes->isChecked()};
     const QString info = excel ? QString::fromStdString(DataExport::describeWorkbook(m_ctx->log, s, opt))
@@ -280,26 +242,10 @@ void ExportPage::refreshPreview() {
     m_primary->setEnabled(true);
     m_print->setEnabled(true);
     m_secondary->setEnabled(true);
-    m_openFolder->setEnabled(m_ctx->log.hasExport());
 }
 
 void ExportPage::refreshRecent() {
-    const ExportRecord& rec = m_ctx->log.lastExport();
-    if (rec.path.empty()) {
-        m_recentFile->setText("No export yet");
-        m_recentMeta->setText("—");
-        m_recentWhen->setText("The file you export last is remembered here and in the .phy session.");
-        m_openFolder->setEnabled(false);
-        return;
-    }
-    const QFileInfo info(QString::fromStdString(rec.path));
-    m_recentFile->setText(info.fileName());
-    QString meta = QString::fromStdString(rec.format) + QString(" · %1 rows × %2 columns").arg(rec.rows).arg(rec.columns);
-    if (info.exists()) meta += " · " + fileSize(info.size());
-    m_recentMeta->setText(meta);
-    m_recentWhen->setText(QString::fromStdString(rec.when) + "\n" + info.absolutePath() +
-                          (info.exists() ? QString() : QString("  (file no longer there)")));
-    m_openFolder->setEnabled(true);
+    m_recent->setRecord(m_ctx->log.lastExport());
 }
 
 void ExportPage::setFormat(bool xlsx) {
@@ -323,33 +269,21 @@ bool ExportPage::exportAs(bool xlsx) {
     const QString dir = destinationFolder();
     if (dir.isEmpty()) { emit m_ctx->message("Choose a destination folder first"); return false; }
 
-    QString name = m_fileName->text().trimmed();
-    if (name.isEmpty()) name = seriesBaseName(s.id);
-    if (name.endsWith(".xlsx", Qt::CaseInsensitive)) name.chop(5);
-    else if (name.endsWith(".csv", Qt::CaseInsensitive)) name.chop(4);
-    if (name.isEmpty()) name = seriesBaseName(s.id);
-
-    QDir().mkpath(dir);
-    const QString path = dir + "/" + name + (xlsx ? ".xlsx" : ".csv");
-    QFile file(path);
-    if (!file.open(QIODevice::WriteOnly)) { emit m_ctx->message("Cannot write " + path); return false; }
-    if (xlsx) {
-        const ExportOptions opt{m_chkParams->isChecked(), m_chkSteps->isChecked(), m_chkData->isChecked(), m_chkNotes->isChecked()};
-        const auto bytes = DataExport::buildWorkbook(m_ctx->log, s, opt);
-        file.write(reinterpret_cast<const char*>(bytes.data()), static_cast<qint64>(bytes.size()));
-    } else {
-        file.write("\xEF\xBB\xBF");                                   // UTF-8 BOM: Excel shows θ, ₁ correctly
-        file.write(QByteArray::fromStdString(DataExport::toCsv(s)));
+    const QString extension = xlsx ? ".xlsx" : ".csv";
+    const QString fallback = QString::fromStdString(DataExport::suggestedFileName(s, extension.toStdString()));
+    const QString path = ExportService::outputPath(dir, m_fileName->text(), fallback, extension);
+    const ExportOptions options{m_chkParams->isChecked(), m_chkSteps->isChecked(),
+                                m_chkData->isChecked(), m_chkNotes->isChecked()};
+    const auto format = xlsx ? SeriesExportFormat::Workbook : SeriesExportFormat::Csv;
+    QString error;
+    if (!ExportService::writeSeriesFile(path, m_ctx->log, s, format, options, &error)) {
+        emit m_ctx->message(error);
+        return false;
     }
-    file.close();
 
-    ExportRecord rec;
-    rec.path = path.toStdString();
-    rec.format = formatName(xlsx).toStdString();
-    rec.series = s.id;
-    rec.rows = static_cast<int>(s.rows.size());
-    rec.columns = static_cast<int>(s.headers.size());
-    rec.when = QDateTime::currentDateTime().toString("dd MMM yyyy · HH:mm").toStdString();
+    const ExportRecord rec = ExportService::makeRecord(
+        path, xlsx ? "Excel (.xlsx)" : "CSV (.csv)", s.id,
+        static_cast<int>(s.rows.size()), static_cast<int>(s.headers.size()));
     m_ctx->recordExport(rec);
     refreshRecent();
     return true;
@@ -383,11 +317,5 @@ void ExportPage::printTable() {
 
 void ExportPage::exportPrimary() { exportAs(m_format->current() == 0); }
 void ExportPage::exportSecondary() { exportAs(m_format->current() != 0); }
-
-void ExportPage::openDestination() {
-    const QString path = QString::fromStdString(m_ctx->log.lastExport().path);
-    if (path.isEmpty()) return;
-    QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(path).absolutePath()));
-}
 
 } // namespace phy104

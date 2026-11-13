@@ -14,6 +14,7 @@ struct Snapshot;
 class ModeTabs;
 class NoticeCard;
 class Panel;
+class RecentExportPanel;
 class UnitField;
 
 /// "Export (Excel/CSV)" - the dedicated export frame of the second Figma batch:
@@ -37,7 +38,6 @@ private slots:
     void printTable();                       // Print… : the table of the selected series, on paper or as PDF
     void exportPrimary();
     void exportSecondary();
-    void openDestination();
 
 private:
     const Snapshot* currentSnapshot() const;
@@ -56,8 +56,7 @@ private:
     QCheckBox *m_chkParams, *m_chkSteps, *m_chkData, *m_chkNotes;
     NoticeCard* m_ready;
     QPushButton *m_primary, *m_secondary, *m_print;
-    QLabel *m_recentFile, *m_recentMeta, *m_recentWhen;
-    QPushButton* m_openFolder;
+    RecentExportPanel* m_recent = nullptr;
 };
 
 } // namespace phy104

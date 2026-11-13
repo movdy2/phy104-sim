@@ -39,8 +39,8 @@ Wave Interference, Formulas Notes & Export, Component Sheet).
   and Optical Setups; chapter-specific constants remain beside each chapter's rules. The Notes sidebar shortcut stays,
   while Optical Setups is accessed through the Hub.
 * The shared page header keeps **Save** separate from one **Export** menu (PDF / Excel / CSV); the export destinations
-  hide their duplicate menu. The Draw Space sketchpad was removed at the author's request, and the Notes page is only the
-  Markdown workspace (no formula reference, no export panels).
+  hide their duplicate menu. The Draw Space page and its model were removed at the author's request; `.phy` files no longer
+  persist sketches. The Notes page is only the Markdown workspace (no formula reference, no export panels).
 * **Error red** is the design's `#fb4934` (earlier brief: `#cc241d`); physics notices use the design's amber card.
 * **Real functionality behind the frames**: Calculate & Simulate saves runs, the session autosaves and restores,
   export writes real files. The "21 saved calculations" in the frame is demo data; a fresh session starts at 00.

@@ -3,7 +3,6 @@
 #include "ExpressionEvaluator.h"
 #include "FormulaEngine.h"
 #include "DataExport.h"
-#include "Drawing.h"
 #include "EquationText.h"
 #include "ExperimentReports.h"
 #include "FormulaManager.h"
@@ -472,50 +471,6 @@ int main() {
         try { EquationText::expressionToLatex("2+"); } catch (const std::exception&) { threw = true; }
         CHECK(threw);
     }
-    // ====================================================================== drawing model (Draw Space)
-    {
-        namespace DG = DrawingGeometry;
-        Drawing d;
-        Shape line; line.type = ShapeType::Line; line.points = {{0, 0}, {100, 0}};
-        Shape rect; rect.type = ShapeType::Rect; rect.points = {{20, 20}, {80, 60}};
-        Shape text; text.type = ShapeType::Text; text.points = {{200, 50}}; text.text = "n = 1.5";
-        d.shapes = {line, rect, text};
-        CHECK(near(DG::distance(line, {50, 7}), 7) && near(DG::distance(line, {-10, 0}), 10));
-        CHECK(near(DG::distance(rect, {50, 20}), 0) && near(DG::distance(rect, {50, 40}), 20));     // outline only, not the inside
-        CHECK(DG::distance(text, {205, 45}) == 0.0);
-        CHECK(DG::hitTest(d, {50, 3}, 5) == 0 && DG::hitTest(d, {50, 21}, 3) == 1 && DG::hitTest(d, {210, 48}, 3) == 2 && DG::hitTest(d, {500, 500}, 5) == -1);
-        Shape ell; ell.type = ShapeType::Ellipse; ell.points = {{0, 0}, {100, 60}};
-        CHECK(near(DG::distance(ell, {100, 30}), 0, 1e-6) && DG::distance(ell, {50, 30}) > 20);
-        Shape prism; prism.type = ShapeType::Prism; prism.points = {{0, 0}, {100, 100}};
-        CHECK(near(DG::distance(prism, {50, 0}), 0) && near(DG::distance(prism, {50, 100}), 0) && DG::distance(prism, {50, 60}) > 5);
-        Shape moved = line; DG::translate(moved, 5, -3);
-        CHECK(near(moved.points[1].x, 105) && near(moved.points[1].y, -3));
-        CHECK(near(DG::snap(23, 10), 20) && near(DG::snap(25.1, 10), 30) && near(DG::snap(23, 0), 23));
-        CHECK(near(DG::angleDegrees({0, 0}, {10, -10}), 45) && near(DG::angleDegrees({0, 0}, {-10, 0}), 180));
-        int r, g, b; DG::parseColor("#d79921", r, g, b);
-        CHECK(r == 215 && g == 153 && b == 33);
-        DG::parseColor("nonsense", r, g, b);
-        CHECK(r == 215);
-        // undo / redo
-        DrawingHistory h;
-        Drawing a; a.shapes = {line};
-        Drawing b2 = a; b2.shapes.push_back(rect);
-        h.commit(a); h.commit(b2);
-        CHECK(h.canUndo() && !h.canRedo() && h.current().shapes.size() == 2);
-        CHECK(h.undo().shapes.size() == 1 && h.canRedo());
-        CHECK(h.redo().shapes.size() == 2);
-        h.undo();
-        Drawing c = a; c.shapes.push_back(text);
-        h.commit(c);                                                        // a new change drops the redo branch
-        CHECK(!h.canRedo() && h.current().shapes.size() == 2 && h.current().shapes[1].type == ShapeType::Text);
-        h.commit(c);                                                        // identical state: no new step
-        CHECK(h.undo().shapes.size() == 1);
-        DrawingHistory limited(3);
-        for (int i = 0; i < 10; ++i) { Drawing x; x.shapes.resize(i); limited.commit(x); }
-        int steps = 0; while (limited.canUndo()) { limited.undo(); ++steps; }
-        CHECK(steps == 2);                                                  // only the last 3 states are kept
-    }
-
     // ====================================================================== the six new Figma screens
     {
         namespace WE = WaveExperiments;
