@@ -231,15 +231,23 @@ GratingPage::GratingPage(AppContext* ctx, QWidget* parent)
     m_slits = addField("M", "Illuminated slit count · M", "slits", 20, 0, false, true, 1);
     m_incidence = addCombo("Incidence", {"Normal · 0.00°", "15.00°", "30.00°"}, {0, 15, 30});
     m_canvas = new GratingCanvas;
-    build("Grating / angular observation screen", m_canvas, "Diffracted intensity vs angle", "N is line density, not slit count. M = 20 controls peak sharpness; ideal narrow-slit model.");
+    build("Grating / angular observation screen", m_canvas, "Diffracted intensity vs angle", "N is line density, not slit count. Transmission: intensity fan. Orders: every peak with its angle. M = 20 controls sharpness.");
     reset();
 }
 ModelReport GratingPage::compute(const ReportContext& ctx) {
-    return WE::grating({m_density->value(), m_lambda->value(), m_order->value(), m_slits->value(), m_incidence->currentData().toDouble()}, ctx);
+    return WE::grating({m_density->value(), m_lambda->value(), m_order->value(), m_slits->value(), m_incidence->currentData().toDouble(),
+                        m_tabs->current() == 1}, ctx);
 }
-void GratingPage::updateCanvas() { m_canvas->setInput({m_density->value(), m_lambda->value(), m_order->value(), m_slits->value(), m_incidence->currentData().toDouble()}); }
+void GratingPage::updateCanvas() {
+    const bool orders = m_tabs->current() == 1;
+    m_canvas->setInput({m_density->value(), m_lambda->value(), m_order->value(), m_slits->value(), m_incidence->currentData().toDouble(), orders});
+    retitle(orders ? "Grating / every propagating order" : "Grating / angular observation screen",
+            orders ? "Order angles and where every peak sits" : "Diffracted intensity vs angle");
+}
 void GratingPage::resetFields() { m_density->setValue(5000, 0); m_lambda->setValue(600, 2); m_order->setValue(1, 0); m_slits->setValue(20, 0); m_incidence->setCurrentIndex(0); m_tabs->setCurrent(0); }
-QString GratingPage::runDescription() const { return QString("order %1 · N %2 /cm").arg(m_order->text(), m_density->text()); }
+QString GratingPage::runDescription() const {
+    return QString("order %1 · N %2 /cm · %3").arg(m_order->text(), m_density->text(), m_tabs->current() == 1 ? "orders" : "transmission");
+}
 
 // ============================================================================ single slit
 SingleSlitPage::SingleSlitPage(AppContext* ctx, QWidget* parent)
@@ -251,13 +259,22 @@ SingleSlitPage::SingleSlitPage(AppContext* ctx, QWidget* parent)
     m_wave = addCombo("Incident wave", {"Plane · coherent"}, {0});
     m_scale = addCombo("Intensity scale", {"Normalized · I/I₀"}, {0});
     m_canvas = new SingleSlitCanvas;
-    build("Slit / screen diffraction pattern", m_canvas, "Single-slit intensity vs angle", "Minima: a sin θ = mλ. Small-angle widths: w ≈ 2λL/a.");
+    build("Slit / screen diffraction pattern", m_canvas, "Single-slit intensity vs angle", "Minima: a sin θ = mλ. Intensity: the envelope. Geometry: where each minimum lands, y ≈ m λL/a. Small-angle widths: w ≈ 2λL/a.");
     reset();
 }
-ModelReport SingleSlitPage::compute(const ReportContext& ctx) { return WE::singleSlit({m_width->value(), m_lambda->value(), m_screen->value()}, ctx); }
-void SingleSlitPage::updateCanvas() { m_canvas->setInput({m_width->value(), m_lambda->value(), m_screen->value()}); }
+ModelReport SingleSlitPage::compute(const ReportContext& ctx) {
+    return WE::singleSlit({m_width->value(), m_lambda->value(), m_screen->value(), m_tabs->current() == 1}, ctx);
+}
+void SingleSlitPage::updateCanvas() {
+    const bool geometry = m_tabs->current() == 1;
+    m_canvas->setInput({m_width->value(), m_lambda->value(), m_screen->value(), geometry});
+    retitle(geometry ? "Slit / where the minima land" : "Slit / screen diffraction pattern",
+            geometry ? "Minimum position vs order" : "Single-slit intensity vs angle");
+}
 void SingleSlitPage::resetFields() { m_width->setValue(0.1, 4); m_lambda->setValue(500, 2); m_screen->setValue(1.0, 4); m_wave->setCurrentIndex(0); m_scale->setCurrentIndex(0); m_tabs->setCurrent(0); }
-QString SingleSlitPage::runDescription() const { return QString("a %1 mm · λ %2 nm").arg(m_width->text(), m_lambda->text()); }
+QString SingleSlitPage::runDescription() const {
+    return QString("a %1 mm · λ %2 nm · %3").arg(m_width->text(), m_lambda->text(), m_tabs->current() == 1 ? "geometry" : "intensity");
+}
 
 // ============================================================================ Malus + Brewster
 PolarizationPage::PolarizationPage(AppContext* ctx, QWidget* parent)
@@ -269,14 +286,22 @@ PolarizationPage::PolarizationPage(AppContext* ctx, QWidget* parent)
     m_n1 = addField("n1", "Incident index · n₁ (air)", "", 1.0, 4, false, true, 0.01);
     m_n2 = addField("n2", "Transmitted index · n₂", "", 1.5, 4, false, true, 0.01);
     m_canvas = new PolarizationCanvas;
-    build("Two polarizers / independent Brewster reference", m_canvas, "Intensity vs relative angle", "θ range: 0–90°. Ideal first polarizer transmits half of unpolarized incident intensity.");
+    build("Two polarizers / independent Brewster reference", m_canvas, "Intensity vs relative angle", "Malus: θ range 0–90°, the first polarizer transmits half of unpolarized light. Brewster: tan θB = n₂/n₁, R_p = 0 at θB.");
     reset();
 }
 ModelReport PolarizationPage::compute(const ReportContext& ctx) {
-    return WE::polarization({m_intensity->value(), m_angle->value(), m_n1->value(), m_n2->value(), m_beam->currentData().toDouble() > 0.5}, ctx);
+    return WE::polarization({m_intensity->value(), m_angle->value(), m_n1->value(), m_n2->value(), m_beam->currentData().toDouble() > 0.5,
+                             m_tabs->current() == 1}, ctx);
 }
-void PolarizationPage::updateCanvas() { m_canvas->setInput({m_intensity->value(), m_angle->value(), m_n1->value(), m_n2->value(), m_beam->currentData().toDouble() > 0.5}); }
+void PolarizationPage::updateCanvas() {
+    const bool brewster = m_tabs->current() == 1;
+    m_canvas->setInput({m_intensity->value(), m_angle->value(), m_n1->value(), m_n2->value(), m_beam->currentData().toDouble() > 0.5, brewster});
+    retitle(brewster ? "Interface at Brewster / reflected beam s-polarized" : "Two polarizers / independent Brewster reference",
+            brewster ? "p-polarized reflectance vs incidence" : "Intensity vs relative angle");
+}
 void PolarizationPage::resetFields() { m_beam->setCurrentIndex(0); m_intensity->setValue(100, 2); m_angle->setValue(60, 2); m_n1->setValue(1.0, 4); m_n2->setValue(1.5, 4); m_tabs->setCurrent(0); }
-QString PolarizationPage::runDescription() const { return QString("θ %1° · Iᵢₙ %2 W/m²").arg(m_angle->text(), m_intensity->text()); }
+QString PolarizationPage::runDescription() const {
+    return QString("θ %1° · Iᵢₙ %2 W/m² · %3").arg(m_angle->text(), m_intensity->text(), m_tabs->current() == 1 ? "brewster" : "malus");
+}
 
 } // namespace phy104

@@ -88,6 +88,12 @@ formula/variable, 25 random data sets), Qt UI, five experiments, notes, theme.
   on a 601-point chart; the beam-balance dropdown now really sets the fringe contrast V, the reference-arm dropdown puts
   M1 on a piezo stack, and Newton's transmitted dark rings sit at half orders `(m + ½)λR/n`. Diagram and chart panels are
   re-captioned per mode. Rewired: engine inputs grew a mode flag (`fringes`/`piezo`, `transmission`, `transmitted`).
+* **The other three second tabs are real too**: Grating *Orders* lists every propagating order with its angle
+  (θ₂ − θ₁ = 19.41° against θ₁ = 17.46°, `d/λ = 3.3333`) and marks all 7 peaks on the intensity chart; Single slit *Geometry*
+  puts the minima on the screen (`y₁ = ±5.0001 mm`, `y₂ = ±10.0005 mm`, side maximum at 1.43 θ₁) with a `yₘ`-vs-order chart
+  and dashed rays in the drawing; Malus/Brewster switches to the interface at θB, `R_p = 0`, `R_s = 0.1479` (14.8 % reflected
+  at θB, 4 % at normal incidence) and plots `R_p(θ)` from 0.04 down to 0 at 56.31° and up to 1 — all six model screens now
+  react to their tabs (`orderList`, `geometry`, `brewster`).
 * **Draw Space** page: whiteboard for optics sketches (pen, line, ray, rectangle/ellipse, lens, mirror, prism, interface,
   axis, normal, text and LaTeX labels), select/move, Delete, undo/redo, 8 px grid snap, six colours, three widths, PNG (2x)
   and SVG export. The sketch autosaves into the `.phy` session and is restored on start (`Drawing` engine unchanged).

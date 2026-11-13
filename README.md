@@ -28,7 +28,7 @@ into the session, into every snapshot's `notesContent`, and into the `.phy` file
 | **Lenses & Mirrors** | thin lens and spherical mirror (same equations), principal rays, image properties |
 | **Prisms** | ray path, minimum deviation, deviation curve, dispersion mode (red / λ / violet rays) |
 | **Wave Interference** | Young's double slit: wavefronts, fringes, intensity profile, 6 light-source presets |
-| **Polarization**, **Single slit**, **Grating**, **Thin film**, **Michelson**, **Newton's rings** | the six screens of the second Figma batch (Save / Export header, Send to Notes); thin film and Michelson have a **second tab** (transmission / fringe count) and Newton's viewing-mode dropdown switches to the transmitted rings |
+| **Polarization**, **Single slit**, **Grating**, **Thin film**, **Michelson**, **Newton's rings** | the six screens of the second Figma batch (Save / Export header, Send to Notes); **both tabs of every screen work** (thin-film transmission, Michelson fringe count, grating orders, slit geometry, Malus/Brewster) and Newton's viewing-mode dropdown switches to the transmitted rings |
 | **Notes** | formula reference, Markdown study workspace (live LaTeX preview), quick Excel/CSV export |
 | *Tools:* **Export (Excel/CSV)** | data series and what it contains, every row of the table, workbook/CSV settings, remembered recent export |
 | *Tools:* **Draw Space** | sketchpad: pen, lines, rays, lenses, mirrors, prisms, interfaces, axes, normals, text and LaTeX labels; move/undo, PNG + SVG |

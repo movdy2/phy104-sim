@@ -580,6 +580,40 @@ private slots:
         chooseItem(comboWith(m_app->newton, "Reflected light"), 0);
         QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->newton), QString("1.5492 mm"), 1500);
     }
+    void remainingSecondTabsShowTheirOwnNumbers() {
+        // grating: the Orders tab lists every peak instead of one selected order
+        goTo(m_app->grating);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->grating), QString("+17.4576°"), 1500);
+        click(modeTab(m_app->grating, "Orders"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->grating), QString("7 orders"), 1500);
+        QVERIFY2(allLabelTexts(m_app->grating).contains("Grating / every propagating order"), "orders title missing");
+        click(modeTab(m_app->grating, "Transmission"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->grating), QString("+17.4576°"), 1500);
+
+        // single slit: Geometry puts the minima on the screen
+        goTo(m_app->singleSlit);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->singleSlit), QString("0.2865°"), 1500);
+        click(modeTab(m_app->singleSlit, "Geometry"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->singleSlit), QString("5.0001 mm"), 1500);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->singleSlit, 1), QString("7.1501 mm"), 1500);
+        QVERIFY(allLabelTexts(m_app->singleSlit).contains("Slit / where the minima land"));
+        click(modeTab(m_app->singleSlit, "Intensity"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->singleSlit), QString("0.2865°"), 1500);
+
+        // polarization: the Brewster tab replaces Malus' law with the Fresnel reflectances
+        goTo(m_app->polarization);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->polarization), QString("12.5000 W/m²"), 1500);
+        click(modeTab(m_app->polarization, "Brewster"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->polarization), QString("56.3099°"), 1500);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->polarization, 1), QString("0.1479"), 1500);
+        QVERIFY(allLabelTexts(m_app->polarization).contains("Interface at Brewster / reflected beam s-polarized"));
+        auto fields = m_app->polarization->findChildren<UnitField*>();                       // Iᵢₙ, θ, n₁, n₂
+        QCOMPARE(fields.size(), 4);
+        typeInto(fields[3], "1.333");                                                        // water instead of glass
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->polarization), QString("53.1232°"), 1500);
+        click(findButton(m_app->polarization, "Reset parameters"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->polarization), QString("12.5000 W/m²"), 1500);
+    }
     void newScreensHaveTheSaveExportHeader() {
         for (QWidget* page : QList<QWidget*>{m_app->newton, m_app->michelson, m_app->thinFilm, m_app->grating, m_app->singleSlit, m_app->polarization}) {
             goTo(page);
