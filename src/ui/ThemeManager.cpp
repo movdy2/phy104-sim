@@ -130,6 +130,7 @@ QLabel#unitsTag { font-family: 'JetBrains Mono'; font-size: 10px; color: @dim@; 
 QLabel#sectionTitle { font-size: 13px; font-weight: 600; color: @amber@; }
 QLabel#muted { color: @muted@; }
 QLabel#caption { font-family: 'JetBrains Mono'; font-size: 9px; color: @dim@; }
+QLabel#colourSwatch { border: 1px solid @border@; border-radius: 4px; min-height: 30px; }
 QLabel#fieldLabel { font-size: 11px; color: @muted@; }
 QLabel#hint { font-size: 11px; color: @dim@; }
 

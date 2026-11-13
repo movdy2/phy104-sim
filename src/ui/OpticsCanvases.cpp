@@ -1,4 +1,5 @@
 #include "OpticsCanvases.h"
+#include "ThickLens.h"
 #include "PhysicsCalculator.h"
 #include "ThemeManager.h"
 
@@ -14,6 +15,7 @@
 
 namespace phy104 {
 namespace PC = PhysicsCalculator;
+namespace TL = ThickLens;
 namespace {
 
 constexpr double kDeg = M_PI / 180.0;
@@ -897,6 +899,87 @@ void PreviewIcon::paintEvent(QPaintEvent*) {
         }
         break;
     }
+}
+
+// ============================================================================ Thick lens
+void ThickLensCanvas::paintDiagram(QPainter& p, const QRectF& a) {
+    const Theme& t = th();
+    ThickLensInput in = m_in;
+    const TL::Result r = TL::analyse(in);
+    const double axisY = a.top() + a.height() * 0.52;
+    p.setPen(QPen(t.dim, 1));
+    p.drawLine(QPointF(20, axisY), QPointF(a.right() - 20, axisY));
+    if (!r.valid) {
+        text(p, QPointF(a.center().x(), a.center().y()), "Element not usable", t.error, 11, Qt::AlignHCenter);
+        if (!r.error.empty()) text(p, QPointF(a.center().x(), a.center().y() + 18), QString::fromStdString(r.error), t.muted, 9, Qt::AlignHCenter);
+        return;
+    }
+
+    const double f = std::fabs(r.focalLength);
+    const double extent = std::max({f * 2.4, in.thickness * 4.0, in.diameter * 2.4});
+    const double sc = (a.width() / 2 - 40) / std::max(extent, 1e-6);
+    // the lens body is drawn at least 26 px thick so a thin element is still visible
+    const double tPx = std::max(26.0, in.thickness * sc);
+    const double v1x = a.center().x() - tPx / 2;                        // front vertex
+    const double v2x = v1x + tPx;
+    const double sag = std::min(a.height() * 0.30, 26.0);               // how strongly the surfaces curve on screen
+
+    // ---- glass body: two arcs (a biconvex lens bulges outwards, a biconcave one pinches in)
+    const double halfD = std::min(a.height() * 0.34, 96.0);
+    QPainterPath body;
+    const auto bulge = [&](double x, double sign, double radius) {       // sign: +1 right surface, -1 left surface
+        const double k = std::clamp(std::fabs(radius) / 10.0, 0.35, 1.6);
+        const double amount = (radius > 0 ? 1.0 : -1.0) * sign * sag * k;  // convex -> away from the centre
+        return QPointF(x + amount, 0);
+    };
+    const QPointF topL = bulge(v1x, -1, in.r1), topR = bulge(v2x, 1, in.r2);
+    body.moveTo(topL.x(), axisY - halfD);
+    body.cubicTo(topL.x() + (topR.x() - topL.x()) * 0.35, axisY - halfD - sag * 0.15,
+                 topL.x() + (topR.x() - topL.x()) * 0.65, axisY - halfD - sag * 0.15, topR.x(), axisY - halfD);
+    body.lineTo(topR.x(), axisY + halfD);
+    body.cubicTo(topL.x() + (topR.x() - topL.x()) * 0.65, axisY + halfD + sag * 0.15,
+                 topL.x() + (topR.x() - topL.x()) * 0.35, axisY + halfD + sag * 0.15, topL.x(), axisY + halfD);
+    body.closeSubpath();
+    QColor glass = t.blue; glass.setAlpha(70);
+    p.setPen(QPen(t.sage, 1.6));
+    p.setBrush(glass);
+    p.drawPath(body);
+
+    // ---- axis marks: vertices, principal planes, focal points
+    const auto tick = [&](double x, const QString& label, const QColor& c, bool dashed) {
+        p.setPen(QPen(c, dashed ? 1 : 1.4, dashed ? Qt::DashLine : Qt::DotLine));
+        p.drawLine(QPointF(x, axisY - halfD - 12), QPointF(x, axisY + halfD + 12));
+        text(p, QPointF(x, axisY + halfD + 24), label, c, 9, Qt::AlignHCenter);
+    };
+    tick(v1x, "V₁", t.muted, false);
+    tick(v2x, "V₂", t.muted, false);
+    tick(v1x + r.h1 * sc, "H₁", t.amber, true);
+    tick(v2x + r.h2 * sc, "H₂", t.amber, true);
+    tick(v2x + r.backFocal * sc, "F′", t.sage, false);
+
+    // ---- marginal rays from infinity: they cross the axis in front of the paraxial focus
+    const double h = std::min(in.diameter / 2.0, halfD / sc);
+    const QPointF entryL(v1x - 30, axisY - h * sc), entryR(v1x - 30, axisY + h * sc);
+    const double paraxialX = v2x + r.backFocal * sc;
+    const double marginalX = v2x + r.marginalFocus * sc;
+    for (const QPointF& e : {entryL, entryR}) {
+        ray(p, QPointF(24, e.y()), e, t.amber, 1.5);
+        ray(p, e, QPointF(marginalX, axisY), t.amber, 1.3);
+    }
+    p.setPen(QPen(t.sage, 1.2, Qt::DashLine));
+    p.drawLine(QPointF(paraxialX, axisY - 26), QPointF(paraxialX, axisY + 26));
+    if (std::fabs(marginalX - paraxialX) > 1.5) {                       // the aberration is visible
+        p.setPen(QPen(t.error, 1.2, Qt::DashLine));
+        p.drawLine(QPointF(marginalX, axisY - 16), QPointF(marginalX, axisY + 16));
+        text(p, QPointF((paraxialX + marginalX) / 2, axisY - 34), "ΔSA", t.error, 9, Qt::AlignHCenter);
+    }
+
+    // ---- the labels of the design
+    text(p, QPointF(20, a.top() + 18), "THICK LENS · PRINCIPAL PLANES", t.amber, 10);
+    text(p, QPointF(a.right() - 20, a.top() + 18), QString::fromStdString(r.element).toUpper(), t.amber, 10, Qt::AlignRight);
+    text(p, QPointF(20, a.bottom() - 34), "f = " + num(r.focalLength) + " cm   BFL = " + num(r.backFocal) + " cm", t.muted, 10);
+    text(p, QPointF(20, a.bottom() - 18), "t = " + num(in.thickness) + " cm   D = " + num(in.diameter) + " cm   " + QString::fromStdString(r.saClass), t.muted, 10);
+    text(p, QPointF(a.right() - 20, a.bottom() - 18), "marginal (h = " + num(h, 2) + " cm) vs paraxial focus", t.dim, 9, Qt::AlignRight);
 }
 
 } // namespace phy104

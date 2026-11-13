@@ -31,6 +31,12 @@
 * **CI**: GitHub Actions build matrix (Linux Qt 6 + ctest, Windows MSVC + Qt 6.7.2, Qt-free `g++` core test).
 * Session file (`.phy`): runs (with their sweep), notes, snapshots (parameters + calculator registers), equations, drawing
   and the recent export.
+* **Experiment extras** (v2.8): **Thick Lens & Aberration** page (power with a finite thickness, principal planes,
+  BFL/FFL, principal-plane imaging, third-order spherical aberration ∝ D², f/#; a **Spectrum** tab with Cauchy's law and
+  the Abbe number), **Thin-Film Colours** tab (CIE 1931 integration of `R(λ)`, a swatch, visibility and order count),
+  **Single-Slit Envelope** tab (two slits of finite width: fringes inside the envelope, missing orders at integer
+  `d/a`) and **Grating Resolution** tab (`R = mN`, Rayleigh `δλ`, free spectral range). Qt-free `ThickLens` and
+  `Spectrum` modules, tested in `test_core`.
 * **Study Hub** (v2.7): `data/study_hub.json` is a **JSON array** of ten chapters in course order - summary, rules
   (formula + why it holds) and the constants of the chapter; the Formula Solver stays a separate page.
 * **The calculator takes plain text**: `keyboard.json` groups as ordinary keys (`sin(`, `π`, `θ`, `√(`, `ln(`, `^`);
@@ -45,8 +51,9 @@
   tested engines (`EquationText`/`EquationSolver`, `Drawing`/`DrawingHistory`).
 
 ## Should add next (priority order)
-1. Experiment extras: thick lens, spherical aberration, single-slit diffraction envelope, thin-film colours,
-   grating resolving power / free spectral range - the formulas already exist in `formulas.json`.
+1. Experiment extras, part 2: coma / astigmatism for the thick lens (the spherical aberration is done), a chromatic
+   focal shift readout on the thick-lens page in mm at the focal plane, grating blaze efficiency, and a "film colour
+   vs thickness" strip (the colour of every thickness in one band) next to the single swatch.
 2. Editing a saved run (the description/result of a run) next to the delete that is already there.
 3. Study Hub: per-chapter quiz cards and a "send the rule to the calculator" button.
 4. Notes: note templates per chapter, search, export to .md/.pdf (LaTeX formula images in the preview are done).

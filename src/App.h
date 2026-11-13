@@ -19,6 +19,7 @@ class MichelsonPage;
 class NewtonRingsPage;
 class PolarizationPage;
 class SingleSlitPage;
+class ThickLensPage;
 class ThinFilmPage;
 class FormulaEngine;
 class FormulaManager;
@@ -57,6 +58,7 @@ public:
     SingleSlitPage* singleSlit = nullptr;
     GratingPage* grating = nullptr;
     ThinFilmPage* thinFilm = nullptr;
+    ThickLensPage* thickLens = nullptr;
     MichelsonPage* michelson = nullptr;
     NewtonRingsPage* newton = nullptr;
     EquationLabPage* equationLab = nullptr;

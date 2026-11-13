@@ -1,5 +1,6 @@
 #include "WaveExperiments.h"
 #include "NumberFormat.h"
+#include "Spectrum.h"
 
 #include <algorithm>
 #include <cmath>
@@ -228,6 +229,49 @@ ModelReport thinFilm(const ThinFilmInput& in, const ReportContext& ctx) {
     const double dpsi = 4 * std::numbers::pi * in.n * in.thicknessNm / in.lambdaNm - std::numbers::pi;
     const double refl = std::pow(std::sin(2 * std::numbers::pi * in.n * in.thicknessNm / in.lambdaNm), 2);
     const double firstBright = in.lambdaNm / (4 * in.n);
+
+    if (in.colours) {
+        // Third tab: every wavelength at once. The film reflects a comb of wavelengths; the eye sees their sum.
+        const FilmColour fc = thinFilmColour(in.thicknessNm, in.n);
+        const double vis = thinFilmColourVisibility(in.thicknessNm, in.n);
+        ModelReport out;
+        Report& rep = out.report;
+        LcdRegister a;
+        a.title = "FILM COLOUR / λ SWEEP";
+        a.lines = {"R(λ) = sin²(2πnt/λ)", "OPD = 2nt = " + num(opd) + " nm", "visibility V = " + NF::fixed(vis, 3) + "  (1 = saturated, 0 = grey)"};
+        for (const FilmColourSample& s : fc.lines)
+            a.lines.push_back(NF::fixed(s.wavelengthNm, 0) + " nm: " + NF::fixed(s.reflectance, 3));
+        a.resultLabel = "PERCEIVED COLOUR";
+        a.resultValue = fc.hueNm > 0 ? NF::fixed(fc.hueNm, 0) + " nm dominant" : "neutral grey";
+        LcdRegister b;
+        b.title = "ORDER COUNT / THICKNESS";
+        const double orders = 2 * in.n * in.thicknessNm * (1.0 / 400.0 - 1.0 / 700.0);
+        b.lines = {"orders across 400–700 nm:", "Δm = 2nt (1/400 − 1/700) = " + NF::fixed(orders, 3),
+                   orders < 1.0 ? "one order: saturated colours" : orders < 3.0 ? "a few orders: pastel colours" : "many orders: grey film",
+                   "mean reflectance = " + NF::fixed(fc.meanReflectance, 3), "swatch " + fc.hex};
+        b.resultLabel = "SWATCH";
+        b.resultValue = fc.hex;
+        rep.registers = {a, b};
+        rep.notices = {interpretation("A " + num(in.thicknessNm) + " nm film reflects " +
+                                      (fc.hueNm > 0 ? NF::fixed(fc.hueNm, 0) + " nm strongest, so it reads as " + fc.lines[4].name +
+                                                       ". Thicker films reflect many orders at once and the colours add up to grey — which is why soap films show colour bands only where they are thin."
+                                                     : "many wavelengths at once with no clear winner: the film looks grey.")),
+                       guard("The swatch is a CIE 1931 integration of R(λ) under a flat illuminant, with equal-amplitude reflections. Real soap films vary in thickness across the surface.")};
+        rep.headline = "film " + num(in.thicknessNm) + " nm · " + (fc.hueNm > 0 ? NF::fixed(fc.hueNm, 0) + " nm" : std::string("grey"));
+        rep.retained = retained({"t = " + NF::fixed(in.thicknessNm, 2) + " nm · n = " + fx(in.n), "λ range 400–700 nm"}, "RETAINED FILM COLOUR", fc.hex);
+        rep.parameters = {{"t", num(in.thicknessNm) + " nm"}, {"n", num(in.n)}, {"swatch", fc.hex}, {"mode", "colours"}};
+
+        ChartData& c = out.chart;
+        c.xLabel = "λ (nm)"; c.yLabel = "R(λ)";
+        c.xMin = 400; c.xMax = 700; c.yMin = 0; c.yMax = 1; c.xTicks = 3; c.yTicks = 2; c.xDecimals = 0; c.yDecimals = 1;
+        for (int k = 0; k <= 400; ++k) {
+            const double w = 400 + 300.0 * k / 400.0;
+            c.curve.push_back({w, thinFilmReflectance(in.thicknessNm, in.n, w)});
+        }
+        c.marker = {{in.lambdaNm, thinFilmReflectance(in.thicknessNm, in.n, in.lambdaNm)}};
+        c.legend = "R(λ) of the film   ● your λ = " + num(in.lambdaNm) + " nm";
+        return out;
+    }
 
     ModelReport out;
     Report& rep = out.report;
@@ -599,4 +643,203 @@ ModelReport polarization(const PolarizationInput& in, const ReportContext& ctx) 
     return out;
 }
 
+// -------------------------------------------------------------------------------- single slit: envelope
+double multiSlitFactor(double phaseStepRad, double sources) {
+    const double half = phaseStepRad / 2;
+    const double den = sources * std::sin(half);
+    if (std::fabs(den) < 1e-9) return 1.0;                       // principal maximum: the limit is 1
+    const double v = std::sin(sources * half) / den;
+    return v * v;
+}
+
+double doubleSlitEnvelopeIntensity(double thetaDeg, double widthMm, double separationMm, double lambdaNm) {
+    const double sinT = std::sin(thetaDeg * kDeg);
+    const double lam = lambdaNm * 1e-9;
+    const double beta = std::numbers::pi * widthMm * 1e-3 * sinT / lam;
+    const double slit = std::fabs(beta) < 1e-9 ? 1.0 : std::pow(std::sin(beta) / beta, 2);
+    const double phi = 2 * std::numbers::pi * separationMm * 1e-3 * sinT / lam;   // phase between the two slits
+    return slit * std::pow(std::cos(phi / 2), 2);
+}
+
+ModelReport doubleSlitEnvelope(const SingleSlitInput& in, const ReportContext& ctx) {
+    std::vector<FieldIssue> issues;
+    if (in.widthMm <= 0) issues.push_back({"a", "Enter a > 0 mm.", "a"});
+    if (in.lambdaNm <= 0) issues.push_back({"lambda", "Enter λ > 0 nm.", "λ"});
+    if (in.screenM <= 0) issues.push_back({"L", "Enter L > 0 m.", "L"});
+    if (in.separationMm <= 0) issues.push_back({"d", "Enter d > 0 mm.", "d"});
+    if (issues.empty() && in.separationMm < in.widthMm) issues.push_back({"d", "The slit separation must exceed the slit width.", "d"});
+    const std::string guardText = "Two identical slits of finite width a, separation d > a, equal amplitudes and L large. Missing fringes appear where d/a is an integer.";
+    if (!issues.empty())
+        return paused(issues.front().label + " out of range", issues,
+                      {"a = " + num(in.widthMm) + " mm   λ = " + num(in.lambdaNm) + " nm", "d = " + num(in.separationMm) + " mm   L = " + num(in.screenM) + " m",
+                       "ACTION: " + issues.front().message},
+                      guardText + "\n\nDiagram, chart and retained results show the last valid run.", ctx);
+
+    const double a = in.widthMm * 1e-3, d = in.separationMm * 1e-3, lam = in.lambdaNm * 1e-9;
+    const double s1 = lam / a, theta1 = std::asin(std::min(1.0, s1)) / kDeg;      // first missing order (slit minimum)
+    const double fringe = lam * in.screenM / d;                                   // fringe spacing on the screen (m)
+    const double width = 2 * in.screenM * std::tan(theta1 * kDeg);                // envelope width (m)
+    const double ratio = d / a;
+    const bool missing = std::fabs(ratio - std::round(ratio)) < 1e-9 && std::round(ratio) >= 1;
+
+    ModelReport out;
+    Report& rep = out.report;
+    LcdRegister r1;
+    r1.title = "TWO SLITS OF WIDTH a / DEG";
+    r1.lines = {"I = I₀ cos²(πd sinθ/λ) · (sinβ/β)²", "β = π a sin θ / λ",
+                "first slit minimum θ = " + fx(theta1) + "°", "fringe spacing Δθ = " + fx(lam / d / kDeg) + "°"};
+    r1.resultLabel = "ENVELOPE HALF-WIDTH · θ₁";
+    r1.resultValue = fx(theta1) + "°";
+    LcdRegister r2;
+    r2.title = "MISSING ORDERS / d ÷ a";
+    r2.lines = {"d/a = " + fx(ratio), "fringe m sits at sin θ = mλ/d", "slit minimum at sin θ = λ/a",
+                missing ? "m = " + std::to_string(static_cast<int>(std::lround(ratio))) + " falls on the first slit minimum"
+                        : "no fringe coincides with the first slit minimum"};
+    r2.resultLabel = "FRINGES INSIDE THE ENVELOPE";
+    r2.resultValue = std::to_string(std::max(1, static_cast<int>(2 * std::floor(ratio)) - 1)) + " bright";
+    rep.registers = {r1, r2};
+    rep.notices = {interpretation("The slit width sets the envelope and the separation sets the fine fringes: " +
+                                  std::to_string(static_cast<int>(std::lround(width / fringe))) + " fringes fit inside the central envelope" +
+                                  (missing ? ", and the fringe at m = " + std::to_string(static_cast<int>(std::lround(ratio))) + " is missing because it lands on the first slit minimum." : ".")),
+                   guard(guardText)};
+    rep.headline = "θ_env = " + fx(theta1) + "°";
+    rep.retained = retained({"a = " + NF::fixed(in.widthMm, 4) + " mm · d = " + NF::fixed(in.separationMm, 4) + " mm", "λ = " + NF::fixed(in.lambdaNm, 1) + " nm · L = " + NF::fixed(in.screenM, 4) + " m"},
+                            "RETAINED ENVELOPE WIDTH", fx(theta1) + "°");
+    rep.parameters = {{"a", num(in.widthMm) + " mm"}, {"d", num(in.separationMm) + " mm"}, {"λ", num(in.lambdaNm) + " nm"},
+                      {"L", num(in.screenM) + " m"}, {"mode", "envelope"}};
+
+    ChartData& c = out.chart;
+    c.xLabel = "θ (degrees)"; c.yLabel = "I / I₀";
+    const double range = std::max(0.6, std::round(3.2 * theta1 * 10) / 10);
+    c.xMin = -range; c.xMax = range; c.yMin = 0; c.yMax = 1; c.xTicks = 4; c.yTicks = 2; c.xDecimals = 1; c.yDecimals = 1;
+    for (int k = 0; k <= 1400; ++k) {
+        const double th = -range + 2 * range * k / 1400.0;
+        c.curve.push_back({th, doubleSlitEnvelopeIntensity(th, in.widthMm, in.separationMm, in.lambdaNm)});
+    }
+    c.marker = {{theta1, 0.0}};
+    c.legend = "cos² fringe × sinc² envelope   ● first slit minimum";
+    return out;
+}
+
+// -------------------------------------------------------------------------------- grating: resolving power
+ModelReport gratingResolution(const GratingResolutionInput& in, const ReportContext& ctx) {
+    std::vector<FieldIssue> issues;
+    if (in.linesPerCm <= 0) issues.push_back({"N", "Enter N > 0 lines/cm.", "N"});
+    if (in.lambdaNm <= 0) issues.push_back({"lambda", "Enter λ > 0 nm.", "λ"});
+    if (in.order < 1 || !isInteger(in.order)) issues.push_back({"m", "Enter an integer order m ≥ 1.", "m"});
+    if (in.slits < 2) issues.push_back({"M", "Enter M ≥ 2 illuminated lines.", "M"});
+    const std::string guardText = "Resolving power uses the whole illuminated width: with B the illuminated width, N_used = B/d and R = mN_used. Rayleigh separation δλ = λ / R.";
+    if (issues.empty()) {
+        const double d = 0.01 / in.linesPerCm, lam = in.lambdaNm * 1e-9;
+        if (in.order * lam / d > 1.0) issues.push_back({"m", "This order does not propagate: |mλ/d| > 1.", "m"});
+    }
+    if (!issues.empty())
+        return paused(issues.front().label + " out of range", issues,
+                      {"N = " + num(in.linesPerCm) + " lines/cm   λ = " + num(in.lambdaNm) + " nm", "m = " + num(in.order) + "   M = " + num(in.slits),
+                       "ACTION: " + issues.front().message},
+                      guardText + "\n\nDiagram, chart and retained results show the last valid run.", ctx);
+
+    const int m = static_cast<int>(std::lround(in.order));
+    const double d = 0.01 / in.linesPerCm, lam = in.lambdaNm * 1e-9;
+    const double angle = std::asin(std::min(1.0, m * lam / d)) / kDeg;
+    const double R = m * in.slits;                                               // resolving power
+    const double dLambda = in.lambdaNm / R;                                      // smallest separable gap (nm)
+    const double fsr = in.lambdaNm / m;                                          // free spectral range (nm)
+    const double width = d * in.slits;                                           // illuminated width (m)
+
+    ModelReport out;
+    Report& rep = out.report;
+    LcdRegister r1;
+    r1.title = "RESOLVING POWER / R = mN";
+    r1.lines = {"R = |m| × N_used", "  = " + std::to_string(std::abs(m)) + " × " + num(in.slits), "  = " + NF::general(R, 6),
+                "δλ = λ / R", "δλ = " + num(in.lambdaNm) + " nm / " + NF::general(R, 6)};
+    r1.resultLabel = "RAYLEIGH LIMIT · δλ";
+    r1.resultValue = NF::general(dLambda, 3) + " nm";
+    LcdRegister r2;
+    r2.title = "FREE SPECTRAL RANGE / m";
+    r2.lines = {"FSR = λ / m", "FSR = " + num(fsr) + " nm", "λ + FSR would overlap in order m",
+                "illuminated width N·d = " + NF::fixed(width * 1e3, 3) + " mm", "order " + std::to_string(m) + " angle = " + fx(angle) + "°"};
+    r2.resultLabel = "ORDER-OVERLAP LIMIT";
+    r2.resultValue = num(fsr) + " nm";
+    rep.registers = {r1, r2};
+    rep.notices = {interpretation("With " + num(in.slits) + " illuminated lines the grating separates two wavelengths " + NF::general(dLambda, 3) +
+                                  " nm apart in order " + std::to_string(m) + " — doubling the illuminated width halves that gap. The same order repeats every " +
+                                  NF::general(fsr, 4) + " nm, so a spectrum is unambiguous only inside one free spectral range."),
+                   guard(guardText)};
+    rep.headline = "δλ = " + NF::general(dLambda, 3) + " nm";
+    rep.retained = retained({"N = " + num(in.linesPerCm) + " lines/cm · m = " + std::to_string(m), "M = " + num(in.slits) + " lines · λ = " + NF::fixed(in.lambdaNm, 2) + " nm"},
+                            "RETAINED RESOLUTION", NF::general(dLambda, 3) + " nm");
+    rep.parameters = {{"N", num(in.linesPerCm) + " lines/cm"}, {"λ", num(in.lambdaNm) + " nm"}, {"m", std::to_string(m)},
+                      {"M", num(in.slits)}, {"R", NF::general(R, 6)}, {"δλ", NF::general(dLambda, 3) + " nm"}, {"mode", "resolution"}};
+
+    // Rayleigh pair: two lines δλ apart at order m, unresolved -> just resolved -> clearly split
+    ChartData& c = out.chart;
+    c.xLabel = "wavelength (nm)"; c.yLabel = "I / Imax";
+    const double centre = in.lambdaNm, half = 2.5 * dLambda;
+    c.xMin = centre - half; c.xMax = centre + half; c.yMin = 0; c.yMax = 1.05; c.xTicks = 4; c.yTicks = 2; c.xDecimals = 2; c.yDecimals = 1;
+    const auto profile = [&](double lambdaNm) {                                 // the order-m peak shape, in wavelength
+        const double x = (lambdaNm - centre) / dLambda;                          // 1 = one Rayleigh step away
+        return multiSlitFactor(2 * std::numbers::pi * x / (R / std::max(1.0, std::abs(double(m)))), in.slits);
+    };
+    for (int k = 0; k <= 600; ++k) {
+        const double w = c.xMin + (c.xMax - c.xMin) * k / 600.0;
+        c.curve.push_back({w, profile(w)});
+    }
+    for (int k = 0; k <= 600; ++k) {
+        const double w = c.xMin + (c.xMax - c.xMin) * k / 600.0;
+        c.marker.push_back({w, 0.5 * (profile(w - 0.5 * dLambda) + profile(w + 0.5 * dLambda))});
+    }
+    c.legend = "single line ▬ and a pair δλ apart ● · δλ = " + NF::general(dLambda, 3) + " nm";
+    return out;
+}
+
 } // namespace phy104::WaveExperiments
+
+namespace phy104 {
+// -------------------------------------------------------------------------------- thin film: colours
+
+double thinFilmReflectance(double thicknessNm, double n, double wavelengthNm) {
+    if (wavelengthNm <= 0) return 0.0;
+    return std::pow(std::sin(2 * std::numbers::pi * n * thicknessNm / wavelengthNm), 2);
+}
+
+double thinFilmColourVisibility(double thicknessNm, double n) {
+    const double opd = 2 * n * thicknessNm;
+    if (opd <= 0) return 0.0;
+    const double orders = opd * (1.0 / 400.0 - 1.0 / 700.0);          // how many orders fit across the visible band
+    return std::exp(-orders * orders / 2.2);                         // 1 for a thin film, -> 0 for a thick one
+}
+
+FilmColour thinFilmColour(double thicknessNm, double n) {
+    FilmColour out;
+    const auto refl = [thicknessNm, n](double w) { return thinFilmReflectance(thicknessNm, n, w); };
+    const Rgb rgb = Spectrum::reflectanceToRgb(refl);
+    const double vis = thinFilmColourVisibility(thicknessNm, n);
+    // dominant hue: the strongest reflected line (a washed-out film has none -> neutral)
+    double best = -1, hue = 0, mean = 0;
+    for (int w = 400; w <= 700; w += 10) {
+        const double r = refl(w);
+        mean += r;
+        if (r > best) { best = r; hue = w; }
+    }
+    mean /= 31.0;
+    out.meanReflectance = mean;
+    out.hueNm = vis > 0.35 ? hue : 0.0;
+    const double lightness = std::clamp(0.45 + 0.55 * mean, 0.0, 1.0);  // many orders add up to a pale film
+    static const char* names[] = {"Violet", "Blue", "Cyan", "Green", "Yellow", "Orange", "Red"};
+    const auto describe = [](double w) {
+        if (w <= 0) return std::string("Neutral grey");
+        const int band = w < 430 ? 0 : w < 480 ? 1 : w < 510 ? 2 : w < 560 ? 3 : w < 590 ? 4 : w < 620 ? 5 : 6;
+        return std::string(names[band]) + " " + std::to_string(static_cast<int>(std::lround(w / 10.0) * 10)) + " nm";
+    };
+    // A washed-out film (many orders) is a pale, desaturated grey; a thin film keeps its saturated hue.
+    const double keep = std::clamp(0.20 + 0.80 * vis, 0.0, 1.0);
+    const double luma = 0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b;
+    const double pale = 0.35 + 0.65 * lightness;
+    out.hex = Rgb{(luma + (rgb.r - luma) * keep) * pale, (luma + (rgb.g - luma) * keep) * pale, (luma + (rgb.b - luma) * keep) * pale}.hex();
+    for (int w = 400; w <= 700; w += 50) out.lines.push_back({double(w), std::clamp(refl(w), 0.0, 1.0), describe(w)});
+    if (out.lines.size() > 4) out.lines[4].name = out.hueNm > 0 ? describe(out.hueNm) : "Neutral grey";   // 600 nm row names the hue
+    return out;
+}
+
+} // namespace phy104

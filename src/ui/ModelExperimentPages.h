@@ -76,6 +76,8 @@ class ThinFilmPage : public ModelPage {
     Q_OBJECT
 public:
     explicit ThinFilmPage(AppContext* ctx, QWidget* parent = nullptr);
+    /// The swatch of the "Colours" tab ("#rrggbb"), empty on the other tabs.
+    QString colourSwatch();
 protected:
     ModelReport compute(const ReportContext& ctx) override;
     void updateCanvas() override;
@@ -83,6 +85,7 @@ protected:
     QString runDescription() const override;
 private:
     UnitField *m_lambda, *m_n, *m_t;
+    QLabel* m_swatch = nullptr;
     class ThinFilmCanvas* m_canvas;
 };
 
@@ -111,7 +114,7 @@ protected:
     void resetFields() override;
     QString runDescription() const override;
 private:
-    UnitField *m_width, *m_lambda, *m_screen;
+    UnitField *m_width, *m_lambda, *m_screen, *m_separation;
     QComboBox *m_wave, *m_scale;
     class SingleSlitCanvas* m_canvas;
 };

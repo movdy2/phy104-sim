@@ -4,6 +4,7 @@
 #include "OpticsCanvases.h"
 
 #include <QComboBox>
+#include <QSignalBlocker>
 #include <QLabel>
 #include <QPushButton>
 #include <QVBoxLayout>
@@ -199,24 +200,53 @@ QString MichelsonPage::runDescription() const {
 // ============================================================================ thin film
 ThinFilmPage::ThinFilmPage(AppContext* ctx, QWidget* parent)
     : ModelPage("Thin-Film Interference", "EXPERIMENT 08 / Single film at normal incidence: reflection and transmission", "Thin-Film Interference", ctx, parent) {
-    addTabs({"Reflection", "Transmission"});
+    addTabs({"Reflection", "Transmission", "Colours"});
     m_lambda = addField("lambda", "Vacuum wavelength · λ", "nm", 600, 2);
     m_n = addField("n", "Film index · n", "", 1.5, 4, false, true, 0.01);
     m_t = addField("t", "Film thickness · t", "nm", 100, 2, false, true, 5);
+    m_swatch = new QLabel;
+    m_swatch->setObjectName("colourSwatch");
+    m_swatch->setFixedHeight(34);
+    m_swatch->setVisible(false);
+    m_fieldLayout->addWidget(m_swatch);
     m_canvas = new ThinFilmCanvas;
-    build("Film layers / two reflected rays", m_canvas, "Reflected intensity vs thickness", "Reflection: one phase reversal, bright at 2nt = (q + ½)λ. Transmission: no net reversal, bright at 2nt = qλ.");
+    build("Film layers / two reflected rays", m_canvas, "Reflected intensity vs thickness", "Reflection: one phase reversal, bright at 2nt = (q + ½)λ. Transmission: no net reversal, bright at 2nt = qλ. Colours: the whole visible band at once.");
     reset();
 }
 ModelReport ThinFilmPage::compute(const ReportContext& ctx) {
-    return WE::thinFilm({m_lambda->value(), m_n->value(), m_t->value(), m_tabs->current() == 1}, ctx);
+    ThinFilmInput in;
+    in.lambdaNm = m_lambda->value(); in.n = m_n->value(); in.thicknessNm = m_t->value();
+    in.transmission = m_tabs->current() == 1;
+    in.colours = m_tabs->current() == 2;
+    return WE::thinFilm(in, ctx);
+}
+
+QString ThinFilmPage::colourSwatch() {
+    if (m_tabs->current() != 2) return QString();                    // the swatch only exists on the Colours tab
+    const FilmColour c = thinFilmColour(m_t->value(), m_n->value());
+    return QString::fromStdString(c.hex);
 }
 void ThinFilmPage::updateCanvas() {
-    const bool transmission = m_tabs->current() == 1;
-    m_canvas->setInput({m_lambda->value(), m_n->value(), m_t->value(), transmission});
-    retitle(transmission ? "Film layers / transmitted beam" : "Film layers / two reflected rays",
-            transmission ? "Transmitted intensity vs thickness" : "Reflected intensity vs thickness");
+    const int tab = m_tabs->current();
+    const bool transmission = tab == 1;
+    ThinFilmInput in;
+    in.lambdaNm = m_lambda->value(); in.n = m_n->value(); in.thicknessNm = m_t->value();
+    in.transmission = transmission; in.colours = tab == 2;
+    m_canvas->setInput(in);
+    retitle(tab == 2 ? "Film layers / colour by thickness" : transmission ? "Film layers / transmitted beam" : "Film layers / two reflected rays",
+            tab == 2 ? "Reflectance of the whole spectrum" : transmission ? "Transmitted intensity vs thickness" : "Reflected intensity vs thickness");
+    if (m_swatch) {
+        const bool colours = tab == 2;
+        m_swatch->setVisible(colours);
+        if (colours) {
+            const FilmColour c = thinFilmColour(in.thicknessNm, in.n);
+            m_swatch->setStyleSheet(QString("background: %1; border: 1px solid #00000055; border-radius: 4px;").arg(QString::fromStdString(c.hex)));
+            m_swatch->setToolTip(c.hueNm > 0 ? QString("%1 nm dominant").arg(c.hueNm, 0, 'f', 0) : QString("neutral grey"));
+        }
+    }
 }
 void ThinFilmPage::resetFields() { m_lambda->setValue(600, 2); m_n->setValue(1.5, 4); m_t->setValue(100, 2); m_tabs->setCurrent(0); }
+// (the Colours tab keeps the same three inputs: λ marks a point, n and t decide the swatch)
 QString ThinFilmPage::runDescription() const {
     return QString("t %1 nm · n %2 · %3").arg(m_t->text(), m_n->text(), m_tabs->current() == 1 ? "transmission" : "reflection");
 }
@@ -224,56 +254,74 @@ QString ThinFilmPage::runDescription() const {
 // ============================================================================ diffraction grating
 GratingPage::GratingPage(AppContext* ctx, QWidget* parent)
     : ModelPage("Diffraction Grating", "EXPERIMENT 07 / Principal maxima of a transmission grating", "Diffraction Grating", ctx, parent) {
-    addTabs({"Transmission", "Orders"});
+    addTabs({"Transmission", "Orders", "Resolution"});
     m_density = addField("N", "Line density · N", "lines/cm", 5000, 0, false, true, 100);
     m_lambda = addField("lambda", "Wavelength · λ", "nm", 600, 2);
     m_order = addField("m", "Selected order · m", "order", 1, 0, true, true, 1);
     m_slits = addField("M", "Illuminated slit count · M", "slits", 20, 0, false, true, 1);
     m_incidence = addCombo("Incidence", {"Normal · 0.00°", "15.00°", "30.00°"}, {0, 15, 30});
     m_canvas = new GratingCanvas;
-    build("Grating / angular observation screen", m_canvas, "Diffracted intensity vs angle", "N is line density, not slit count. Transmission: intensity fan. Orders: every peak with its angle. M = 20 controls sharpness.");
+    build("Grating / angular observation screen", m_canvas, "Diffracted intensity vs angle", "N is line density, not slit count. Transmission: intensity fan. Orders: every peak with its angle. Resolution: R = m·M — raise M to split closer lines.");
     reset();
 }
 ModelReport GratingPage::compute(const ReportContext& ctx) {
+    if (m_tabs->current() == 2)                                        // the third tab: R = mN, δλ and the FSR
+        return WE::gratingResolution({m_density->value(), m_lambda->value(), std::max(1.0, m_order->value()), m_slits->value()}, ctx);
     return WE::grating({m_density->value(), m_lambda->value(), m_order->value(), m_slits->value(), m_incidence->currentData().toDouble(),
                         m_tabs->current() == 1}, ctx);
 }
 void GratingPage::updateCanvas() {
-    const bool orders = m_tabs->current() == 1;
+    const int tab = m_tabs->current();
+    const bool orders = tab == 1;
     m_canvas->setInput({m_density->value(), m_lambda->value(), m_order->value(), m_slits->value(), m_incidence->currentData().toDouble(), orders});
-    retitle(orders ? "Grating / every propagating order" : "Grating / angular observation screen",
-            orders ? "Order angles and where every peak sits" : "Diffracted intensity vs angle");
+    retitle(tab == 2 ? "Grating / two lines one Rayleigh step apart" : orders ? "Grating / every propagating order" : "Grating / angular observation screen",
+            tab == 2 ? "Single line and a just-resolved pair" : orders ? "Order angles and where every peak sits" : "Diffracted intensity vs angle");
 }
 void GratingPage::resetFields() { m_density->setValue(5000, 0); m_lambda->setValue(600, 2); m_order->setValue(1, 0); m_slits->setValue(20, 0); m_incidence->setCurrentIndex(0); m_tabs->setCurrent(0); }
 QString GratingPage::runDescription() const {
-    return QString("order %1 · N %2 /cm · %3").arg(m_order->text(), m_density->text(), m_tabs->current() == 1 ? "orders" : "transmission");
+    const int tab = m_tabs->current();
+    return QString("order %1 · N %2 /cm · %3").arg(m_order->text(), m_density->text(),
+                                                   tab == 2 ? "resolution" : tab == 1 ? "orders" : "transmission");
 }
 
 // ============================================================================ single slit
 SingleSlitPage::SingleSlitPage(AppContext* ctx, QWidget* parent)
     : ModelPage("Single-Slit Diffraction", "EXPERIMENT 06 / First minimum and central maximum width", "Single-Slit Diffraction", ctx, parent) {
-    addTabs({"Intensity", "Geometry"});
+    addTabs({"Intensity", "Geometry", "Envelope"});
     m_width = addField("a", "Slit width · a", "mm", 0.1, 4, false, true, 0.01);
     m_lambda = addField("lambda", "Wavelength · λ", "nm", 500, 2);
     m_screen = addField("L", "Screen distance · L", "m", 1.0, 4);
+    m_separation = addField("d", "Second slit · d (envelope tab)", "mm", 0.4, 4);
     m_wave = addCombo("Incident wave", {"Plane · coherent"}, {0});
     m_scale = addCombo("Intensity scale", {"Normalized · I/I₀"}, {0});
     m_canvas = new SingleSlitCanvas;
-    build("Slit / screen diffraction pattern", m_canvas, "Single-slit intensity vs angle", "Minima: a sin θ = mλ. Intensity: the envelope. Geometry: where each minimum lands, y ≈ m λL/a. Small-angle widths: w ≈ 2λL/a.");
+    build("Slit / screen diffraction pattern", m_canvas, "Single-slit intensity vs angle", "Minima: a sin θ = mλ. Intensity: the envelope. Geometry: where each minimum lands. Envelope: two slits of width a — fringes inside the envelope, missing orders at d/a.");
     reset();
 }
 ModelReport SingleSlitPage::compute(const ReportContext& ctx) {
+    if (m_tabs->current() == 2) {                                      // third tab: two slits of finite width
+        SingleSlitInput in;
+        in.widthMm = m_width->value(); in.lambdaNm = m_lambda->value(); in.screenM = m_screen->value();
+        in.separationMm = m_separation->value(); in.envelope = true;
+        return WE::doubleSlitEnvelope(in, ctx);
+    }
     return WE::singleSlit({m_width->value(), m_lambda->value(), m_screen->value(), m_tabs->current() == 1}, ctx);
 }
 void SingleSlitPage::updateCanvas() {
-    const bool geometry = m_tabs->current() == 1;
-    m_canvas->setInput({m_width->value(), m_lambda->value(), m_screen->value(), geometry});
-    retitle(geometry ? "Slit / where the minima land" : "Slit / screen diffraction pattern",
-            geometry ? "Minimum position vs order" : "Single-slit intensity vs angle");
+    const int tab = m_tabs->current();
+    const bool geometry = tab == 1;
+    SingleSlitInput in;
+    in.widthMm = m_width->value(); in.lambdaNm = m_lambda->value(); in.screenM = m_screen->value();
+    in.geometry = geometry; in.envelope = tab == 2; in.separationMm = m_separation->value();
+    m_canvas->setInput(in);
+    retitle(tab == 2 ? "Two slits / fringes inside the envelope" : geometry ? "Slit / where the minima land" : "Slit / screen diffraction pattern",
+            tab == 2 ? "Fringes and the slit envelope" : geometry ? "Minimum position vs order" : "Single-slit intensity vs angle");
 }
-void SingleSlitPage::resetFields() { m_width->setValue(0.1, 4); m_lambda->setValue(500, 2); m_screen->setValue(1.0, 4); m_wave->setCurrentIndex(0); m_scale->setCurrentIndex(0); m_tabs->setCurrent(0); }
+void SingleSlitPage::resetFields() { m_width->setValue(0.1, 4); m_lambda->setValue(500, 2); m_screen->setValue(1.0, 4); m_separation->setValue(0.4, 4); m_wave->setCurrentIndex(0); m_scale->setCurrentIndex(0); m_tabs->setCurrent(0); }
 QString SingleSlitPage::runDescription() const {
-    return QString("a %1 mm · λ %2 nm · %3").arg(m_width->text(), m_lambda->text(), m_tabs->current() == 1 ? "geometry" : "intensity");
+    const int tab = m_tabs->current();
+    return QString("a %1 mm · λ %2 nm · %3").arg(m_width->text(), m_lambda->text(),
+                                                 tab == 2 ? "envelope" : tab == 1 ? "geometry" : "intensity");
 }
 
 // ============================================================================ Malus + Brewster

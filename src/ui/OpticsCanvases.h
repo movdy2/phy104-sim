@@ -154,6 +154,19 @@ private:
     PolarizationInput m_in;
 };
 
+/// Thick lens: the real glass shape with both vertices, the principal planes H1/H2, the focal points and
+/// the marginal-ray spherical aberration (the paraxial focus and the marginal crossing are both marked).
+class ThickLensCanvas : public GridCanvas {
+    Q_OBJECT
+public:
+    explicit ThickLensCanvas(QWidget* p = nullptr) : GridCanvas(p) { setMinimumSize(300, 330); }
+    void setInput(const ThickLensInput& in) { m_in = in; update(); }
+protected:
+    void paintDiagram(QPainter& p, const QRectF& area) override;
+private:
+    ThickLensInput m_in;
+};
+
 /// Small amber line drawing for the dashboard cards.
 class PreviewIcon : public QWidget {
     Q_OBJECT

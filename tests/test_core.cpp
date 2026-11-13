@@ -16,6 +16,8 @@
 #include "MathCalculator.h"
 #include "PhysicsCalculator.h"
 #include "SolverEngine.h"
+#include "Spectrum.h"
+#include "ThickLens.h"
 
 #include <cmath>
 #include <iostream>
@@ -633,6 +635,99 @@ int main() {
         CHECK(kept.report.registers.size() == 2 && kept.report.registers[1].title == "LAST VALID / RUN 007" && kept.report.registers[1].resultValue == "1.5492 mm");
         // number helpers used above
         CHECK(NumberFormat::scientificCompact(5e-7) == "5×10⁻⁷" && NumberFormat::scientificCompact(1e-4) == "10⁻⁴" && NumberFormat::scientificCompact(600e-9) == "6×10⁻⁷");
+    }
+
+    // ====================================================================== v2.8 experiment extras
+    {
+        namespace WE = WaveExperiments;
+        namespace TL = ThickLens;
+        auto has = [](const LcdRegister& r, const std::string& text) { for (const auto& l : r.lines) if (l == text) return true; return false; };
+
+        // ---- thick lens: power, principal planes and the thin-lens limit
+        const TL::Result tl = TL::analyse({});
+        CHECK(tl.valid && tl.converging);
+        CHECK(near(tl.power, 0.096667, 1e-5) && near(tl.focalLength, 10.3448, 1e-3));
+        CHECK(near(tl.h1 + tl.h2, 0.0, 1e-9));                                     // a symmetric biconvex element
+        CHECK(near(tl.backFocal, tl.focalLength + tl.h2, 1e-9));                   // BFL is measured from V2
+        CHECK(tl.element == "Biconvex (converging)" && !tl.atInfinity && tl.imageFromH2 > 0 && tl.magnification < 0);
+        ThickLensInput thin = {}; thin.thickness = 0.0;                            // t = 0 must reduce to the thin lens
+        const TL::Result lim = TL::analyse(thin);
+        CHECK(near(lim.focalLength, 1.0 / (0.5 * (1.0 / 10.0 - 1.0 / -10.0)), 1e-9));
+        CHECK(near(lim.h1, 0.0, 1e-12) && near(lim.h2, 0.0, 1e-12));
+        CHECK(near(lim.imageFromH2, TL::thinLensImage(30.0, lim.focalLength), 1e-9));
+        // spherical aberration does not vanish when t -> 0: it is the APERTURE that causes it, so a small
+        // enough aperture is the only "negligible" case
+        CHECK(lim.saClass == "UNDER-CORRECTED");
+        ThickLensInput narrow = {}; narrow.diameter = 0.5;
+        CHECK(TL::analyse(narrow).saClass == "NEGLIGIBLE");
+
+        // ---- spherical aberration: grows with the aperture squared and points ahead of the paraxial focus
+        ThickLensInput small = {}, big = {};
+        small.diameter = 2.5; big.diameter = 10.0;
+        const double saSmall = TL::analyse(small).longitudinalSa, saBig = TL::analyse(big).longitudinalSa;
+        CHECK(near(saBig / saSmall, 16.0, 1e-6));                                  // ΔSA ∝ h²
+        CHECK(saSmall < 0 && TL::analyse(big).saClass == "UNDER-CORRECTED");       // marginal rays cross first
+        CHECK(near(TL::analyse(big).marginalFocus, TL::analyse(big).backFocal + saBig, 1e-12));
+
+        // ---- invalid elements are refused, not silently calculated
+        ThickLensInput window = {}; window.r1 = 1e9; window.r2 = 1e9;
+        CHECK(!TL::analyse(window).valid && !TL::analyse(window).error.empty());
+        ThickLensInput glass = {}; glass.n = 0.0;
+        CHECK(!TL::analyse(glass).valid);
+
+        // ---- the report of the thick-lens screen
+        const Report tlr = ER::thickLens({});
+        CHECK(tlr.valid && !tlr.paused && tlr.headline == "dᵢ = +15.6049 cm");
+        CHECK(tlr.registers[0].title == "THICK-LENS POWER / SI" && has(tlr.registers[0], "f = 1/P = +10.3448 cm"));
+        CHECK(tlr.registers[1].title == "PRINCIPAL PLANES / cm" && has(tlr.registers[1], "IMAGE: REAL · INVERTED"));
+        CHECK(tlr.notices[0].body.find("UNDER-CORRECTED") != std::string::npos);
+        CHECK(tlr.retained.resultValue == "+10.3448 cm" && ER::thickLensSweep({}).rows.size() == 12);
+        ThickLensInput bad = {}; bad.thickness = -1.0;
+        CHECK(ER::thickLens(bad).paused && ER::thickLens(bad).issues[0].field == "t");
+        // the second tab: one element, three colours, red focuses further out than blue
+        ThickLensInput spec = {}; spec.spectrum = true;
+        const Report sr = ER::thickLens(spec);
+        CHECK(sr.headline == "f(656.3 nm) = +10.0628 cm");
+        CHECK(has(sr.registers[0], "Blue C 486.1 nm: n = 1.52237  f = +9.9118 cm"));
+        CHECK(sr.registers[1].title == "ABBE NUMBER / DISPERSION" && near(std::stod(sr.registers[1].resultValue), 64.4, 0.1));
+
+        // ---- thin film: the colour of the film over the whole visible band
+        const FilmColour gold = thinFilmColour(100.0, 1.5);
+        CHECK(gold.hueNm > 560 && gold.hueNm < 640 && gold.meanReflectance > 0.7);
+        CHECK(gold.hex.size() == 7 && gold.hex[0] == '#');
+        CHECK(gold.lines.size() == 7 && near(gold.lines[4].reflectance, 1.0, 1e-9));         // 600 nm is a maximum
+        const FilmColour pale = thinFilmColour(2000.0, 1.5);
+        CHECK(pale.hueNm == 0.0 && thinFilmColourVisibility(2000.0, 1.5) < 0.01);            // thick film: grey
+        CHECK(thinFilmColourVisibility(100.0, 1.5) > 0.9);                                   // thin film: saturated
+        CHECK(near(thinFilmReflectance(200.0, 1.0, 400.0), 0.0, 1e-12));                     // 2nt = λ: dark
+        ThinFilmInput colours; colours.colours = true;
+        const ModelReport cr = WE::thinFilm(colours);
+        CHECK(cr.report.headline == "film 100 nm · 600 nm" && cr.report.registers[0].resultValue == "600 nm dominant");
+        CHECK(cr.report.registers[1].resultValue == cr.report.parameters[2].second);
+        CHECK(cr.chart.curve.size() == 401 && near(cr.chart.curve[0].first, 400.0) && near(cr.chart.curve.back().first, 700.0));
+
+        // ---- single slit + a second slit: envelope, fringes and the missing order
+        CHECK(near(WE::doubleSlitEnvelopeIntensity(0.0, 0.1, 0.4, 500.0), 1.0, 1e-9));
+        SingleSlitInput env; env.envelope = true;
+        const ModelReport er = WE::doubleSlitEnvelope(env);
+        CHECK(er.report.headline == "θ_env = 0.2865°" && er.report.registers[1].resultLabel == "FRINGES INSIDE THE ENVELOPE");
+        CHECK(er.report.registers[1].resultValue == "7 bright" && er.report.parameters.back().second == "envelope");
+        CHECK(er.report.notices[0].body.find("m = 4 is missing") != std::string::npos);      // d/a = 4: the 4th fringe vanishes
+        SingleSlitInput enBad; enBad.envelope = true; enBad.separationMm = 0.05;
+        CHECK(WE::doubleSlitEnvelope(enBad).report.paused && WE::doubleSlitEnvelope(enBad).report.issues[0].field == "d");
+        CHECK(near(WE::multiSlitFactor(0.0, 20), 1.0) && near(WE::multiSlitFactor(2 * 3.14159265358979, 20), 1.0, 1e-9));
+
+        // ---- grating resolving power and the free spectral range
+        const ModelReport gr = WE::gratingResolution({});
+        CHECK(gr.report.headline == "δλ = 5 nm" && gr.report.registers[0].resultValue == "5 nm");
+        CHECK(gr.report.registers[1].resultValue == "600 nm" && gr.report.parameters.back().second == "resolution");
+        CHECK(near(WE::gratingResolution({}).chart.curve[300].second, 1.0, 1e-3));           // the line peaks at λ
+        GratingResolutionInput wide = {}; wide.slits = 240;                                  // twice the lines, half the gap
+        CHECK(near(std::stod(std::string(WE::gratingResolution(wide).report.registers[0].resultValue).substr(0, 3)), 2.5, 1e-9));
+        GratingResolutionInput highOrder = {}; highOrder.order = 2;
+        CHECK(near(std::stod(WE::gratingResolution(highOrder).report.registers[1].resultValue), 300.0, 1e-9));
+        GratingResolutionInput impossible = {}; impossible.order = 4;                        // d/λ = 3.33: no 4th order
+        CHECK(WE::gratingResolution(impossible).report.paused);
     }
 
     // ====================================================================== printable report (HTML)

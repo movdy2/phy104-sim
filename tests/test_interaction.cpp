@@ -19,6 +19,7 @@
 #include "ui/ReportPage.h"
 #include "ui/SolverPage.h"
 #include "ui/StudyHubPage.h"
+#include "ui/ThickLensPage.h"
 #include "ui/ThemeManager.h"
 #include "ui/VirtualKeyboard.h"
 
@@ -674,6 +675,67 @@ private slots:
         chooseItem(comboWith(m_app->newton, "Reflected light"), 0);
         QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->newton), QString("1.5492 mm"), 1500);
     }
+    // ------------------------------------------------------------------ v2.8 experiment extras
+    void thickLensScreenShowsThePrincipalPlanesAndTheAberration() {
+        goTo(m_app->thickLens);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->thickLens), QString("+10.3448 cm"), 1500);   // the focal length register
+        // the magnification register (the second LCD card of the page, the first invisible one is skipped)
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->thickLens, 1), QString("-0.5085"), 1500);    // the magnification register
+        QVERIFY2(allLabelTexts(m_app->thickLens).contains("Thick element / principal planes"), "the diagram title is missing");
+        QVERIFY2(m_app->thickLens->elementName() == "Biconvex (converging)", "the element type is wrong");
+
+        // a bigger aperture makes the spherical aberration grow (△SA ∝ D²) and the notice says so
+        auto fields = m_app->thickLens->findChildren<UnitField*>();                            // R₁, R₂, n, n₀, t, D, dₒ
+        QVERIFY2(fields.size() >= 7, "the thick-lens fields are missing");
+        const QString smallSa = allLabelTexts(m_app->thickLens).join(" ");                      // carries the D = 5 cm aberration
+        typeInto(fields[5], "10");                                                             // D: 5 cm -> 10 cm
+        QTest::qWait(700);
+        const QString bigSa = allLabelTexts(m_app->thickLens).join(" ");
+        QVERIFY(bigSa.contains("1.0417"));
+        QVERIFY2(bigSa != smallSa, qPrintable(bigSa));                                          // four times the D = 5 cm value
+        typeInto(fields[5], "5");
+        QTest::qWait(700);
+
+        // the Spectrum tab: one element, three colours
+        click(modeTab(m_app->thickLens, "Spectrum"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->thickLens), QString("+10.0628 cm"), 1500);   // red 656 nm
+        QVERIFY2(allLabelTexts(m_app->thickLens).contains("Thick element / three colours"), "the spectrum title is missing");
+        click(modeTab(m_app->thickLens, "Thick lens"));
+        click(findButton(m_app->thickLens, "Reset parameters"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->thickLens), QString("+10.3448 cm"), 1500);
+    }
+    void filmColoursTabPaintsTheSwatchOfThePhysics() {
+        goTo(m_app->thinFilm);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->thinFilm), QString("1.0000"), 1500);
+        click(modeTab(m_app->thinFilm, "Colours"));
+        QTRY_VERIFY_WITH_TIMEOUT(allLabelTexts(m_app->thinFilm).contains("Film layers / colour by thickness"), 1500);
+        QString swatch = m_app->thinFilm->colourSwatch();
+        QVERIFY2(swatch.startsWith('#') && swatch.size() == 7, "no swatch colour for the film");
+        QTRY_VERIFY_WITH_TIMEOUT(allLabelTexts(m_app->thinFilm).join(" ").contains("600 nm dominant"), 1500);
+        click(findButton(m_app->thinFilm, "Reset parameters"));                              // back to the reflection tab
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->thinFilm), QString("1.0000"), 1500);
+        QVERIFY(m_app->thinFilm->colourSwatch().isEmpty());
+    }
+    void envelopeAndResolutionTabsCompleteTheWaveScreens() {
+        // single slit: two slits of finite width put fringes inside the envelope
+        goTo(m_app->singleSlit);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->singleSlit), QString("0.2865°"), 1500);
+        click(modeTab(m_app->singleSlit, "Envelope"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->singleSlit), QString("7 bright"), 1500);
+        QVERIFY2(allLabelTexts(m_app->singleSlit).contains("Two slits / fringes inside the envelope"), "envelope title missing");
+        click(findButton(m_app->singleSlit, "Reset parameters"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->singleSlit), QString("0.2865°"), 1500);
+
+        // grating: the Resolution tab resolves 600 nm / (1 × 120 lines) in the first order
+        goTo(m_app->grating);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->grating), QString("+17.4576°"), 1500);
+        click(modeTab(m_app->grating, "Resolution"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->grating), QString("5 nm"), 1500);            // δλ = 600 / (1 × 120)
+        QVERIFY2(allLabelTexts(m_app->grating).contains("Grating / two lines one Rayleigh step apart"), "resolution title missing");
+        click(findButton(m_app->grating, "Reset parameters"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->grating), QString("+17.4576°"), 1500);
+    }
+
     void remainingSecondTabsShowTheirOwnNumbers() {
         // grating: the Orders tab lists every peak instead of one selected order
         goTo(m_app->grating);
