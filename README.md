@@ -59,6 +59,17 @@ Core only (no Qt): `-DPHY104_BUILD_GUI=OFF`.
 CI (`.github/workflows/build.yml`) builds Linux (Qt 6 + ctest), Windows (MSVC + Qt 6.7.2) and a Qt-free `g++` core
 test on every push and pull request - the badge above shows the last run.
 
+### Keyboard shortcuts
+
+| keys | what it does |
+|---|---|
+| `Ctrl+S` | save the session (`.phy`) |
+| `Ctrl+Enter` | the main action of the page that is showing: **Calculate & Simulate** on the experiment screens, **Solve** on the Formula Solver |
+| `Ctrl+P` | open the **PDF Report** screen (preview, Save PDF, Print…) |
+| `Ctrl+1` … `Ctrl+9` | the first nine pages of the sidebar |
+| `Ctrl+Tab` | next page |
+| `F11` | full screen (the window starts maximised) |
+
 Developer option: `PHY104OpticalAssistant --screenshots <folder>` drives the UI (saves runs, exports a workbook,
 triggers error states) and writes a PNG of every page in both themes.
 
