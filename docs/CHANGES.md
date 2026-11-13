@@ -150,3 +150,17 @@ formula/variable, 25 random data sets), Qt UI, five experiments, notes, theme.
 * The full-width layout of 2.3 has its own regression test: at a 1920-px window the page container is wider than the
   old 1500-px cap and as wide as the page.
 
+---
+
+# Version 2.5 - polish
+
+* **The export screens no longer offer the export menu** (`Export (Excel/CSV)` and `PDF Report`): the icon points at
+  those very screens, so it is hidden there and stays on all the other pages.
+* **Window icon**: the amber scanning logo is now the taskbar / alt-tab icon and follows the theme.
+* **The theme choice is remembered** between runs (`QSettings("PHY104", "PHY104OpticalAssistant")` — one explicit
+  scope, so the session path of `QStandardPaths` does not change); `ThemeManager::storedDarkTheme()` is read by
+  `main()` before the UI is built.
+* `NotesExportPage` is now `NotesPage` (it no longer exports anything since 2.3).
+* Tests: the export menu is asserted to be gone from the two export screens, and the stored theme follows
+  `ThemeManager::apply()`.
+

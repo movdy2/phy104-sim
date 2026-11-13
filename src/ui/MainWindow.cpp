@@ -70,6 +70,11 @@ private:
 MainWindow::MainWindow(AppContext* ctx, const std::vector<KeyboardGroup>& keyboardLayout, QWidget* parent)
     : QMainWindow(parent), m_ctx(ctx) {
     setWindowTitle("PHY104 Optical Assistant — " + ctx->sessionFile);
+    const auto applyWindowIcon = [this] {
+        const Theme& t = ThemeManager::instance().theme();
+        setWindowIcon(Icons::get("scan-line", t.amber, t.amber, 64));     // taskbar / alt-tab icon
+    };
+    applyWindowIcon();
     resize(1280, 800);
     setMinimumSize(1080, 700);
 
@@ -203,8 +208,9 @@ MainWindow::MainWindow(AppContext* ctx, const std::vector<KeyboardGroup>& keyboa
         m_keyboard->setVisible(on);
     });
     connect(m_themeButton, &QPushButton::clicked, this, [this] { emit themeToggled(!ThemeManager::instance().isDark()); });
-    connect(&ThemeManager::instance(), &ThemeManager::themeChanged, this, [this] {
+    connect(&ThemeManager::instance(), &ThemeManager::themeChanged, this, [this, applyWindowIcon] {
         refreshIcons();
+        applyWindowIcon();
         m_themeButton->setText(ThemeManager::instance().isDark() ? "☾ Dark" : "☀ Light");
     });
     connect(m_stack, &QStackedWidget::currentChanged, this, [this] { refreshStatus(); });

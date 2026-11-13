@@ -24,6 +24,7 @@
 #include <QShowEvent>
 #include <QStandardPaths>
 #include <QTextBrowser>
+#include <QToolButton>
 #include <QTextCursor>
 #include <QTextDocument>
 #include <QTimer>
@@ -52,6 +53,7 @@ QImage grabWidget(QWidget* widget) {
 ReportPage::ReportPage(AppContext* ctx, QWidget* parent)
     : BasePage("PDF Report", "PRINT / Notes, registers, diagrams and charts of every experiment in one document",
                ctx, parent) {
+    exportButton()->hide();            // this IS the PDF screen: no menu pointing at itself
     auto cols = addThreeColumns(252, 268);
 
     // ---------------------------------------------------------------- left: what goes into the document

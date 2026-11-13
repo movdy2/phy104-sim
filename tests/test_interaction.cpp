@@ -15,7 +15,7 @@
 #include "ui/ScientificKeyboard.h"
 #include "ui/MarkdownWorkspace.h"
 #include "ui/MathSolverPage.h"
-#include "ui/NotesExportPage.h"
+#include "ui/NotesPage.h"
 #include "ui/ReportPage.h"
 #include "ui/SolverPage.h"
 #include "ui/ThemeManager.h"
@@ -247,6 +247,22 @@ private slots:
         QCOMPARE(m_app->context().log.savedCalculations(), runs + 1);
         win().openReportPage();                                            // what Ctrl+P does
         QCOMPARE(win().currentPage(), idx(m_app->reportPage));
+    }
+    void exportScreensDoNotOfferTheExportMenu() {
+        for (QWidget* page : QList<QWidget*>{m_app->exportPage, m_app->reportPage}) {
+            goTo(page);
+            auto* button = page->findChild<QToolButton*>("exportMenu");
+            QVERIFY2(button && !button->isVisibleTo(&win()), "the export screens still show the export menu");
+        }
+        goTo(m_app->prisms);                                     // ...while the experiment screens keep it
+        auto* button = m_app->prisms->findChild<QToolButton*>("exportMenu");
+        QVERIFY(button && button->isVisibleTo(&win()));
+    }
+    void theChosenThemeIsRemembered() {
+        ThemeManager::instance().apply(*qApp, false);
+        QCOMPARE(ThemeManager::storedDarkTheme(), false);
+        ThemeManager::instance().apply(*qApp, true);
+        QCOMPARE(ThemeManager::storedDarkTheme(), true);
     }
     void themeButtonTogglesRepeatedly() {
         const bool start = ThemeManager::instance().isDark();

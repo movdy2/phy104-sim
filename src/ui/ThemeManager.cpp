@@ -5,6 +5,7 @@
 #include <QFontDatabase>
 #include <QLineEdit>
 #include <QPalette>
+#include <QSettings>
 #include <QStyleFactory>
 
 namespace phy104 {
@@ -51,7 +52,18 @@ void ThemeManager::loadFonts() {
         QFontDatabase::addApplicationFont(f);
 }
 
+namespace {
+/// One settings scope for the whole application (the organisation name of QSettings() would be empty otherwise).
+QSettings* settingsScope() {
+    static QSettings settings("PHY104", "PHY104OpticalAssistant");
+    return &settings;
+}
+}
+
+bool ThemeManager::storedDarkTheme() { return settingsScope()->value("ui/dark", true).toBool(); }
+
 void ThemeManager::apply(QApplication& app, bool dark) {
+    settingsScope()->setValue("ui/dark", dark);       // remembered for the next start (see main.cpp)
     m_theme = dark ? Theme::figmaDark() : Theme::figmaLight();
     const Theme& t = m_theme;
 
