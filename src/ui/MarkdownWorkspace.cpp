@@ -354,13 +354,15 @@ QString MarkdownWorkspace::withFormulaImages(const QString& markdown, QList<QPai
     auto image = [&](const QString& formula) {
         const QString name = QString("latex://%1").arg(resources.size());
         resources.append({name, LatexRenderer::render(LatexRenderer::fromPlainMath(formula), f, pal.math, 2.0)});
-        return QString("![](%1)").arg(name);
+        return QString("![formula](%1)").arg(name);           // alt text is required: Qt's importer drops ![](...)
     };
     QStringList out;
     bool fenced = false;
     for (QString line : markdown.split('\n')) {
         if (line.trimmed().startsWith("```")) fenced = !fenced;
         if (!fenced) {
+            static const QRegularExpression emptyAlt("!\\[\\s*\\]\\(");   // QTextDocument drops images whose alt text is empty
+            line.replace(emptyAlt, "![image](");                          // give them one so the preview keeps them
             for (const QRegularExpression* re : {&block, &inl, &paren}) {
                 QString result;
                 int last = 0;

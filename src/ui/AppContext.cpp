@@ -37,6 +37,13 @@ void AppContext::appendNotes(const QString& markdown) {
     emit message("Sent to Notes");
 }
 
+void AppContext::recordExport(const ExportRecord& record) {
+    log.setLastExport(record);
+    saveSession();                                             // the recent export survives a restart
+    emit exportRecorded();
+    emit message("Exported " + QString::fromStdString(record.path));
+}
+
 bool AppContext::saveSession() {
     if (!m_store) return false;
     const bool ok = m_store->save(log);

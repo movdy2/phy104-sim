@@ -572,6 +572,34 @@ int main() {
         CHECK(near(std::stod(WE::michelson(half).report.registers[1].resultValue), 0.0, 1e-3));
         MichelsonInput badm; badm.n = 0.5;
         CHECK(WE::michelson(badm).report.paused);
+        // --- second mode tabs: Newton transmitted, Michelson fringe count, thin-film transmission
+        NewtonInput nt; nt.transmitted = true;
+        auto ntr = WE::newtonRings(nt);
+        CHECK(ntr.report.registers[0].title == "TRANSMITTED DARK RING" && has(ntr.report.registers[0], "rₘ² = (m + ½)λR / n"));
+        CHECK(ntr.report.registers[0].resultValue == "1.6432 mm" && ntr.report.registers[1].resultValue == "3.2863 mm");
+        CHECK(near(ntr.chart.marker[0].second, 2.7, 1e-9));                                                // r² at the m + ½ order
+        CHECK(ntr.report.registers[0].resultValue != nr.registers[0].resultValue);
+        MichelsonInput mf; mf.fringes = true;
+        auto fm = WE::michelson(mf);
+        CHECK(fm.report.registers[0].title == "FRINGE SPACING" && fm.report.registers[0].resultValue == "316.4000 nm");
+        CHECK(fm.report.registers[1].resultValue == "12.6422 fringes" && fm.chart.curve.size() == 601);
+        CHECK(near(fm.chart.xMin, -2.0) && near(fm.chart.xMax, 2.0) && near(fm.chart.marker[0].second, 0.1568, 1e-3));
+        MichelsonInput oneFringe; oneFringe.fringes = true; oneFringe.displacementUm = 0.3164;             // exactly λ/(2n): back to the same intensity
+        CHECK(near(WE::michelson(oneFringe).chart.marker[0].second, 1.0, 1e-3));
+        MichelsonInput piez; piez.fringes = true; piez.piezo = true;
+        bool piezoScan = false;
+        for (const auto& [key, value] : WE::michelson(piez).report.parameters) if (key == "mount" && value == "piezo scan") piezoScan = true;
+        CHECK(piezoScan);
+        CHECK(fm.report.parameters.back().second == "fringes" && mm.report.parameters.back().second == "displacement");
+        ThinFilmInput tf; tf.transmission = true;
+        auto ft = WE::thinFilm(tf);
+        CHECK(ft.report.registers[0].resultLabel == "NORMALIZED TRANSMISSION" && ft.report.registers[0].resultValue == "0.0000");
+        CHECK(ft.report.registers[1].title == "NO NET PHASE REVERSAL" && has(ft.report.registers[1], "Dark: 2nt = (q + ½)λ"));
+        CHECK(ft.report.registers[1].resultValue == "100.0000 nm" && has(ft.report.registers[0], "I_t/I_t,max = cos²(2πnt/λ)"));
+        CHECK(near(std::stod(ft.report.registers[0].resultValue) + std::stod(f.report.registers[0].resultValue), 1.0, 1e-9));   // complement
+        ThinFilmInput tb; tb.transmission = true; tb.thicknessNm = 200;                                     // 2nt = λ: bright
+        CHECK(near(std::stod(WE::thinFilm(tb).report.registers[0].resultValue), 1.0, 1e-9));
+        CHECK(near(WE::thinFilm(tb).chart.marker[0].second, 1.0, 1e-9));
         // every screen: the paused report keeps the last valid result
         ReportContext ctx{&nr, "RUN 007"};
         NewtonInput zero; zero.radiusM = 0;

@@ -163,7 +163,7 @@ DashboardPage::DashboardPage(AppContext* ctx, QWidget* parent)
     content()->addLayout(bottom);
 
     connect(openNotes, &QPushButton::clicked, this, [this] { emit openPageRequested(m_notesPage); });
-    connect(exportData, &QPushButton::clicked, this, [this] { emit openPageRequested(m_notesPage); });
+    connect(exportData, &QPushButton::clicked, this, [this] { emit openPageRequested(m_exportPage); });
     connect(ctx, &AppContext::snapshotChanged, this, &DashboardPage::refresh);
     connect(ctx, &AppContext::runsChanged, this, &DashboardPage::refresh);
     connect(ctx, &AppContext::notesSaved, this, &DashboardPage::refresh);

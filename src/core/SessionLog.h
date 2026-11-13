@@ -26,6 +26,17 @@ struct Snapshot {
     std::string notesContent;   // the study notes (Markdown) carried with this snapshot
 };
 
+/// The last file the Export page wrote ("recent export" card). Remembered in the .phy session,
+/// so it is still there after a restart.
+struct ExportRecord {
+    std::string path;           // full path of the file
+    std::string format;         // "Excel (.xlsx)" or "CSV (.csv)"
+    std::string series;         // id of the exported DataSeries, e.g. "refraction"
+    std::string when;           // "13 Nov 2026 · 01:42"
+    int rows = 0;
+    int columns = 0;
+};
+
 /// In-memory state of the lab session: saved runs, session notes and the latest snapshot
 /// of every experiment. Persistence is done by the data layer.
 class SessionLog {
@@ -60,6 +71,11 @@ public:
     const Drawing& drawing() const { return m_drawing; }
     void setDrawing(Drawing d) { m_drawing = std::move(d); }
 
+    /// Export page: the file written last (empty path = nothing exported yet).
+    const ExportRecord& lastExport() const { return m_lastExport; }
+    bool hasExport() const { return !m_lastExport.path.empty(); }
+    void setLastExport(ExportRecord record) { m_lastExport = std::move(record); }
+
     int sessionNumber() const { return m_sessionNumber; }
     void setSessionNumber(int n) { m_sessionNumber = n; }
 
@@ -72,6 +88,7 @@ private:
     std::string m_notes;
     std::vector<std::string> m_equations;
     Drawing m_drawing;
+    ExportRecord m_lastExport;
     int m_sessionNumber = 7;
 };
 

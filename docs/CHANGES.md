@@ -77,5 +77,21 @@ formula/variable, 25 random data sets), Qt UI, five experiments, notes, theme.
 * Nine new Figma frames: six experiments (Newton's rings, Michelson, thin film, diffraction grating, single slit, Malus/Brewster)
   with Save/Export header and Send to Notes; Equation Lab; "Scientific input" keyboard (Greek / Math operators / Functions / Variables).
 * keyboard.json: Figma layout + all 55 variables of variables.json. LaTeX-rendered formulas (notes preview, formula reference).
+* **Export (Excel/CSV)** is its own screen: every data series with its description and columns, the **full** table (the Notes
+  page shows a 7-row sample), the workbook/CSV settings on the right, and a **recent export** card that remembers the last
+  file in the `.phy` session (session format version 4; version 3 files still load). The Notes page keeps its quick export
+  and both write the same record. Dashboard "Export data" and the Export header of the six new screens open it.
+* **Second tabs do something**: the Fringes tab of Michelson, the Transmission tab of Thin-Film and the Viewing-mode
+  dropdown of Newton's rings now reach the engine instead of only resetting. Thin film shows `I_t/I_t,max = cos²(2πnt/λ)`
+  (the exact complement of the reflection tab, no net phase reversal, first dark at λ/(4n)) with the transmitted beam drawn
+  instead of R1/R2; Michelson keeps the mirror fixed and reports the spacing λ/(2n) and the fringe count over a ±2 µm sweep
+  on a 601-point chart; the beam-balance dropdown now really sets the fringe contrast V, the reference-arm dropdown puts
+  M1 on a piezo stack, and Newton's transmitted dark rings sit at half orders `(m + ½)λR/n`. Diagram and chart panels are
+  re-captioned per mode. Rewired: engine inputs grew a mode flag (`fringes`/`piezo`, `transmission`, `transmitted`).
+* **Draw Space** page: whiteboard for optics sketches (pen, line, ray, rectangle/ellipse, lens, mirror, prism, interface,
+  axis, normal, text and LaTeX labels), select/move, Delete, undo/redo, 8 px grid snap, six colours, three widths, PNG (2x)
+  and SVG export. The sketch autosaves into the `.phy` session and is restored on start (`Drawing` engine unchanged).
 * Fixed: formulas typed half-way (e.g. \frac{1}) crashed the LaTeX renderer.
-* KNOWN: the notes-preview LaTeX-image check in the interaction test was still being debugged when this patch was cut.
+* Fixed: the notes preview showed no formulas. Qt's Markdown importer silently drops an image with an empty alt text
+  (`![](…)`), so every generated formula image is now `![formula](latex://N)`; an image the student writes without alt
+  text is rescued to `![image](…)` before import (fenced code is left alone). The interaction test asserts both.

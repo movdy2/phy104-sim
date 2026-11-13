@@ -18,6 +18,8 @@ protected:
     ModeTabs* addTabs(const QStringList& tabs);
     /// Builds the three columns; call once, after the fields were added.
     void build(const QString& diagramTitle, QWidget* canvas, const QString& chartTitle, const QString& hint);
+    /// Re-captions the diagram and chart panels (the second tabs show a different picture).
+    void retitle(const QString& diagramTitle, const QString& chartTitle);
 
     virtual ModelReport compute(const ReportContext& ctx) = 0;
     virtual void updateCanvas() = 0;

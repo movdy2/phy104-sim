@@ -13,10 +13,12 @@ public:
     DashboardPage(AppContext* context, QWidget* parent = nullptr);
 
     void setNotesPage(int index) { m_notesPage = index; }
+    void setExportPage(int index) { m_exportPage = index; }
 
 private:
     void refresh();
     int m_notesPage = 5;
+    int m_exportPage = 5;
 
     QLabel* m_savedValue;
     QLabel* m_seriesValue;

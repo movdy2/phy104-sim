@@ -29,6 +29,8 @@ public:
     void setNotes(const QString& markdown);      // autosaves
     /// "Send to Notes": appends a Markdown block to the session notes, saves, and tells the notes page to reload.
     void appendNotes(const QString& markdown);
+    /// Export page: remembers the file that was just written (saved in the .phy session) and reports it.
+    void recordExport(const ExportRecord& record);
     /// Writes the .phy file. Returns false (and emits message) on failure.
     bool saveSession();
     QString lastSavedTime() const { return m_lastSaved; }
@@ -40,6 +42,7 @@ signals:
     void runsChanged();
     void notesSaved();
     void notesAppended();                        // the notes text was changed from outside the editor
+    void exportRecorded();                       // a file was exported: the "recent export" card refreshes
     void message(const QString& text);           // shown in the status bar
 
 private:

@@ -9,6 +9,7 @@
 
 #include <QCheckBox>
 #include <QComboBox>
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileDialog>
@@ -278,7 +279,15 @@ bool NotesExportPage::exportAs(bool xlsx) {
         file.write("\xEF\xBB\xBF");                                   // UTF-8 BOM: Excel shows θ, ₁ correctly
         file.write(QByteArray::fromStdString(DataExport::toCsv(*s)));
     }
-    emit m_ctx->message("Exported " + path);
+    file.close();
+    ExportRecord rec;                                                  // the Export page's "recent export" card
+    rec.path = path.toStdString();
+    rec.format = xlsx ? "Excel (.xlsx)" : "CSV (.csv)";
+    rec.series = s->id;
+    rec.rows = static_cast<int>(s->rows.size());
+    rec.columns = static_cast<int>(s->headers.size());
+    rec.when = QDateTime::currentDateTime().toString("dd MMM yyyy · HH:mm").toStdString();
+    m_ctx->recordExport(rec);
     return true;
 }
 

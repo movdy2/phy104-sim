@@ -9,6 +9,8 @@
 #include "ui/ExperimentPages.h"
 #include "ui/MainWindow.h"
 #include "ui/EquationLabPage.h"
+#include "ui/DrawSpacePage.h"
+#include "ui/ExportPage.h"
 #include "ui/MarkdownHighlighter.h"
 #include "ui/ModelExperimentPages.h"
 #include "ui/ScientificKeyboard.h"
@@ -24,6 +26,7 @@
 #include <QComboBox>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QLabel>
 #include <QLineEdit>
 #include <QSignalSpy>
@@ -38,6 +41,7 @@
 #include <QTextEdit>
 #include <QTextFragment>
 #include <QToolButton>
+#include <algorithm>
 
 using namespace phy104;
 
@@ -78,11 +82,39 @@ QStringList allLabelTexts(QWidget* root) {
     return out;
 }
 
+/// Press, move in four steps, release: what a mouse drag of a sketch shape does.
+void dragOnCanvas(DrawingCanvas* canvas, QPoint from, QPoint to) {
+    QTest::mousePress(canvas, Qt::LeftButton, Qt::NoModifier, from);
+    for (int i = 1; i <= 4; ++i) QTest::mouseMove(canvas, from + (to - from) * i / 4);
+    QTest::mouseRelease(canvas, Qt::LeftButton, Qt::NoModifier, to);
+}
+
 QString bigValue(QWidget* page, int index = 0) {
     QApplication::processEvents();
     QList<QLabel*> bigs;
     for (auto* l : page->findChildren<QLabel*>("lcdBig")) if (l->isVisibleTo(page->window())) bigs << l;
     return index < bigs.size() ? bigs[index]->text() : QString();
+}
+
+/// The real tab buttons inside a ModeTabs strip (objectName "modeTab").
+QPushButton* modeTab(QWidget* page, const QString& label) {
+    for (auto* b : page->findChildren<QPushButton*>(QStringLiteral("modeTab")))
+        if (b->text() == label) return b;
+    return nullptr;
+}
+
+QComboBox* comboWith(QWidget* page, const QString& itemText) {
+    for (auto* c : page->findChildren<QComboBox*>())
+        for (int i = 0; i < c->count(); ++i)
+            if (c->itemText(i) == itemText) return c;
+    return nullptr;
+}
+
+/// Picks an item the way the pages listen to it: `activated` is only emitted for user choices.
+void chooseItem(QComboBox* c, int index) {
+    QVERIFY2(c, "combo not found");
+    c->setCurrentIndex(index);
+    c->activated(index);
 }
 
 } // namespace
@@ -138,7 +170,7 @@ private slots:
         QCOMPARE(win().currentPage(), idx(m_app->notes));
         go(0);
         click(findButton(m_app->dashboard, "Export data"));
-        QVERIFY(win().currentPage() == idx(m_app->notes));
+        QCOMPARE(win().currentPage(), idx(m_app->exportPage));
     }
     void themeButtonTogglesRepeatedly() {
         const bool start = ThemeManager::instance().isDark();
@@ -411,6 +443,25 @@ private slots:
         QVERIFY(w->editor()->isVisible() && !w->preview()->isVisible());
         click(findButton(w, "Split"));
     }
+    void previewKeepsImagesWithoutAltText() {
+        auto* w = workspace();
+        w->setMode(MarkdownWorkspace::Preview);
+        w->setMarkdown("![](file:///tmp/phy104-diagram.png)");
+        int images = 0;                                                       // Qt drops ![](...), so the preview must rescue it
+        for (QTextBlock b = w->preview()->document()->begin(); b.isValid(); b = b.next())
+            for (auto it = b.begin(); !it.atEnd(); ++it)
+                if (it.fragment().charFormat().isImageFormat()) ++images;
+        QCOMPARE(images, 1);
+        w->setMarkdown("```\n![](not-an-image-in-a-fence.png)\n```");
+        int fenced = 0;                                                       // code blocks keep their text untouched
+        for (QTextBlock b = w->preview()->document()->begin(); b.isValid(); b = b.next())
+            for (auto it = b.begin(); !it.atEnd(); ++it)
+                if (it.fragment().charFormat().isImageFormat()) ++fenced;
+        QCOMPARE(fenced, 0);
+        QVERIFY(w->preview()->toPlainText().contains("![](not-an-image-in-a-fence.png)"));
+        w->setMarkdown("");
+        w->setMode(MarkdownWorkspace::Split);
+    }
     void toolbarFromPreviewModeSwitchesToSplit() {
         auto* w = workspace();
         w->setMode(MarkdownWorkspace::Preview);
@@ -489,6 +540,46 @@ private slots:
         goTo(m_app->newton);
         QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->newton, 1), QString("3.0984 mm"), 1500);
     }
+    void secondTabsAndDropdownsDriveTheDiagram() {
+        // --- thin film: the Transmission tab flips to the complementary intensity and re-captions both panels
+        goTo(m_app->thinFilm);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->thinFilm), QString("1.0000"), 1500);
+        click(modeTab(m_app->thinFilm, "Transmission"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->thinFilm), QString("0.0000"), 1500);          // t = 100 nm is dark in transmission
+        QVERIFY2(allLabelTexts(m_app->thinFilm).contains("Film layers / transmitted beam"), "diagram title did not follow the tab");
+        QVERIFY(allLabelTexts(m_app->thinFilm).contains("Transmitted intensity vs thickness"));
+        click(modeTab(m_app->thinFilm, "Reflection"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->thinFilm), QString("1.0000"), 1500);
+        QVERIFY(allLabelTexts(m_app->thinFilm).contains("Film layers / two reflected rays"));
+
+        // --- Michelson: the Fringes tab shows the pattern numbers instead of the displacement numbers
+        goTo(m_app->michelson);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->michelson), QString("+2.3704"), 1500);
+        click(modeTab(m_app->michelson, "Fringes"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->michelson), QString("316.4000 nm"), 1500);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->michelson, 1), QString("12.6422 fringes"), 1500);
+        QVERIFY2(allLabelTexts(m_app->michelson).contains("Optical bench / fringe pattern"), "bench title did not follow the tab");
+        // beam balance sets the contrast, not the fringe spacing
+        chooseItem(comboWith(m_app->michelson, "Unequal beams · V = 0.60"), 1);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->michelson), QString("316.4000 nm"), 1500);
+        QTRY_VERIFY_WITH_TIMEOUT(allLabelTexts(m_app->michelson).join(QStringLiteral(" ")).contains("contrast V = 0.60"), 1500);
+        // reference-arm dropdown: M1 on a piezo, and the diagram says so
+        chooseItem(comboWith(m_app->michelson, "M1 on a piezo (static)"), 1);
+        QTRY_VERIFY_WITH_TIMEOUT(allLabelTexts(m_app->michelson).contains("Optical bench / piezo scan of M1"), 1500);
+        click(modeTab(m_app->michelson, "Displacement"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->michelson), QString("+2.3704"), 1500);
+        click(findButton(m_app->michelson, "Reset parameters"));                                  // back to the defaults for later tests
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->michelson), QString("+2.3704"), 1500);
+
+        // --- Newton's rings: the viewing-mode dropdown now reaches the physics and the diagram
+        goTo(m_app->newton);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->newton), QString("1.5492 mm"), 1500);
+        chooseItem(comboWith(m_app->newton, "Transmitted light"), 1);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->newton), QString("1.6432 mm"), 1500);
+        QVERIFY(allLabelTexts(m_app->newton).contains("Lens on plate / transmitted rings"));
+        chooseItem(comboWith(m_app->newton, "Reflected light"), 0);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->newton), QString("1.5492 mm"), 1500);
+    }
     void newScreensHaveTheSaveExportHeader() {
         for (QWidget* page : QList<QWidget*>{m_app->newton, m_app->michelson, m_app->thinFilm, m_app->grating, m_app->singleSlit, m_app->polarization}) {
             goTo(page);
@@ -496,7 +587,7 @@ private slots:
             QVERIFY2(findButton(page, "Export"), "missing Export");
             QVERIFY2(!findButton(page, "Save session"), "old header still shown");
             click(findButton(page, "Export"));
-            QCOMPARE(win().currentPage(), idx(m_app->notes));                      // Export opens the export page
+            QCOMPARE(win().currentPage(), idx(m_app->exportPage));                 // Export opens the export page
         }
     }
     void newScreensCalculateAndSendToNotes() {
@@ -637,13 +728,166 @@ private slots:
         QVERIFY(!kb->isVisible() && !toggle->isChecked());
     }
 
-    // ------------------------------------------------------------------ export
+    // ------------------------------------------------------------------ export (Notes page keeps its quick export)
     void exportWorkbookButtonWritesAFile() {
         goTo(m_app->notes);
         const QString dir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/PHY104";
         QDir(dir).removeRecursively();
         click(findButton(m_app->notes, "Export workbook"));
         QVERIFY2(QFile::exists(dir + "/PHY104_refraction.xlsx"), qPrintable("no file in " + dir));
+    }
+
+    // ------------------------------------------------------------------ dedicated Export (Excel/CSV) page
+    const Snapshot* selectedSeries() {
+        auto* list = m_app->exportPage->seriesList();
+        if (!list || !list->currentItem()) return nullptr;
+        return m_app->context().log.snapshot(list->currentItem()->data(Qt::UserRole).toString().toStdString());
+    }
+    void exportPageListsEverySeriesAndDescribesIt() {
+        goTo(m_app->exportPage);
+        auto* list = m_app->exportPage->seriesList();
+        QVERIFY(list && list->count() > 0);
+        int withRows = 0;                                                       // every published series that has rows
+        for (const auto& entry : m_app->context().log.snapshots()) if (!entry.second.series.rows.empty()) ++withRows;
+        QCOMPARE(list->count(), withRows);
+        for (int i = 0; i < list->count(); ++i) {
+            list->setCurrentRow(i);
+            QApplication::processEvents();
+            const Snapshot* snap = selectedSeries();
+            QVERIFY2(snap && !snap->series.rows.empty(), "series without data in the list");
+            const QStringList texts = allLabelTexts(m_app->exportPage);
+            QVERIFY2(texts.contains(QString::fromStdString(snap->series.name)), "series name not described");
+            QVERIFY2(texts.contains(QString::fromStdString(snap->series.description)), "series description missing");
+        }
+    }
+    void exportPageShowsEveryRowOfTheChosenSeries() {
+        goTo(m_app->exportPage);
+        auto* list = m_app->exportPage->seriesList();
+        QVERIFY(list && list->count() > 0);
+        int mostRows = 0;
+        for (int i = 0; i < list->count(); ++i) {
+            list->setCurrentRow(i);
+            QApplication::processEvents();
+            const Snapshot* snap = selectedSeries();
+            QVERIFY(snap);
+            QCOMPARE(m_app->exportPage->previewTable()->rowCount(), static_cast<int>(snap->series.rows.size()));
+            QCOMPARE(m_app->exportPage->previewTable()->columnCount(), static_cast<int>(snap->series.headers.size()));
+            mostRows = std::max(mostRows, m_app->exportPage->previewTable()->rowCount());
+        }
+        QVERIFY2(mostRows > 7, "the dedicated page must show every row, not the 7-row sample of the Notes page");
+    }
+    void exportPageWritesBothFormatsAndRemembersTheFile() {
+        goTo(m_app->exportPage);
+        const Snapshot* snap = selectedSeries();
+        QVERIFY(snap);
+        const QString base = "PHY104_" + QString::fromStdString(snap->series.id).section('_', 0, 0);
+        const QString dir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/PHY104";
+        QDir(dir).removeRecursively();
+
+        click(findButton(m_app->exportPage, "Export workbook"));
+        QVERIFY2(QFile::exists(dir + "/" + base + ".xlsx"), qPrintable("no workbook in " + dir));
+        QCOMPARE(QString::fromStdString(m_app->context().log.lastExport().path), dir + "/" + base + ".xlsx");
+        QCOMPARE(QString::fromStdString(m_app->context().log.lastExport().format), QString("Excel (.xlsx)"));
+        QVERIFY(allLabelTexts(m_app->exportPage).contains(base + ".xlsx"));      // the recent-export card
+
+        click(findButton(m_app->exportPage, "Export as CSV instead"));
+        QVERIFY2(QFile::exists(dir + "/" + base + ".csv"), qPrintable("no CSV in " + dir));
+        QCOMPARE(QString::fromStdString(m_app->context().log.lastExport().format), QString("CSV (.csv)"));
+        QVERIFY(allLabelTexts(m_app->exportPage).contains(base + ".csv"));
+    }
+    void recentExportSurvivesARestart() {
+        QVERIFY(m_app->context().log.hasExport());                              // written by the test above
+        const QString path = QString::fromStdString(m_app->context().log.lastExport().path);
+        App second(App::Paths{DATA_DIR, m_tmp.path() + "/session.phy"});
+        QVERIFY(second.context().log.hasExport());
+        QCOMPARE(QString::fromStdString(second.context().log.lastExport().path), path);
+        QStringList texts;
+        for (auto* l : second.exportPage->findChildren<QLabel*>()) texts << l->text();
+        QVERIFY2(texts.contains(QFileInfo(path).fileName()), "the recent-export card forgot the file");
+    }
+
+    // ------------------------------------------------------------------ Draw Space
+    DrawSpacePage* drawSpace() { goTo(m_app->drawSpace); return m_app->drawSpace; }
+    void drawSpaceDrawsShapesAndUndoes() {
+        auto* page = drawSpace();
+        page->canvas()->clear();
+        QCOMPARE(static_cast<int>(page->canvas()->drawing().shapes.size()), 0);
+
+        page->setTool(DrawingCanvas::Pen);
+        dragOnCanvas(page->canvas(), QPoint(40, 40), QPoint(160, 120));
+        QCOMPARE(static_cast<int>(page->canvas()->drawing().shapes.size()), 1);
+        QCOMPARE(page->canvas()->drawing().shapes[0].type, ShapeType::Pen);
+        QVERIFY(page->canvas()->drawing().shapes[0].points.size() > 2);          // a real stroke, not a dot
+
+        page->setTool(DrawingCanvas::Lens);
+        dragOnCanvas(page->canvas(), QPoint(224, 56), QPoint(224, 200));
+        QCOMPARE(static_cast<int>(page->canvas()->drawing().shapes.size()), 2);
+        QCOMPARE(page->canvas()->drawing().shapes[1].type, ShapeType::Lens);
+
+        click(findButton(page, "Undo"));
+        QCOMPARE(static_cast<int>(page->canvas()->drawing().shapes.size()), 1);
+        click(findButton(page, "Redo"));
+        QCOMPARE(static_cast<int>(page->canvas()->drawing().shapes.size()), 2);
+
+        auto* edit = page->findChild<QLineEdit*>();                              // the label field
+        QVERIFY(edit);
+        edit->setText("\\theta_c");
+        page->setTool(DrawingCanvas::Equation);
+        QTest::mouseClick(page->canvas(), Qt::LeftButton, Qt::NoModifier, QPoint(200, 240));
+        QCOMPARE(static_cast<int>(page->canvas()->drawing().shapes.size()), 3);
+        QCOMPARE(page->canvas()->drawing().shapes[2].type, ShapeType::Equation);
+        QCOMPARE(QString::fromStdString(page->canvas()->drawing().shapes[2].text), QString("\\theta_c"));
+
+        click(findButton(page, "Clear sketch"));
+        QCOMPARE(static_cast<int>(page->canvas()->drawing().shapes.size()), 0);
+        click(findButton(page, "Undo"));                                           // the clear is undoable
+        QCOMPARE(static_cast<int>(page->canvas()->drawing().shapes.size()), 3);
+    }
+    void drawSpaceSelectsAndMovesAShape() {
+        auto* page = drawSpace();
+        page->canvas()->setSnapEnabled(false);                                     // exact pixels for the comparison
+        page->canvas()->clear();
+        page->setTool(DrawingCanvas::Rect);
+        dragOnCanvas(page->canvas(), QPoint(80, 80), QPoint(160, 160));
+        QCOMPARE(static_cast<int>(page->canvas()->drawing().shapes.size()), 1);
+
+        page->setTool(DrawingCanvas::Select);
+        dragOnCanvas(page->canvas(), QPoint(120, 80), QPoint(140, 100));           // grab the top edge and move it
+        const Rect box = DrawingGeometry::bounds(page->canvas()->drawing().shapes[0]);
+        QCOMPARE(box.left, 100.0);
+        QCOMPARE(box.top, 100.0);
+
+        QTest::keyClick(page->canvas(), Qt::Key_Delete);                           // Delete removes the selection
+        QCOMPARE(static_cast<int>(page->canvas()->drawing().shapes.size()), 0);
+        click(findButton(page, "Undo"));
+        QCOMPARE(static_cast<int>(page->canvas()->drawing().shapes.size()), 1);
+        page->canvas()->setSnapEnabled(true);
+    }
+    void drawSpaceSavesTheSketchInTheSession() {
+        auto* page = drawSpace();
+        page->canvas()->clear();
+        page->setTool(DrawingCanvas::Line);
+        dragOnCanvas(page->canvas(), QPoint(64, 64), QPoint(192, 64));
+        QCOMPARE(static_cast<int>(m_app->context().log.drawing().shapes.size()), 1);   // autosaved
+        QVERIFY(QFile::exists(m_tmp.path() + "/session.phy"));
+
+        App second(App::Paths{DATA_DIR, m_tmp.path() + "/session.phy"});
+        QCOMPARE(static_cast<int>(second.context().log.drawing().shapes.size()), 1);
+        QCOMPARE(static_cast<int>(second.drawSpace->canvas()->drawing().shapes.size()), 1);
+        QCOMPARE(second.drawSpace->canvas()->drawing().shapes[0].type, ShapeType::Line);
+    }
+    void drawSpaceExportsPngAndSvg() {
+        auto* page = drawSpace();
+        if (page->canvas()->drawing().shapes.empty()) {
+            page->setTool(DrawingCanvas::Ray);
+            dragOnCanvas(page->canvas(), QPoint(64, 160), QPoint(240, 160));
+        }
+        const QString dir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/PHY104";
+        QDir(dir).removeRecursively();
+        QVERIFY(page->exportPngTo(dir + "/sketch.png"));
+        QVERIFY(QFileInfo(dir + "/sketch.png").size() > 0);
+        QVERIFY(page->exportSvgTo(dir + "/sketch.svg"));
+        QVERIFY(QFileInfo(dir + "/sketch.svg").size() > 100);
     }
 };
 

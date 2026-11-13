@@ -230,10 +230,10 @@ QToolButton#fmt::menu-indicator { image: none; }
 QTableWidget#previewTable QHeaderView::section { color: @amber@; font-size: 10px; }
 QTextBrowser, QTextEdit { background: transparent; color: @text@; border: none; selection-background-color: @amber@; selection-color: @bg@; }
 QListWidget { background: @card@; color: @text@; border: 1px solid @border@; border-radius: 6px; outline: 0; }
-QListWidget#diagramList { padding: 4px; }
-QListWidget#diagramList::item { padding: 10px 12px; border-radius: 4px; }
-QListWidget#diagramList::item:selected { background: @amber@; color: @bg@; font-weight: 600; }
-QListWidget#diagramList::item:hover:!selected { background: @cardHover@; }
+QListWidget#diagramList, QListWidget#seriesList { padding: 4px; }
+QListWidget#diagramList::item, QListWidget#seriesList::item { padding: 10px 12px; border-radius: 4px; }
+QListWidget#diagramList::item:selected, QListWidget#seriesList::item:selected { background: @amber@; color: @bg@; font-weight: 600; }
+QListWidget#diagramList::item:hover:!selected, QListWidget#seriesList::item:hover:!selected { background: @cardHover@; }
 QTabWidget::pane { border: 1px solid @border@; border-radius: 6px; top: -1px; }
 QTabBar::tab { background: @card@; color: @muted@; padding: 8px 14px; border: 1px solid @border@; border-bottom: none; border-top-left-radius: 4px; border-top-right-radius: 4px; margin-right: 2px; }
 QTabBar::tab:selected { background: @bg@; color: @amber@; font-weight: 600; }

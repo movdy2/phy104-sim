@@ -25,9 +25,12 @@ struct ModelReport {
     ChartData chart;
 };
 
-struct NewtonInput    { double lambdaNm = 600, radiusM = 1.0, order = 4, n = 1.0; };
-struct MichelsonInput { double lambdaNm = 632.8, displacementUm = 0.75, n = 1.0, visibility = 1.0; };
-struct ThinFilmInput  { double lambdaNm = 600, n = 1.5, thicknessNm = 100; };
+/// `transmitted` picks the second mode tab: reflected (false) or transmitted (true) light.
+struct NewtonInput    { double lambdaNm = 600, radiusM = 1.0, order = 4, n = 1.0; bool transmitted = false; };
+/// `fringes` and `piezo` are the second tab: count/tune fringes instead of stepping the mirror by Δx.
+struct MichelsonInput { double lambdaNm = 632.8, displacementUm = 0.75, n = 1.0, visibility = 1.0; bool fringes = false, piezo = false; };
+/// `transmission` picks the second mode tab: reflected (false) or transmitted (true) light.
+struct ThinFilmInput  { double lambdaNm = 600, n = 1.5, thicknessNm = 100; bool transmission = false; };
 struct GratingInput   { double linesPerCm = 5000, lambdaNm = 600, order = 1, slits = 20, incidenceDeg = 0; };
 struct SingleSlitInput{ double widthMm = 0.1, lambdaNm = 500, screenM = 1.0; };
 struct PolarizationInput { double incidentIntensity = 100, angleDeg = 60, n1 = 1.0, n2 = 1.5; bool unpolarized = true; };

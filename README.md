@@ -14,8 +14,10 @@ Windows and Linux. No database, no network. The UI follows the Figma design `opt
 Markdown editor with live preview (Edit / Split / Preview) and Gruvbox colour coding: `#` yellow 18 pt, `##` orange 14 pt,
 `###` green 12 pt, `####` red 11 pt (exam warning), formulas (`$...$`, `$$...$$`, `` `code` ``, bracketed maths) aqua in JetBrains Mono,
 bullets light grey. Snippet toolbar (θ λ φ δ Δ n₁ n₂ sin arcsin ... and a formulas menu) and a **Problem template**
-(`### Given:` / `### Formula:` / `### Substitution & Solution:`). Notes autosave ~0.7 s after typing into the session,
-into every snapshot's `notesContent`, and into the `.phy` file.
+(`### Given:` / `### Formula:` / `### Substitution & Solution:`). In the preview every formula is drawn as a LaTeX image
+by `LatexRenderer`; Qt's Markdown importer drops images with an empty alt text, so each formula image carries an alt text
+(`![formula](latex://N)`) and an image written as `![](…)` is given one before import. Notes autosave ~0.7 s after typing
+into the session, into every snapshot's `notesContent`, and into the `.phy` file.
 
 ## Screens
 
@@ -26,7 +28,10 @@ into every snapshot's `notesContent`, and into the `.phy` file.
 | **Lenses & Mirrors** | thin lens and spherical mirror (same equations), principal rays, image properties |
 | **Prisms** | ray path, minimum deviation, deviation curve, dispersion mode (red / λ / violet rays) |
 | **Wave Interference** | Young's double slit: wavefronts, fringes, intensity profile, 6 light-source presets |
-| **Formulas & Notes** / **Export** | formula reference, Markdown session notes, Excel (.xlsx) and CSV export with preview |
+| **Polarization**, **Single slit**, **Grating**, **Thin film**, **Michelson**, **Newton's rings** | the six screens of the second Figma batch (Save / Export header, Send to Notes); thin film and Michelson have a **second tab** (transmission / fringe count) and Newton's viewing-mode dropdown switches to the transmitted rings |
+| **Notes** | formula reference, Markdown study workspace (live LaTeX preview), quick Excel/CSV export |
+| *Tools:* **Export (Excel/CSV)** | data series and what it contains, every row of the table, workbook/CSV settings, remembered recent export |
+| *Tools:* **Draw Space** | sketchpad: pen, lines, rays, lenses, mirrors, prisms, interfaces, axes, normals, text and LaTeX labels; move/undo, PNG + SVG |
 | *Tools:* **Formula Solver** | 42 formulas in 7 chapters: search, chapter filter, paging, LaTeX, LCD input/answer |
 | *Tools:* **Calculator** | free math mode (functions, `pi`, `e`, `Ans`, DEG/RAD), bounded history |
 | *Tools:* **Constants**, **Optical Setups** | constants with search/copy; six SVG diagrams with PNG export |
