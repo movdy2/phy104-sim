@@ -621,13 +621,16 @@ private slots:
         w->editor()->setFocus();
         QSignalSpy spy(w, &MarkdownWorkspace::contentChanged);
         typeText(w->editor(), QString::fromUtf8("# Study notes"));
-        QCOMPARE(spy.count(), 0);                                                   // debounced: nothing written per keystroke
-        QTRY_COMPARE_WITH_TIMEOUT(spy.count(), 1, 2500);
-        QCOMPARE(QString::fromStdString(m_app->context().log.notes()), QString("# Study notes"));
+        QVERIFY2(spy.count() == 0, qPrintable(QString("autosave fired before debounce: %1 signal(s)").arg(spy.count())));
+        QTRY_VERIFY_WITH_TIMEOUT(spy.count() == 1, 2500);
+        const QString savedNotes = QString::fromStdString(m_app->context().log.notes());
+        QVERIFY2(savedNotes == "# Study notes", qPrintable(QString("saved notes mismatch: '%1'").arg(savedNotes)));
         for (const char* name : {"Refraction & TIR", "Lenses & Mirrors", "Prisms", "Wave Interference"}) {
             const Snapshot* snap = m_app->context().log.snapshot(name);
             QVERIFY2(snap, name);
-            QCOMPARE(QString::fromStdString(snap->notesContent), QString("# Study notes"));
+            const QString snapshotNotes = QString::fromStdString(snap->notesContent);
+            QVERIFY2(snapshotNotes == "# Study notes",
+                     qPrintable(QString("snapshot '%1' notes mismatch: '%2'").arg(QString::fromUtf8(name), snapshotNotes)));
         }
     }
     void loadingTextDoesNotTriggerAnAutosave() {
