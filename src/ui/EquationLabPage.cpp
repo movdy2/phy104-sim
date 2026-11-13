@@ -57,7 +57,7 @@ EquationLabPage::EquationLabPage(AppContext* ctx, std::vector<ScientificPage> ke
     row->setSpacing(12);
 
     // ---------------------------------------------------------------- left: LaTeX source
-    m_sourcePanel = new Panel("LaTeX source", "MATH MODE");
+    m_sourcePanel = new Panel("LaTeX source");
     auto* bar = new QHBoxLayout;
     auto* templates = new QToolButton;
     templates->setObjectName("fmt");

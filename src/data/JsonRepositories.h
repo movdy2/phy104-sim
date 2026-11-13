@@ -54,6 +54,15 @@ private:
     QString m_path;
 };
 
+/// data/study_hub.json - a JSON array of chapters (order = course order, no map: the names are the titles).
+class JsonStudyHubRepository : public IStudyHubRepository {
+public:
+    explicit JsonStudyHubRepository(QString path) : m_path(std::move(path)) {}
+    std::vector<StudyTopic> loadAll() const override;
+private:
+    QString m_path;
+};
+
 /// The ".phy" session file: JSON with the saved runs and the session notes.
 class JsonSessionStore : public ISessionStore {
 public:

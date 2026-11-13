@@ -28,15 +28,35 @@ int main() {
         JsonKeyboardRepository keyboard(dir + "/keyboard.json");
         JsonPresetsRepository presetsRepo(dir + "/optics_presets.json");
         JsonReferenceRepository referenceRepo(dir + "/reference.json");
+        JsonStudyHubRepository studyHub(dir + "/study_hub.json");
 
         FormulaEngine engine(std::make_unique<JsonFormulaRepository>(dir + "/formulas.json"), vars, consts);
         SolverEngine solver(consts.loadAll());
 
         std::cout << engine.formulas().size() << " formulas, " << vars.loadAll().size() << " variables, "
                   << consts.loadAll().size() << " constants, " << keyboard.loadAll().size()
-                  << " keyboard groups, " << referenceRepo.loadAll().size() << " reference topics\n";
+                  << " keyboard groups, " << referenceRepo.loadAll().size() << " reference topics, " << studyHub.loadAll().size() << " study chapters\n";
 
         for (const auto& w : engine.warnings()) { std::cerr << "DATA WARNING: " << w << "\n"; ++failures; }
+
+        // ---- the Study Hub: a JSON ARRAY of chapters, in course order, every rule with its explanation ----
+        {
+            auto expectData = [&](bool ok, const std::string& what) { if (!ok) { ++failures; std::cerr << "FAIL: " << what << "\n"; } };
+            const auto topics = studyHub.loadAll();
+            expectData(topics.size() >= 8, "study hub has at least 8 chapters");
+            expectData(topics.front().id == "refraction" && topics.front().title.find("Refraction") != std::string::npos,
+                       "the study hub keeps the order of the JSON array (first chapter)");
+            for (const auto& t : topics) {
+                expectData(!t.id.empty() && !t.title.empty() && !t.chapter.empty(), "study chapter has id/title/chapter: " + t.title);
+                expectData(!t.summary.empty(), "study chapter has a summary: " + t.title);
+                expectData(!t.rules.empty(), "study chapter has rules: " + t.title);
+                for (const auto& r : t.rules) {
+                    expectData(!r.formula.empty(), "rule has a formula: " + t.title);
+                    expectData(!r.explain.empty(), "rule is explained: " + t.title);
+                }
+                for (const auto& c : t.constants) expectData(!c.name.empty() && !c.value.empty(), "constant has name + value: " + t.title);
+            }
+        }
 
         // ---- chapters + FormulaManager on the real data ----
         auto expect = [&](bool ok, const std::string& what) { if (!ok) { ++failures; std::cerr << "FAIL: " << what << "\n"; } };

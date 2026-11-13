@@ -120,10 +120,6 @@ ExportPage::ExportPage(AppContext* ctx, QWidget* parent)
     m_secondary->setObjectName("secondary");
     m_print = new QPushButton("Print…");
     m_print->setObjectName("secondary");
-    auto* hint = new QLabel("CSV: the chosen series as UTF-8. Excel also includes notes and calculation steps.");
-    hint->setObjectName("hint");
-    hint->setWordWrap(true);
-
     auto* sb = settings->body();
     sb->setSpacing(8);
     sb->addWidget(m_format);
@@ -135,7 +131,6 @@ ExportPage::ExportPage(AppContext* ctx, QWidget* parent)
     sb->addWidget(m_primary);
     sb->addWidget(m_secondary);
     sb->addWidget(m_print);
-    sb->addWidget(hint);
     sb->addStretch();
     cols.right->addWidget(settings, 1);
 

@@ -113,6 +113,28 @@ std::vector<ReferenceTopic> JsonReferenceRepository::loadAll() const {
     return result;
 }
 
+std::vector<StudyTopic> JsonStudyHubRepository::loadAll() const {
+    std::vector<StudyTopic> topics;
+    for (const auto& item : JsonLoader::loadArray(m_path)) {
+        const QJsonObject o = item.toObject();
+        StudyTopic topic;
+        topic.id = str(o, "id", false);
+        topic.title = str(o, "title");
+        topic.chapter = str(o, "chapter", false);
+        topic.summary = str(o, "summary");
+        for (const auto& r : o.value("rules").toArray()) {
+            const QJsonObject rule = r.toObject();
+            topic.rules.push_back({str(rule, "formula"), str(rule, "explain", false)});
+        }
+        for (const auto& c : o.value("constants").toArray()) {
+            const QJsonObject constant = c.toObject();
+            topic.constants.push_back({str(constant, "name"), str(constant, "value")});
+        }
+        topics.push_back(std::move(topic));
+    }
+    return topics;
+}
+
 std::string JsonReferenceRepository::unitDiscipline() const {
     const QJsonObject o = JsonLoader::loadObject(m_path).value("unitDiscipline").toObject();
     return str(o, "title", false) + "\n" + str(o, "text", false);

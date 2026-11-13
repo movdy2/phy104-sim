@@ -16,7 +16,7 @@ Theme Theme::figmaDark() {
     t.bg = "#282828";   t.sidebar = "#3c3836";  t.titleBar = "#1d2021";
     t.card = "#3c3836"; t.cardHover = "#504945"; t.input = "#282828";
     t.canvas = "#1d2021"; t.grid = "#2e2c2b";   t.border = "#504945";
-    t.text = "#ebdbb2"; t.muted = "#a89984";    t.dim = "#928374";
+    t.text = "#ebdbb2"; t.muted = "#d5c4a1";    t.dim = "#c7b9a8";   // small grey text: brighter, still quieter than the body
     t.amber = "#d79921"; t.amberHover = "#e5ac39"; t.amberPressed = "#b57614"; t.amberTint = QColor(215, 153, 33, 36);
     t.lime = "#b8bb26"; t.error = "#fb4934";    t.errorBg = "#442e2a";
     t.sage = "#8fb5a5";
@@ -28,10 +28,11 @@ Theme Theme::figmaDark() {
 Theme Theme::figmaLight() {
     Theme t;
     t.dark = false;
-    t.bg = "#fbf1c7";   t.sidebar = "#ebdbb2";  t.titleBar = "#f2e5bc";
-    t.card = "#ebdbb2"; t.cardHover = "#d5c4a1"; t.input = "#fbf1c7";
-    t.canvas = "#f2e5bc"; t.grid = "#e3d4a8";   t.border = "#d5c4a1";
-    t.text = "#3c3836"; t.muted = "#665c54";    t.dim = "#7c6f64";
+    // the light theme of the Figma sheet was too white: paper, cards and canvas are all one step darker now
+    t.bg = "#f0e2b8";   t.sidebar = "#e2d0a4";  t.titleBar = "#e9daae";
+    t.card = "#e5d3a8"; t.cardHover = "#d9c69a"; t.input = "#f6ebcd";
+    t.canvas = "#e8dab0"; t.grid = "#dccc9f";   t.border = "#cbb98d";
+    t.text = "#3c3836"; t.muted = "#4f4a45";    t.dim = "#5c534d";
     t.amber = "#b57614"; t.amberHover = "#d79921"; t.amberPressed = "#9d6a0f"; t.amberTint = QColor(181, 118, 20, 34);
     t.lime = "#79740e"; t.error = "#9d0006";    t.errorBg = "#f4d9bf";
     t.sage = "#427b58";
@@ -96,6 +97,7 @@ void ThemeManager::polishLcdInput(QLineEdit* edit) {
 }
 
 QString ThemeManager::styleSheet(const Theme& t) {
+    // MSVC rejects a single string literal over 16380 bytes (C2026): the sheet is appended in three parts.
     QString css = R"CSS(
 * { font-family: 'Inter'; }
 QMainWindow, QWidget#central, QWidget#pageArea { background: @bg@; }
@@ -175,7 +177,8 @@ QCheckBox { color: @text@; spacing: 8px; font-size: 12px; }
 QCheckBox::indicator { width: 16px; height: 16px; border: 1px solid @border@; border-radius: 3px; background: @input@; }
 QCheckBox::indicator:checked { background: @amber@; border-color: @amber@; image: url(:/icons/check.svg); }
 
-/* ---------- buttons ---------- */
+)CSS";
+    css += R"CSS(/* ---------- buttons ---------- */
 QPushButton { background: @card@; color: @text@; border: 1px solid @border@; border-radius: 4px; padding: 6px 14px; font-size: 12px; }
 QPushButton:hover { border-color: @amber@; }
 QPushButton:pressed { background: @bg@; }
@@ -223,7 +226,16 @@ QPushButton#rkey:pressed, QPushButton#rkeyCtl:pressed { background: @amber@; col
 QPushButton#rkey:disabled { color: @dim@; }
 QPushButton#rkeyCtl[latched="true"] { background: @amberTint@; color: @amber@; border-color: @amber@; }
 
-/* ---------- notices ---------- */
+/* ---------- study hub ---------- */
+QLabel#studyTitle { font-size: 16px; font-weight: 600; color: @text@; }
+QLabel#studyBody { font-size: 12px; color: @muted@; }
+QFrame#ruleLine { border: none; border-top: 1px solid @border@; max-height: 1px; }
+QListWidget#studyTopics { background: transparent; border: none; font-size: 12px; }
+QListWidget#studyTopics::item { min-height: 30px; padding: 2px 6px; border-radius: 4px; }
+QListWidget#studyTopics::item:selected { background: @amberTint@; color: @amber@; }
+
+)CSS";
+    css += R"CSS(/* ---------- notices ---------- */
 QFrame#notice { background: @bg@; border: 1px solid @border@; border-radius: 6px; }
 QFrame#notice[error="true"] { background: @errorBg@; border: 1px solid @error@; }
 QLabel#noticeTitle { font-size: 12px; font-weight: 600; color: @amber@; }

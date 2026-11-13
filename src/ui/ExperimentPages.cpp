@@ -254,7 +254,7 @@ RefractionPage::RefractionPage(AppContext* ctx, QWidget* parent)
     m_diagram->body()->setContentsMargins(0, 0, 0, 0);
     m_diagram->body()->addWidget(m_canvasStack);
     m_chart = new LineChart;
-    m_chartPanel = new Panel("Regression analysis", "QT CHARTS");
+    m_chartPanel = new Panel("Regression analysis", "");
     m_chartPanel->body()->setContentsMargins(0, 0, 0, 0);
     m_chartPanel->body()->addWidget(m_chart);
     cols.center->addWidget(m_diagram, 3);
@@ -269,7 +269,7 @@ RefractionPage::RefractionPage(AppContext* ctx, QWidget* parent)
     cols.right->addWidget(m_results);
     cols.right->addWidget(m_notice);
     cols.right->addStretch();
-    setPanels(m_diagram, m_chartPanel, m_results, "LIVE · 1:1", "QT CHARTS");
+    setPanels(m_diagram, m_chartPanel, m_results, "LIVE · 1:1", "");
 
     connect(m_med1, &QComboBox::activated, this, [this] { onMediumChosen(m_med1, m_n1); });
     connect(m_med2, &QComboBox::activated, this, [this] { onMediumChosen(m_med2, m_n2); });
@@ -457,7 +457,7 @@ LensesPage::LensesPage(AppContext* ctx, QWidget* parent)
     m_mirrorBigPanel->body()->setContentsMargins(0, 0, 0, 0);
     m_mirrorBigPanel->body()->addWidget(m_mirrorBig);
     m_chart = new LineChart;
-    m_chartPanel = new Panel("Image distance vs object distance", "QT CHARTS");
+    m_chartPanel = new Panel("Image distance vs object distance", "");
     m_chartPanel->body()->setContentsMargins(0, 0, 0, 0);
     m_chartPanel->body()->addWidget(m_chart);
     mp->addWidget(m_mirrorBigPanel, 3);
@@ -478,7 +478,7 @@ LensesPage::LensesPage(AppContext* ctx, QWidget* parent)
     cols.right->addWidget(m_notice);
     cols.right->addWidget(m_caption);
     cols.right->addStretch();
-    setPanels(m_lensPanel, m_chartPanel, m_results, "SCALE: cm", "QT CHARTS");
+    setPanels(m_lensPanel, m_chartPanel, m_results, "SCALE: cm", "");
 
     connect(m_mode, &ModeTabs::currentChanged, this, [this] { updateModeTexts(); apply(false); });
     connect(m_type, &QComboBox::activated, this, [this] { onTypeChosen(); });
@@ -499,7 +499,7 @@ void LensesPage::updateModeTexts() {
     m_radiusBlock->setVisible(mirror);
     m_centerStack->setCurrentIndex(mirror ? 1 : 0);
     setUnitsTag(mirror ? "DISTANCES · cm" : "SI UNITS · DEG");
-    setPanels(mirror ? m_mirrorBigPanel : m_lensPanel, m_chartPanel, m_results, "SCALE: cm", "QT CHARTS");
+    setPanels(mirror ? m_mirrorBigPanel : m_lensPanel, m_chartPanel, m_results, "SCALE: cm", "");
     setNormalHint(mirror ? "Real-is-positive. For a convex mirror, f and R are negative: the focus and center lie behind the mirror."
                          : "Real-is-positive. Distances measured from the optical element.");
 }
@@ -667,7 +667,7 @@ PrismsPage::PrismsPage(AppContext* ctx, QWidget* parent)
     m_diagram->body()->setContentsMargins(0, 0, 0, 0);
     m_diagram->body()->addWidget(m_canvas);
     m_chart = new LineChart;
-    m_chartPanel = new Panel("Deviation vs. incidence angle", "QT CHARTS");
+    m_chartPanel = new Panel("Deviation vs. incidence angle", "");
     m_chartPanel->body()->setContentsMargins(0, 0, 0, 0);
     m_chartPanel->body()->addWidget(m_chart);
     cols.center->addWidget(m_diagram, 3);
@@ -685,7 +685,7 @@ PrismsPage::PrismsPage(AppContext* ctx, QWidget* parent)
     cols.right->addWidget(m_results);
     cols.right->addWidget(m_noticeExit);
     cols.right->addStretch();
-    setPanels(m_diagram, m_chartPanel, m_results, "SYMMETRIC PASSAGE", "QT CHARTS");
+    setPanels(m_diagram, m_chartPanel, m_results, "SYMMETRIC PASSAGE", "");
 
     connect(m_mode, &ModeTabs::currentChanged, this, [this] { apply(false); });
     connect(m_material, &QComboBox::activated, this, [this] { apply(false); });
@@ -798,7 +798,7 @@ WavePage::WavePage(AppContext* ctx, QWidget* parent)
     m_diagram->body()->setContentsMargins(0, 0, 0, 0);
     m_diagram->body()->addWidget(m_canvas);
     m_chart = new LineChart;
-    m_chartPanel = new Panel("Screen intensity profile", "QT CHARTS");
+    m_chartPanel = new Panel("Screen intensity profile", "");
     m_chartPanel->body()->setContentsMargins(0, 0, 0, 0);
     m_chartPanel->body()->addWidget(m_chart);
     cols.center->addWidget(m_diagram, 3);
@@ -813,7 +813,7 @@ WavePage::WavePage(AppContext* ctx, QWidget* parent)
     cols.right->addWidget(m_results);
     cols.right->addWidget(m_notice);
     cols.right->addStretch();
-    setPanels(m_diagram, m_chartPanel, m_results, "SCHEMATIC · NOT TO SCALE", "QT CHARTS");
+    setPanels(m_diagram, m_chartPanel, m_results, "SCHEMATIC · NOT TO SCALE", "");
 
     connect(m_source, &QComboBox::activated, this, [this] { onPresetChosen(); });
     connect(m_lambda, &UnitField::edited, this, [this] { onWavelengthEdited(); });

@@ -1,8 +1,12 @@
 #pragma once
 #include "MathCalculator.h"
+#include "Models.h"
+
+#include <vector>
 #include <QWidget>
 
 class QComboBox;
+class QStackedWidget;
 class QLabel;
 class QLineEdit;
 class QPushButton;
@@ -17,7 +21,10 @@ namespace phy104 {
 class MathSolverPage : public QWidget {
     Q_OBJECT
 public:
-    explicit MathSolverPage(QWidget* parent = nullptr);
+    /// `groups` are the plain-text key groups of keyboard.json (Greek, Constants, Functions, Operators, Numbers,
+    /// Variables): the calculator shows them under the keypad and inserts their text - no LaTeX here, that is the
+    /// Equation Lab's job.
+    explicit MathSolverPage(std::vector<KeyboardGroup> groups = {}, QWidget* parent = nullptr);
 
 private slots:
     void calculate();
@@ -37,6 +44,8 @@ private:
     QPushButton* m_angleButton;
     QComboBox* m_limit;
     CalculatorKeypad* m_keypad;
+    QComboBox* m_keysCombo = nullptr;
+    QStackedWidget* m_keysStack = nullptr;
 };
 
 } // namespace phy104

@@ -184,3 +184,30 @@ formula/variable, 25 random data sets), Qt UI, five experiments, notes, theme.
   so a token is typed into the formula, not after it.
 * **Export PNG removed from the Equation Lab** (the header export menu covers PDF/Excel/CSV).
 
+---
+
+# Version 2.7 - Study Hub, plain-text calculator keys, calmer theme
+
+* **Study Hub** (`data/study_hub.json`, new `StudyHubPage`): ten chapters in course order, each with a short
+  **summary**, its **rules** (formula rendered in LaTeX + one sentence that says why it holds, so the formula is
+  study material and not a number to solve) and the **constants** you need. The file is a **JSON array**, not an
+  object: a map would lose the order, and the order is the syllabus. The Formula Solver is untouched - the Study
+  Hub only reads.
+* **The calculator speaks plain text**: the LCD keypad is joined by the `keyboard.json` groups (Greek, Constants,
+  Functions, Operators, Numbers, Variables) as ordinary buttons that insert `sin(`, `π`, `θ`, `√(`, `ln(`, `^` -
+  exactly what `ExpressionEvaluator` parses. No LaTeX on this page; the Equation Lab keeps the LaTeX keyboard.
+* **The dark theme's small text is brighter**: `muted #a89984 → #d5c4a1`, `dim #928374 → #c7b9a8`, so captions,
+  hints, panel metas, table headers and the status bar are readable instead of vanishing into the background.
+* **The light theme is no longer white**: paper `#f0e2b8`, cards `#e5d3a8`, sidebar `#e2d0a4`, canvas `#e8dab0`,
+  darker borders (`#cbb98d`) and darker small text (`#5c534d`); the fields stay a shade lighter (`#f6ebcd`).
+* **Cleanup**: the `QT CHARTS` / `MATH MODE` panel metas, the format hint under the export buttons, and the two
+  sidebar footer lines (`Undergraduate physics lab`, `Local workspace · autosaved`) are gone; the calculator
+  subtitle no longer lists the functions its own keypad shows.
+* **CI is green again on all three jobs** (it had been red for several releases): the style sheet is appended from
+  three string literals (`MSVC C2026` rejects a literal over 16380 bytes, which the Windows build hit), the export test
+  selects the Excel format it asserts on (the header-icon test had left the page on CSV), and the Windows job installs
+  Qt with `aqt` on a pinned Python 3.12 without the non-existent `qtsvg` module. A failing test now shows up as a
+  check annotation instead of only inside the job log.
+* Tests: `studyHubShowsTheChaptersOfTheJson` (sidebar entry, list order, summary + constants switch with the
+  selection) and `calculatorHasPlainTextScientificKeys` (the `sin(` key inserts plain text, never `$…$`), plus the
+  data test now checks every chapter of `study_hub.json` (id/title/chapter, summary, at least one explained rule).

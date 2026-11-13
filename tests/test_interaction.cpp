@@ -18,6 +18,7 @@
 #include "ui/NotesPage.h"
 #include "ui/ReportPage.h"
 #include "ui/SolverPage.h"
+#include "ui/StudyHubPage.h"
 #include "ui/ThemeManager.h"
 #include "ui/VirtualKeyboard.h"
 
@@ -882,6 +883,41 @@ private slots:
         goTo(m_app->exportPage);
         QVERIFY2(findButton(m_app->exportPage, "Print…"), "no Print button on the export screen");
     }
+    // ------------------------------------------------------------------ Study Hub (JSON array -> page)
+    void studyHubShowsTheChaptersOfTheJson() {
+        QPushButton* nav = nullptr;                                    // the nav buttons paint their own label
+        for (auto* b : win().navButtons())
+            if (b->accessibleName() == "Study Hub") nav = b;
+        QVERIFY2(nav, "no Study Hub entry in the sidebar");
+        goTo(m_app->studyHub);
+        auto* list = m_app->studyHub->topicList();
+        QCOMPARE(list->count(), m_app->studyHub->topicCount());
+        QVERIFY2(list->count() >= 8, "the Study Hub list is empty");
+        QVERIFY(!m_app->studyHub->summaryLabel()->text().isEmpty());
+        QVERIFY2(m_app->studyHub->constantTable()->rowCount() > 0, "no constants for the first chapter");
+        list->setCurrentRow(1);
+        QCOMPARE(list->currentRow(), 1);
+        QVERIFY2(!m_app->studyHub->summaryLabel()->text().isEmpty(), "the second chapter has no summary on screen");
+    }
+
+    void calculatorHasPlainTextScientificKeys() {
+        goTo(m_app->calculator);
+        auto* input = m_app->calculator->findChild<QLineEdit*>("lcdInput");
+        input->clear();
+        auto* combo = m_app->calculator->findChild<QComboBox*>("keysCombo");
+        QVERIFY2(combo && combo->count() >= 6, "the scientific keys have no group selector");
+        combo->setCurrentIndex(combo->findText("Functions"));                          // the Greek group is first
+        QPushButton* key = nullptr;
+        for (auto* b : m_app->calculator->findChildren<QPushButton*>()) {
+            if (b->objectName() == "rkey" && b->text() == "sin(") key = b;
+        }
+        QVERIFY2(key, "the calculator has no plain-text sin( key");
+        click(key);
+        QVERIFY2(input->text() == "sin(", "the scientific key did not insert plain text");
+        QVERIFY2(input->text().indexOf('$') < 0 && !input->text().contains('\\'), "the calculator must insert plain text, not LaTeX");
+        input->clear();
+    }
+
     void notesPageHasTheScientificKeyboard() {
         goTo(m_app->notes);
         auto* toggle = m_app->notes->findChild<QToolButton*>("notesKeyboard");
@@ -950,6 +986,7 @@ private slots:
     }
     void exportPageWritesBothFormatsAndRemembersTheFile() {
         goTo(m_app->exportPage);
+        m_app->exportPage->setFormat(true);                        // the icon test above left the CSV format selected
         const Snapshot* snap = selectedSeries();
         QVERIFY(snap);
         const QString base = "PHY104_" + QString::fromStdString(snap->series.id).section('_', 0, 0);
