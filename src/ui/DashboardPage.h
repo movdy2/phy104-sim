@@ -5,6 +5,7 @@ class QComboBox;
 class QLabel;
 class QPushButton;
 class QStackedWidget;
+class QToolButton;
 class QTableWidget;
 
 namespace phy104 {
@@ -30,6 +31,7 @@ private:
     int m_notesPage = 5;
     int m_exportPage = 5;
 
+    QToolButton* m_browseExperiments = nullptr;
     QLabel* m_savedValue;
     QLabel* m_seriesValue;
     QList<QLabel*> m_results;          // "last result" line of each experiment card

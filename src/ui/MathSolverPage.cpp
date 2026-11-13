@@ -1,152 +1,88 @@
 #include "MathSolverPage.h"
 
+#include "AppContext.h"
+#include "Components.h"
 #include "ThemeManager.h"
 
-#include "Components.h"
-
-#include <QComboBox>
-#include <QGridLayout>
-#include <QStackedWidget>
-#include <QScrollArea>
-#include <QStringList>
+#include <QColor>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QPalette>
 #include <QPushButton>
 #include <QScrollBar>
-#include <QStyle>
 #include <QTextBrowser>
-#include <QFrame>
 #include <QVBoxLayout>
 
 namespace phy104 {
 
-MathSolverPage::MathSolverPage(std::vector<KeyboardGroup> groups, QWidget* parent) : QWidget(parent), m_calc(5) {
-    setObjectName("calcPage");                      // style sheet hook: the segment font is used on this page only
-    auto* title = new QLabel("Calculator");
-    title->setObjectName("pageTitle");
-    auto* subtitle = new QLabel("Type an expression or press the keys. Enter calculates, Ans is the last answer.");
-    subtitle->setObjectName("muted");
-    subtitle->setWordWrap(true);
+MathSolverPage::MathSolverPage(AppContext* context, QWidget* parent)
+    : BasePage("Calculator", "", context, parent), m_calc(5) {
+    setObjectName("calcPage");
+    setUnitsTag("MATH · DEG");
 
-    m_modeBadge = new QLabel("DEG");
-    m_modeBadge->setObjectName("lcdBadge");
-    auto* ansBadge = new QLabel("Ans");
-    ansBadge->setObjectName("lcdBadge");
+    auto* columns = new QHBoxLayout;
+    columns->setSpacing(12);
 
+    auto* historyPanel = new Panel("History");
     m_history = new QTextBrowser;
     m_history->setObjectName("lcdScreen");
-    m_history->setFixedHeight(120);
+    m_history->setMinimumWidth(250);
+    historyPanel->body()->addWidget(m_history, 1);
+    columns->addWidget(historyPanel, 2);
+
+    auto* calculatorPanel = new Panel("Expression");
+    auto* modeRow = new QHBoxLayout;
+    m_angleButton = new QPushButton("DEG");
+    m_angleButton->setObjectName("calcMode");
+    m_angleButton->setCheckable(true);
+    m_angleButton->setChecked(true);                         // the school default; checked = degrees
+    m_angleButton->setToolTip("Switch between degrees and radians");
+    modeRow->addStretch();
+    modeRow->addWidget(m_angleButton);
+    calculatorPanel->body()->addLayout(modeRow);
 
     m_input = new QLineEdit;
     m_input->setObjectName("lcdInput");
     ThemeManager::polishLcdInput(m_input);
-    m_input->setPlaceholderText("e.g.  sqrt(abs(-16)) + cos(0)");
+    m_input->setPlaceholderText("Expression");
+    const auto refreshPlaceholder = [this] {
+        QPalette palette = m_input->palette();
+        const Theme& theme = ThemeManager::instance().theme();
+        palette.setColor(QPalette::PlaceholderText, theme.dark ? QColor(Qt::white) : theme.text);
+        m_input->setPalette(palette);
+    };
+    refreshPlaceholder();
+    connect(&ThemeManager::instance(), &ThemeManager::themeChanged, this, refreshPlaceholder);
+    calculatorPanel->body()->addWidget(m_input);
 
     m_result = new QLabel("0");
     m_result->setObjectName("lcdResult");
     m_result->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     m_result->setMinimumHeight(64);
+    calculatorPanel->body()->addWidget(m_result);
 
     m_status = new QLabel;
     m_status->setObjectName("statusError");
+    m_status->setWordWrap(true);
     m_status->hide();
+    calculatorPanel->body()->addWidget(m_status);
 
-    m_angleButton = new QPushButton("DEG / RAD");
-    m_angleButton->setCheckable(true);
-    m_angleButton->setChecked(true);                               // checked = degrees
-    m_angleButton->setMinimumWidth(120);
-    m_angleButton->setToolTip("Highlighted = degrees, plain = radians");
     m_keypad = new CalculatorKeypad;
-
-    m_limit = new QComboBox;
-    for (int n : {3, 5, 10, 20}) m_limit->addItem(QString::number(n), n);
-    m_limit->setCurrentIndex(1);
-    m_limit->setToolTip("How many calculations stay on the screen");
-    auto* limitLabel = new QLabel("History lines");
-    limitLabel->setObjectName("muted");
-
-    auto* badges = new QHBoxLayout;
-    badges->addWidget(m_modeBadge);
-    badges->addWidget(ansBadge);
-    badges->addStretch();
-
-    auto* buttons = new QHBoxLayout;
-    buttons->addWidget(m_angleButton);
-    buttons->addStretch();
-    buttons->addWidget(limitLabel);
-    buttons->addWidget(m_limit);
-
-    // keyboard.json as plain keys: Greek letters, constants, functions, operators and the physics variables
-    auto* keysPanel = new QFrame;
-    keysPanel->setObjectName("card");
-    auto* keysLayout = new QVBoxLayout(keysPanel);
-    keysLayout->setContentsMargins(10, 8, 10, 8);
-    keysLayout->setSpacing(6);
-    auto* keysTitle = new QLabel("SCIENTIFIC KEYS");
-    keysTitle->setObjectName("caption");
-    keysLayout->addWidget(keysTitle);
-    if (!groups.empty()) {
-        m_keysCombo = new QComboBox;
-        m_keysCombo->setObjectName("keysCombo");
-        m_keysStack = new QStackedWidget;
-        for (const KeyboardGroup& group : groups) {
-            auto* page = new QWidget;
-            auto* grid = new QGridLayout(page);
-            grid->setContentsMargins(0, 0, 0, 0);
-            grid->setSpacing(5);
-            int index = 0;
-            for (const std::string& key : group.keys) {
-                auto* b = new QPushButton(QString::fromStdString(key));
-                b->setObjectName("rkey");
-                b->setFocusPolicy(Qt::NoFocus);
-                b->setCursor(Qt::PointingHandCursor);
-                b->setMinimumHeight(28);
-                const QString text = QString::fromStdString(key);
-                connect(b, &QPushButton::clicked, this, [this, text] { m_input->insert(text); m_input->setFocus(); });
-                grid->addWidget(b, index / 6, index % 6);
-                ++index;
-            }
-            grid->setRowStretch(index / 6 + 1, 1);
-            m_keysCombo->addItem(QString::fromStdString(group.name));
-            m_keysStack->addWidget(page);
-        }
-        connect(m_keysCombo, &QComboBox::currentIndexChanged, m_keysStack, &QStackedWidget::setCurrentIndex);
-        auto* keysScroll = new QScrollArea;                 // the Variables group is long: the keys scroll
-        keysScroll->setWidgetResizable(true);
-        keysScroll->setFrameShape(QFrame::NoFrame);
-        keysScroll->viewport()->setAutoFillBackground(false);
-        keysScroll->setWidget(m_keysStack);
-        keysLayout->addWidget(m_keysCombo);
-        keysLayout->addWidget(keysScroll, 1);
-    } else {
-        keysLayout->addStretch();
-    }
-
-    auto* calculator = new QHBoxLayout;
-    calculator->setSpacing(12);
-    calculator->addWidget(m_keypad, 3);
-    calculator->addWidget(keysPanel, 2);
-
-    auto* root = new QVBoxLayout(this);
-    root->addWidget(title);
-    root->addWidget(subtitle);
-    root->addLayout(badges);
-    root->addWidget(m_history);
-    root->addWidget(m_input);
-    root->addWidget(m_result);
-    root->addWidget(m_status);
-    root->addLayout(buttons);
-    root->addLayout(calculator, 1);
+    m_keypad->setObjectName("calculatorKeypad");
+    calculatorPanel->body()->addWidget(m_keypad, 1);
+    columns->addWidget(calculatorPanel, 3);
+    content()->addLayout(columns, 1);
 
     connect(m_input, &QLineEdit::returnPressed, this, &MathSolverPage::calculate);
     connect(m_keypad, &CalculatorKeypad::equals, this, &MathSolverPage::calculate);
     connect(m_keypad, &CalculatorKeypad::clearAll, this, &MathSolverPage::clearAll);
     connect(m_keypad, &CalculatorKeypad::backspace, this, [this] { m_input->backspace(); m_input->setFocus(); });
-    connect(m_keypad, &CalculatorKeypad::insertText, this, [this](const QString& t) { m_input->insert(t); m_input->setFocus(); });
+    connect(m_keypad, &CalculatorKeypad::insertText, this, [this](const QString& text) {
+        m_input->insert(text);
+        m_input->setFocus();
+    });
     connect(m_angleButton, &QPushButton::toggled, this, &MathSolverPage::toggleAngleMode);
-    connect(m_limit, &QComboBox::currentIndexChanged, this, &MathSolverPage::onHistoryLimitChanged);
-
     showHistory();
 }
 
@@ -158,7 +94,7 @@ void MathSolverPage::calculate() {
     if (entry.ok) {
         m_result->setText(QString::fromStdString(entry.result));
         m_status->hide();
-        m_input->selectAll();                                      // typing replaces the old expression
+        m_input->selectAll();                                      // next typing replaces the previous expression
     } else {
         m_result->setText("ERROR");
         m_status->setText("✖ " + QString::fromStdString(entry.error));
@@ -169,10 +105,10 @@ void MathSolverPage::calculate() {
 
 void MathSolverPage::showHistory() {
     QString html = "<table width='100%' cellspacing='2'>";
-    for (const CalcEntry& e : m_calc.history()) {
-        const QString expr = QString::fromStdString(e.expression).toHtmlEscaped();
-        const QString res = e.ok ? "= " + QString::fromStdString(e.result).toHtmlEscaped() : "ERR";
-        html += "<tr><td>" + expr + "</td><td align='right'><b>" + res + "</b></td></tr>";
+    for (const CalcEntry& entry : m_calc.history()) {
+        const QString expression = QString::fromStdString(entry.expression).toHtmlEscaped();
+        const QString result = entry.ok ? "= " + QString::fromStdString(entry.result).toHtmlEscaped() : "ERROR";
+        html += "<tr><td>" + expression + "</td><td align='right'><b>" + result + "</b></td></tr>";
     }
     html += "</table>";
     m_history->setHtml(html);
@@ -190,12 +126,8 @@ void MathSolverPage::clearAll() {
 
 void MathSolverPage::toggleAngleMode(bool degrees) {
     m_calc.setAngleUnit(degrees ? AngleUnit::Degrees : AngleUnit::Radians);
-    m_modeBadge->setText(degrees ? "DEG" : "RAD");
-}
-
-void MathSolverPage::onHistoryLimitChanged() {
-    m_calc.setHistoryLimit(static_cast<std::size_t>(m_limit->currentData().toInt()));
-    showHistory();
+    m_angleButton->setText(degrees ? "DEG" : "RAD");
+    setUnitsTag(degrees ? "MATH · DEG" : "MATH · RAD");
 }
 
 } // namespace phy104

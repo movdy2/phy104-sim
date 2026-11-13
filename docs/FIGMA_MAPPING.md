@@ -34,10 +34,12 @@ Wave Interference, Formulas Notes & Export, Component Sheet).
 
 ## Where the app goes beyond or differs from the design
 * **Light theme** (Gruvbox-light mapping) - the design is dark only. Toggle in the status bar.
-* **Tools section** in the sidebar (Formula Solver, Calculator, Constants, Optical Setups, Export, PDF Report):
-  features from the project brief that have no own Figma frame. They use the same tokens.
-* The header **export icon** (PDF / Excel / CSV) is one button on every page; the Draw Space sketchpad was removed at
-  the author's request, and the Notes page is only the Markdown workspace (no formula reference, no export panels).
+* **Tools section** in the sidebar (Notes, Equation Lab, Study Hub, Formula Solver, Calculator, Export, PDF Report):
+  features from the project brief that have no own Figma frame. The Study Hub includes tabs for chapters, shared Notes,
+  Optical Setups and Constants; the Notes sidebar shortcut stays, while the Constants and Optical Setups shortcuts move into it.
+* The shared page header keeps **Save** separate from one **Export** menu (PDF / Excel / CSV); the export destinations
+  hide their duplicate menu. The Draw Space sketchpad was removed at the author's request, and the Notes page is only the
+  Markdown workspace (no formula reference, no export panels).
 * **Error red** is the design's `#fb4934` (earlier brief: `#cc241d`); physics notices use the design's amber card.
 * **Real functionality behind the frames**: Calculate & Simulate saves runs, the session autosaves and restores,
   export writes real files. The "21 saved calculations" in the frame is demo data; a fresh session starts at 00.

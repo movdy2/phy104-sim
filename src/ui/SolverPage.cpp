@@ -1,4 +1,5 @@
 #include "SolverPage.h"
+#include "AppContext.h"
 #include "FormulaListDelegate.h"
 #include "LatexRenderer.h"
 
@@ -19,8 +20,9 @@
 namespace phy104 {
 
 SolverPage::SolverPage(std::shared_ptr<FormulaEngine> engine, std::shared_ptr<FormulaManager> manager,
-                       std::shared_ptr<SolverEngine> solver, QWidget* parent)
-    : QWidget(parent), m_engine(std::move(engine)), m_manager(std::move(manager)), m_solver(std::move(solver)) {
+                       std::shared_ptr<SolverEngine> solver, AppContext* context, QWidget* parent)
+    : BasePage("Formula Solver", "Search equations and solve for one unknown.", context, parent),
+      m_engine(std::move(engine)), m_manager(std::move(manager)), m_solver(std::move(solver)) {
 
     // ------------------------------------------------------------ left: formula browser
     auto* browser = new QFrame;
@@ -78,9 +80,6 @@ SolverPage::SolverPage(std::shared_ptr<FormulaEngine> engine, std::shared_ptr<Fo
     bl->addLayout(pagerRow);
 
     // ------------------------------------------------------------ right: solver
-    auto* title = new QLabel("Formula Solver");
-    title->setObjectName("pageTitle");
-
     m_formulaName = new QLabel;
     m_formulaName->setObjectName("sectionTitle");
     m_formulaChapter = new QLabel;
@@ -119,7 +118,6 @@ SolverPage::SolverPage(std::shared_ptr<FormulaEngine> engine, std::shared_ptr<Fo
     m_output->setMinimumHeight(140);
 
     auto* right = new QVBoxLayout;
-    right->addWidget(title);
     right->addWidget(m_formulaName);
     right->addWidget(m_formulaChapter);
     right->addWidget(m_formulaLatex);
@@ -130,9 +128,10 @@ SolverPage::SolverPage(std::shared_ptr<FormulaEngine> engine, std::shared_ptr<Fo
     right->addWidget(m_answer);
     right->addWidget(m_output, 1);
 
-    auto* root = new QHBoxLayout(this);
+    auto* root = new QHBoxLayout;
     root->addWidget(browser);
     root->addLayout(right, 1);
+    content()->addLayout(root, 1);
 
     connect(m_search, &QLineEdit::textChanged, this, &SolverPage::onSearchChanged);
     connect(m_chapter, &QComboBox::currentIndexChanged, this, &SolverPage::onChapterChanged);

@@ -243,3 +243,25 @@ formula/variable, 25 random data sets), Qt UI, five experiments, notes, theme.
   (dominant hue, `R(λ)` of the swatch, grey for thick films), the slit envelope (`d/a = 4` loses the 4th fringe),
   `multiSlitFactor` limits, and `R = mN` / `δλ` / the free spectral range, plus three interaction tests that click the
   new tabs and check the registers, the swatch colour and the panel titles.
+
+---
+
+# Version 2.9 - One page template, integrated Study Hub, dashboard browser, cleaner calculator
+
+* **Consistent page actions**: every main page now uses the same `Save` button and one labelled **Export** menu with
+  **PDF report / Excel (.xlsx) / CSV (.csv)**. This includes the Formula Solver and Calculator; the two export destination
+  screens still hide their duplicate export menu. Each menu action opens the matching destination with its format selected.
+* **Study Hub tabs**: Chapters, Notes, Optical Setups, Constants. The Notes tab is a second view of the same autosaving
+  session Markdown; the existing Notes page and its sidebar shortcut remain available. Optical Setups keeps the six SVG
+  diagrams and PNG export, and Constants keeps search / copy. Their separate sidebar shortcuts are removed; chapter
+  constants remain alongside each chapter's rules.
+* **Dashboard stays focused**: the four featured cards and recent-run tools remain. The experiment metric now correctly
+  says **11**, and **Browse all 11** opens a single menu of every experiment, with its icon and description; selecting
+  **Thick Lens & Aberration** opens the lens screen with its aperture glyph.
+* **Calculator cleanup**: a Mathway-style expression → result arrangement, recent calculations, DEG/RAD, and the useful
+  numeric/scientific keypad (including `Ans`, π, `e`, trig, logs, roots and powers). Removed the duplicate symbol browser,
+  physics-variable groups, history-size selector, redundant badges and instructional copy. Key/placeholder text uses
+  high-contrast theme colours. The global virtual keyboard and Equation Lab keyboard are unchanged.
+* **Tests**: dashboard menu lists 11 modules and opens Thick Lens; Study Hub shows all four tabs and has no Constants /
+  Optical Setups sidebar entries while keeping Notes; the embedded global-constants table copies values; Calculator retains
+  useful math keys but no extra browser; all main pages share Save + the three-format Export menu.

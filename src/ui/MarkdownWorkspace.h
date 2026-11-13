@@ -40,6 +40,9 @@ public:
 
     explicit MarkdownWorkspace(QWidget* parent = nullptr);
 
+    /// Shared first-run notes shown in both the standalone Notes page and the Study Hub tab.
+    static QString starterNotes();
+
     /// Loads text without triggering an autosave.
     void setMarkdown(const QString& markdown);
     QString markdown() const;

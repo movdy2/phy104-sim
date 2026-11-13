@@ -1,51 +1,39 @@
 #pragma once
+#include "BasePage.h"
 #include "MathCalculator.h"
-#include "Models.h"
 
-#include <vector>
 #include <QWidget>
 
-class QComboBox;
-class QStackedWidget;
 class QLabel;
 class QLineEdit;
-class QPushButton;
 class QTextBrowser;
-
-namespace phy104 { class CalculatorKeypad; }
+class QPushButton;
 
 namespace phy104 {
+class AppContext;
+class CalculatorKeypad;
 
-/// Free math mode: a scientific-calculator page that evaluates any expression
-/// (functions, pi, e, Ans) without a physics formula.
-class MathSolverPage : public QWidget {
+/// Clean, free-math mode: enter an expression, get a result, and reuse recent answers with Ans.
+class MathSolverPage : public BasePage {
     Q_OBJECT
 public:
-    /// `groups` are the plain-text key groups of keyboard.json (Greek, Constants, Functions, Operators, Numbers,
-    /// Variables): the calculator shows them under the keypad and inserts their text - no LaTeX here, that is the
-    /// Equation Lab's job.
-    explicit MathSolverPage(std::vector<KeyboardGroup> groups = {}, QWidget* parent = nullptr);
+    explicit MathSolverPage(AppContext* context, QWidget* parent = nullptr);
 
 private slots:
     void calculate();
     void clearAll();
     void toggleAngleMode(bool degrees);
-    void onHistoryLimitChanged();
 
 private:
     void showHistory();
 
     MathCalculator m_calc;
-    QTextBrowser* m_history;
-    QLineEdit* m_input;
-    QLabel* m_result;
-    QLabel* m_status;
-    QLabel* m_modeBadge;
-    QPushButton* m_angleButton;
-    QComboBox* m_limit;
-    CalculatorKeypad* m_keypad;
-    QComboBox* m_keysCombo = nullptr;
-    QStackedWidget* m_keysStack = nullptr;
+    QTextBrowser* m_history = nullptr;
+    QLineEdit* m_input = nullptr;
+    QLabel* m_result = nullptr;
+    QLabel* m_status = nullptr;
+    QPushButton* m_angleButton = nullptr;
+    CalculatorKeypad* m_keypad = nullptr;
 };
 
 } // namespace phy104

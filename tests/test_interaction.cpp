@@ -24,6 +24,7 @@
 #include "ui/VirtualKeyboard.h"
 
 #include <QApplication>
+#include <QColor>
 #include <QCheckBox>
 #include <QClipboard>
 #include <QDate>
@@ -37,6 +38,7 @@
 #include <QSignalSpy>
 #include <QListWidget>
 #include <QMenu>
+#include <QPalette>
 #include <QPushButton>
 #include <QStandardPaths>
 #include <QTableWidget>
@@ -172,6 +174,20 @@ private slots:
         click(findButton(m_app->dashboard, "Export data"));
         QCOMPARE(win().currentPage(), idx(m_app->exportPage));
     }
+    void dashboardBrowseListsAllElevenExperiments() {
+        go(0);
+        auto* browse = m_app->dashboard->findChild<QToolButton*>("browseExperiments");
+        QVERIFY2(browse && browse->menu(), "the dashboard has no Browse all menu");
+        const auto actions = browse->menu()->actions();
+        QCOMPARE(actions.size(), 11);
+        QVERIFY(actions.back()->text().contains("Thick Lens & Aberration"));
+        auto* count = m_app->dashboard->findChild<QLabel*>("experimentCount");
+        QVERIFY(count);
+        QCOMPARE(count->text(), QString("11"));
+        QVERIFY(allLabelTexts(m_app->dashboard).contains("EXPERIMENTS"));
+        actions.back()->trigger();
+        QCOMPARE(win().currentPage(), idx(m_app->thickLens));
+    }
     void dashboardComparesAndDeletesSavedRuns() {
         AppContext& ctx = m_app->context();
         const int before = ctx.log.savedCalculations();
@@ -276,7 +292,7 @@ private slots:
     void saveSessionButtonWritesTheFile() {
         go(1);
         QFile::remove(m_tmp.path() + "/session.phy");
-        click(findButton(m_app->refraction, "Save session"));
+        click(findButton(m_app->refraction, "Save"));
         QVERIFY(QFile::exists(m_tmp.path() + "/session.phy"));
     }
 
@@ -382,7 +398,8 @@ private slots:
         QVERIFY2(all.contains("Solved"), "Solve showed no success status");
     }
     void constantsCopyButtonCopiesTheValue() {
-        goTo(m_app->constants);
+        goTo(m_app->studyHub);
+        m_app->studyHub->selectSection(3);                                      // global constants live in Study Hub
         auto* table = m_app->constants->findChild<QTableWidget*>();
         QVERIFY(table);
         table->selectRow(0);
@@ -605,7 +622,7 @@ private slots:
         QTest::keyClick(w->editor(), Qt::Key_Return);
         typeText(w->editor(), QString::fromUtf8("- $n₁ sin θ₁ = n₂ sin θ₂$"));
         w->flush();
-        click(findButton(m_app->notes, "Save session"));                           // the button of the page that is showing
+        click(findButton(m_app->notes, "Save"));                                   // the button of the page that is showing
         QVERIFY(QFile::exists(m_tmp.path() + "/session.phy"));
 
         App second(App::Paths{DATA_DIR, m_tmp.path() + "/session.phy"});           // a fresh start reading the same file
@@ -782,6 +799,39 @@ private slots:
             QCOMPARE(exportButton->text(), QString("Export"));                 // the icon is labelled
         }
     }
+    void mainPagesShareTheSaveAndExportHeader() {
+        const QList<QWidget*> pages = {m_app->dashboard, m_app->refraction, m_app->lenses, m_app->prisms, m_app->wave,
+                                       m_app->polarization, m_app->singleSlit, m_app->grating, m_app->thinFilm, m_app->michelson,
+                                       m_app->newton, m_app->thickLens, m_app->notes, m_app->equationLab, m_app->studyHub,
+                                       m_app->solver, m_app->calculator};
+        for (QWidget* page : pages) {
+            goTo(page);
+            QVERIFY2(findButton(page, "Save"), "a main page is missing the shared Save action");
+            QVERIFY2(!findButton(page, "Save session"), "the old Save session label remains");
+            auto* exportButton = page->findChild<QToolButton*>("exportMenu");
+            QVERIFY2(exportButton && exportButton->menu() && exportButton->menu()->actions().size() == 3,
+                     "a main page is missing the single PDF / Excel / CSV export menu");
+        }
+    }
+    void calculatorExportMenuRoutesAllFormats() {
+        goTo(m_app->calculator);
+        auto* exportButton = m_app->calculator->findChild<QToolButton*>("exportMenu");
+        QVERIFY(exportButton && exportButton->menu());
+        const auto actions = exportButton->menu()->actions();
+        QCOMPARE(actions.size(), 3);
+
+        actions[0]->trigger();
+        QCOMPARE(win().currentPage(), idx(m_app->reportPage));
+        actions[1]->trigger();
+        QCOMPARE(win().currentPage(), idx(m_app->exportPage));
+        auto* formatTabs = m_app->exportPage->findChild<ModeTabs*>();
+        QVERIFY(formatTabs);
+        QCOMPARE(formatTabs->current(), 0);                         // Excel selected before the destination opens
+        actions[2]->trigger();
+        QCOMPARE(win().currentPage(), idx(m_app->exportPage));
+        QCOMPARE(formatTabs->current(), 1);                         // CSV selected before the destination opens
+    }
+
     void newScreensCalculateAndSendToNotes() {
         goTo(m_app->newton);
         const int runs = m_app->context().log.savedCalculations();
@@ -947,36 +997,92 @@ private slots:
         QVERIFY2(findButton(m_app->exportPage, "Print…"), "no Print button on the export screen");
     }
     // ------------------------------------------------------------------ Study Hub (JSON array -> page)
-    void studyHubShowsTheChaptersOfTheJson() {
-        QPushButton* nav = nullptr;                                    // the nav buttons paint their own label
-        for (auto* b : win().navButtons())
-            if (b->accessibleName() == "Study Hub") nav = b;
-        QVERIFY2(nav, "no Study Hub entry in the sidebar");
+    void studyHubContainsChaptersNotesSetupsAndConstants() {
+        bool hasHub = false, hasNotes = false, hasConstants = false, hasSetups = false;
+        for (auto* b : win().navButtons()) {
+            const QString name = b->accessibleName();
+            hasHub |= name == "Study Hub";
+            hasNotes |= name == "Notes";
+            hasConstants |= name == "Constants";
+            hasSetups |= name == "Optical Setups";
+        }
+        QVERIFY2(hasHub && hasNotes, "Study Hub or the Notes shortcut is missing from the sidebar");
+        QVERIFY2(!hasConstants && !hasSetups, "Constants and Optical Setups should be accessed through Study Hub");
+
         goTo(m_app->studyHub);
+        m_app->studyHub->selectSection(0);
         auto* list = m_app->studyHub->topicList();
         QCOMPARE(list->count(), m_app->studyHub->topicCount());
-        QVERIFY2(list->count() >= 8, "the Study Hub list is empty");
+        QVERIFY2(list->count() >= 8, "the Study Hub chapter list is empty");
         QVERIFY(!m_app->studyHub->summaryLabel()->text().isEmpty());
         QVERIFY2(m_app->studyHub->constantTable()->rowCount() > 0, "no constants for the first chapter");
         list->setCurrentRow(1);
         QCOMPARE(list->currentRow(), 1);
         QVERIFY2(!m_app->studyHub->summaryLabel()->text().isEmpty(), "the second chapter has no summary on screen");
+
+        m_app->studyHub->selectSection(1);
+        QVERIFY2(m_app->studyHub->notesWorkspace() && m_app->studyHub->notesWorkspace()->isVisibleTo(&win()), "the shared Notes tab is missing");
+        m_app->studyHub->selectSection(2);
+        auto* diagrams = m_app->diagrams->findChild<QListWidget*>("diagramList");
+        QVERIFY2(diagrams && diagrams->count() >= 6, "the Optical Setups gallery is missing from Study Hub");
+        m_app->studyHub->selectSection(3);
+        auto* constants = m_app->constants->findChild<QTableWidget*>();
+        QVERIFY2(constants && constants->columnCount() == 4 && constants->rowCount() > 0, "the global constants table is missing from Study Hub");
+        m_app->studyHub->selectSection(0);
     }
 
-    void calculatorHasPlainTextScientificKeys() {
+    void studyHubNotesStaySharedWithTheSidebarPage() {
+        const QString originalStored = QString::fromStdString(m_app->context().log.notes());
+        const QString starter = MarkdownWorkspace::starterNotes();
+        auto* hubNotes = m_app->studyHub->notesWorkspace();
+        auto* sidebarNotes = m_app->notes->findChild<MarkdownWorkspace*>();
+        QVERIFY(hubNotes && sidebarNotes);
+
+        hubNotes->editor()->setPlainText("# Edited in Study Hub");
+        hubNotes->flush();
+        QCOMPARE(QString::fromStdString(m_app->context().log.notes()), QString("# Edited in Study Hub"));
+        QCOMPARE(sidebarNotes->markdown(), QString("# Edited in Study Hub"));
+
+        sidebarNotes->editor()->setPlainText("# Edited from Notes shortcut");
+        sidebarNotes->flush();
+        QCOMPARE(QString::fromStdString(m_app->context().log.notes()), QString("# Edited from Notes shortcut"));
+        QCOMPARE(hubNotes->markdown(), QString("# Edited from Notes shortcut"));
+
+        m_app->context().setNotes(originalStored);
+        if (originalStored.isEmpty()) {
+            hubNotes->setMarkdown(starter);             // restore the first-run display without persisting the template
+            sidebarNotes->setMarkdown(starter);
+        }
+    }
+
+    void calculatorKeepsTheUsefulMathKeypadOnly() {
         goTo(m_app->calculator);
         auto* input = m_app->calculator->findChild<QLineEdit*>("lcdInput");
+        QVERIFY(input);
+        QVERIFY(m_app->calculator->findChild<QLabel*>("lcdResult"));
+        const QColor expectedPlaceholder = ThemeManager::instance().theme().dark
+                                               ? QColor(Qt::white) : ThemeManager::instance().theme().text;
+        QCOMPARE(input->palette().color(QPalette::PlaceholderText), expectedPlaceholder);
+        auto* units = m_app->calculator->findChild<QLabel*>("unitsTag");
+        QVERIFY(units);
+        QCOMPARE(units->text(), QString("MATH · DEG"));
+        auto* angle = findButton(m_app->calculator, "DEG");
+        QVERIFY(angle);
+        click(angle);
+        QCOMPARE(angle->text(), QString("RAD"));
+        QCOMPARE(units->text(), QString("MATH · RAD"));
+        click(angle);
+        QCOMPARE(units->text(), QString("MATH · DEG"));
+        QVERIFY2(!m_app->calculator->findChild<QComboBox*>("keysCombo"), "the extra physics-symbol browser is still on Calculator");
+        QVERIFY2(findButton(m_app->calculator, "sin") && findButton(m_app->calculator, "π") &&
+                 findButton(m_app->calculator, "Ans") && findButton(m_app->calculator, "=") &&
+                 findButton(m_app->calculator, "AC") && findButton(m_app->calculator, "DEL"),
+                 "a required math key is missing");
+        const QString labels = allLabelTexts(m_app->calculator).join(" ");
+        QVERIFY(!labels.contains("SCIENTIFIC KEYS") && !labels.contains("History lines"));
         input->clear();
-        auto* combo = m_app->calculator->findChild<QComboBox*>("keysCombo");
-        QVERIFY2(combo && combo->count() >= 6, "the scientific keys have no group selector");
-        combo->setCurrentIndex(combo->findText("Functions"));                          // the Greek group is first
-        QPushButton* key = nullptr;
-        for (auto* b : m_app->calculator->findChildren<QPushButton*>()) {
-            if (b->objectName() == "rkey" && b->text() == "sin(") key = b;
-        }
-        QVERIFY2(key, "the calculator has no plain-text sin( key");
-        click(key);
-        QVERIFY2(input->text() == "sin(", "the scientific key did not insert plain text");
+        click(findButton(m_app->calculator, "sin"));
+        QVERIFY2(input->text().startsWith("sin("), "the math key did not insert a plain-text function");
         QVERIFY2(input->text().indexOf('$') < 0 && !input->text().contains('\\'), "the calculator must insert plain text, not LaTeX");
         input->clear();
     }

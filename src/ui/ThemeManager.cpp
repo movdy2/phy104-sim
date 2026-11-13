@@ -159,6 +159,8 @@ QLabel#fieldError { color: @error@; font-size: 11px; }
 QToolButton#exportMenu { background: transparent; border: 1px solid @border@; border-radius: 3px; padding: 7px 10px; }
 QToolButton#exportMenu:hover { border-color: @amber@; background: @amberTint@; }
 QToolButton#exportMenu::menu-indicator { image: none; }
+QToolButton#browseExperiments { background: @input@; color: @text@; border: 1px solid @border@; border-radius: 3px; padding: 7px 10px; min-height: 30px; font-weight: 600; }
+QToolButton#browseExperiments:hover { border-color: @amber@; background: @amberTint@; }
 QMenu { background: @card@; color: @text@; border: 1px solid @border@; padding: 4px; }
 QMenu::item { padding: 6px 20px 6px 14px; }
 QMenu::item:selected { background: @amberTint@; color: @amber@; }
@@ -205,7 +207,9 @@ QToolButton#fmt:checked { background: @amberTint@; color: @amber@; }
 
 /* ---------- calculator keypad ---------- */
 QPushButton#key   { background: @card@;  color: @text@;  border: 1px solid @border@; border-radius: 4px; font-family: 'JetBrains Mono'; font-size: 15px; font-weight: 700; }
-QPushButton#keyFn { background: @input@; color: @sage@;  border: 1px solid @border@; border-radius: 4px; font-family: 'JetBrains Mono'; font-size: 13px; }
+QPushButton#keyFn { background: @input@; color: @calcDim@;  border: 1px solid @border@; border-radius: 4px; font-family: 'JetBrains Mono'; font-size: 13px; }
+QPushButton#calcMode { background: @input@; color: @calcDim@; border: 1px solid @border@; border-radius: 4px; padding: 5px 12px; font-family: 'JetBrains Mono'; font-size: 11px; font-weight: 700; }
+QPushButton#calcMode:checked { border-color: @amber@; color: @calcDim@; }
 QPushButton#keyOp { background: @cardHover@; color: @amber@; border: 1px solid @border@; border-radius: 4px; font-family: 'JetBrains Mono'; font-size: 15px; font-weight: 700; }
 QPushButton#keyEq { background: @amber@; color: #282828; border: 1px solid @amber@; border-radius: 4px; font-family: 'JetBrains Mono'; font-size: 18px; font-weight: 700; }
 QPushButton#key:hover, QPushButton#keyFn:hover, QPushButton#keyOp:hover { border-color: @amber@; }
@@ -293,6 +297,7 @@ QWidget#calcPage QLineEdit#lcdInput { font-family: 'DSEG14 Classic'; font-size: 
 QWidget#calcPage QLabel#lcdResult { font-family: 'DSEG7 Classic'; font-size: 44px; font-weight: 700; padding: 8px 14px; }
 QWidget#calcPage QTextBrowser#lcdScreen { font-family: 'DSEG14 Classic'; font-size: 13px; font-weight: 700; }
 QWidget#calcPage QLabel#lcdBadge { font-family: 'DSEG14 Classic'; font-size: 11px; font-weight: 700; }
+QWidget#calcPage QLabel#unitsTag { color: @calcDim@; }
 
 /* ---------- Casio LCD ---------- */
 QFrame#lcd { background: @lcdBg@; border: 3px solid @lcdFrame@; border-radius: 4px; }
@@ -317,7 +322,8 @@ QLabel#lcdBadge { background: @lcdText@; color: @lcdBg@; border-radius: 3px; pad
         {"@input@", t.input}, {"@border@", t.border}, {"@text@", t.text}, {"@muted@", t.muted}, {"@dim@", t.dim},
         {"@amberHover@", t.amberHover}, {"@amberPressed@", t.amberPressed}, {"@amber@", t.amber},
         {"@lime@", t.lime}, {"@errorBg@", t.errorBg}, {"@error@", t.error}, {"@sage@", t.sage},
-        {"@canvas@", t.canvas}, {"@lcdBg@", t.lcdBg}, {"@lcdText@", t.lcdText}, {"@lcdFrame@", t.lcdFrame}, {"@lcdDivider@", t.lcdDivider}};
+        {"@canvas@", t.canvas}, {"@lcdBg@", t.lcdBg}, {"@lcdText@", t.lcdText}, {"@lcdFrame@", t.lcdFrame},
+        {"@lcdDivider@", t.lcdDivider}, {"@calcDim@", t.dark ? QColor(Qt::white) : t.text}};
     for (const auto& [token, color] : tokens) css.replace(token, color.name());
     css.replace("@amberTint@", QString("rgba(%1,%2,%3,%4)").arg(t.amberTint.red()).arg(t.amberTint.green()).arg(t.amberTint.blue()).arg(t.amberTint.alpha()));
     css.replace("@chevron@", t.dark ? ":/icons/chevron-down-dark.svg" : ":/icons/chevron-down-light.svg");

@@ -113,6 +113,11 @@ void MarkdownEditor::keyPressEvent(QKeyEvent* e) {
 }
 
 // ============================================================================ MarkdownWorkspace
+QString MarkdownWorkspace::starterNotes() {
+    return "# Lab notes\n\n## Refraction & TIR\n\n### Snell's law\n- $n₁ sin θ₁ = n₂ sin θ₂$\n- compare the fitted index with the reference value\n\n"
+           "#### Exam warning\nAngles are measured from the normal, not from the surface.\n";
+}
+
 QString MarkdownWorkspace::problemTemplate() {
     return "### Given:\n- \n\n### Formula:\n- $ $\n\n### Substitution & Solution:\n- \n";
 }

@@ -72,19 +72,17 @@ App::App(const Paths& paths) {
     thickLens = new ThickLensPage(m_context.get());
     m_window->addPage("Thick Lens & Aberration", "aperture", thickLens);                    // 11
     notes = new NotesPage(m_context.get(), keyboardRepo.scientific());
-    const int notesIndex = m_window->addPage("Notes", "notebook-pen", notes, 1);             // 11 (tool)
+    const int notesIndex = m_window->addPage("Notes", "notebook-pen", notes, 1);             // standalone Notes shortcut
     equationLab = new EquationLabPage(m_context.get(), keyboardRepo.scientific());
-    m_window->addPage("Equation Lab", "square-function", equationLab, 1);                    // 12 (tool)
-    studyHub = new StudyHubPage(studyHubRepo.loadAll(), m_context.get());
-    m_window->addPage("Study Hub", "book-open", studyHub, 1);                                 // study material (tool)
-    solver = new SolverPage(m_engine, m_manager, m_solver);
-    m_window->addPage("Formula Solver", "sigma", solver, 1);
-    calculator = new MathSolverPage(keyboardRepo.loadAll());
-    m_window->addPage("Calculator", "calculator", calculator, 1);
+    m_window->addPage("Equation Lab", "square-function", equationLab, 1);
     constants = new ConstantsPage(constantsRepo);
-    m_window->addPage("Constants", "ruler", constants, 1);
     diagrams = new DiagramsPage;
-    m_window->addPage("Optical Setups", "image", diagrams, 1);
+    studyHub = new StudyHubPage(studyHubRepo.loadAll(), m_context.get(), constants, diagrams);
+    m_window->addPage("Study Hub", "book-open", studyHub, 1);                                // chapters, notes, setups, constants
+    solver = new SolverPage(m_engine, m_manager, m_solver, m_context.get());
+    m_window->addPage("Formula Solver", "sigma", solver, 1);
+    calculator = new MathSolverPage(m_context.get());
+    m_window->addPage("Calculator", "calculator", calculator, 1);
     exportPage = new ExportPage(m_context.get());
     const int exportIndex = m_window->addPage("Export (Excel/CSV)", "file-spreadsheet", exportPage, 1);   // tools entry, as in Figma
     reportPage = new ReportPage(m_context.get());
@@ -93,7 +91,7 @@ App::App(const Paths& paths) {
     dashboard->setNotesPage(notesIndex);
     dashboard->setExportPage(exportIndex);
 
-    // the download icon of every page header: PDF report, Excel or CSV
+    // Route each shared page-header Export action; the destination pages hide their own duplicate menu.
     for (int i = 0; i < m_window->pageCount(); ++i) {
         auto* page = qobject_cast<BasePage*>(m_window->page(i));
         if (!page) continue;
