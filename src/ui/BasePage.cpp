@@ -21,6 +21,7 @@ BasePage::BasePage(const QString& title, const QString& subtitle, AppContext* co
     auto* outer = new QHBoxLayout(this);
     outer->setContentsMargins(0, 0, 0, 0);
     auto* inner = new QWidget;
+    inner->setObjectName("pageInner");
     inner->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     outer->addWidget(inner, 1);
     auto* root = new QVBoxLayout(inner);

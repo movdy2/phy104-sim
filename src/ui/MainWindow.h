@@ -3,6 +3,7 @@
 
 #include <QList>
 #include <QMainWindow>
+#include <QStringList>
 #include <vector>
 
 class QButtonGroup;
@@ -41,14 +42,22 @@ public:
     QLabel* engineLabel() const { return m_engine; }
     QString statusLeftText() const;
 
+    /// "Ctrl+S", "Ctrl+P", "Ctrl+Return", "Ctrl+1".."Ctrl+9", "Ctrl+Tab": what the window listens to.
+    QStringList shortcutKeys() const { return m_shortcutKeys; }
+
 public slots:
     void setCurrentPage(int index);
+    /// Ctrl+Enter: the main action of the page that is showing ("Calculate & Simulate", "Solve", ...).
+    void triggerPrimaryAction();
+    /// Ctrl+P: the PDF Report screen, where the document is previewed and saved/printed.
+    void openReportPage();
 
 signals:
     void themeToggled(bool dark);
 
 private:
     void addNavButton(const QString& title, const QString& icon, int pageIndex, int section);
+    void installShortcuts();
     void refreshIcons();
     void refreshStatus();
     void showMessage(const QString& text);
@@ -68,6 +77,7 @@ private:
     QString m_transient;
     QTimer* m_messageTimer;
     QPushButton *m_themeButton, *m_keyboardButton;
+    QStringList m_shortcutKeys;
 };
 
 } // namespace phy104

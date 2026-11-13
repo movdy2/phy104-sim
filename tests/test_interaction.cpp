@@ -31,6 +31,7 @@
 #include <QFileInfo>
 #include <QLabel>
 #include <QLineEdit>
+#include <QKeySequence>
 #include <QSignalSpy>
 #include <QListWidget>
 #include <QPushButton>
@@ -219,6 +220,32 @@ private slots:
         QCOMPARE(ctx.log.savedCalculations(), before + 1);
         QVERIFY(ctx.log.runs().back().id < newest);
         QVERIFY(QFile::exists(m_tmp.path() + "/session.phy"));       // the deletion was written to the .phy file
+    }
+    void pagesFillTheWindowInsteadOfACentredColumn() {
+        win().resize(1920, 1000);                                          // wider than the old 1500 px cap
+        QApplication::processEvents();
+        go(0);
+        auto* inner = m_app->dashboard->findChild<QWidget*>("pageInner");
+        QVERIFY2(inner, "the page container is missing");
+        QVERIFY2(inner->width() >= 1500 && inner->width() >= m_app->dashboard->width() - 2,
+                 qPrintable(QString("page content is %1 px wide in a %2 px page").arg(inner->width()).arg(m_app->dashboard->width())));
+        win().resize(1280, 800);
+        QApplication::processEvents();
+    }
+    void keyboardShortcutsAreInstalled() {
+        const QStringList keys = win().shortcutKeys();
+        for (const char* sequence : {"Ctrl+S", "Ctrl+P", "Ctrl+Return", "Ctrl+1", "Ctrl+9", "Ctrl+Tab"}) {
+            const QString expected = QKeySequence(sequence).toString(QKeySequence::NativeText);
+            QVERIFY2(keys.contains(expected), qPrintable("missing shortcut: " + QString(sequence)));
+        }
+    }
+    void ctrlEnterCalculatesAndCtrlPOpensTheReport() {
+        go(1);                                                             // Refraction & TIR
+        const int runs = m_app->context().log.savedCalculations();
+        win().triggerPrimaryAction();                                      // what Ctrl+Enter does
+        QCOMPARE(m_app->context().log.savedCalculations(), runs + 1);
+        win().openReportPage();                                            // what Ctrl+P does
+        QCOMPARE(win().currentPage(), idx(m_app->reportPage));
     }
     void themeButtonTogglesRepeatedly() {
         const bool start = ThemeManager::instance().isDark();

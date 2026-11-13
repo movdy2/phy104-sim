@@ -139,3 +139,14 @@ formula/variable, 25 random data sets), Qt UI, five experiments, notes, theme.
 * Tests updated: the header test checks the three menu entries, a new test drives them (Excel, CSV, PDF) and checks the
   Notes page carries no export UI, and the icon list of `test_ui` follows `download`/`pen-tool`.
 
+---
+
+# Version 2.4 - keyboard shortcuts
+
+* **Ctrl+S** writes the `.phy` session, **Ctrl+Enter** presses the main action of the page that is showing
+  ("Calculate & Simulate" on the experiment screens, "Solve" on the Formula Solver), **Ctrl+P** opens the PDF Report
+  screen, **Ctrl+1 … Ctrl+9** open the first nine pages, **Ctrl+Tab** the next page (F11 was already full screen).
+  `MainWindow::shortcutKeys()` lists them, so a test asserts they are all installed.
+* The full-width layout of 2.3 has its own regression test: at a 1920-px window the page container is wider than the
+  old 1500-px cap and as wide as the page.
+

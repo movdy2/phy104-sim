@@ -210,6 +210,43 @@ MainWindow::MainWindow(AppContext* ctx, const std::vector<KeyboardGroup>& keyboa
     connect(m_stack, &QStackedWidget::currentChanged, this, [this] { refreshStatus(); });
     auto* fullScreen = new QShortcut(QKeySequence(Qt::Key_F11), this);            // F11: toggle full screen
     connect(fullScreen, &QShortcut::activated, this, [this] { isFullScreen() ? showMaximized() : showFullScreen(); });
+    installShortcuts();
+}
+
+void MainWindow::installShortcuts() {
+    const auto add = [this](const QKeySequence& key, auto slot) {
+        auto* shortcut = new QShortcut(key, this);
+        connect(shortcut, &QShortcut::activated, this, slot);
+        m_shortcutKeys << key.toString(QKeySequence::NativeText);
+    };
+    add(QKeySequence(QKeySequence::Save), [this] {                                           // Ctrl+S: write the .phy session
+        if (m_ctx->saveSession()) showMessage("Session saved · " + m_ctx->sessionFile);
+    });
+    add(QKeySequence(QKeySequence::Print), [this] { openReportPage(); });                     // Ctrl+P: the PDF report screen
+    add(QKeySequence(Qt::CTRL | Qt::Key_Return), [this] { triggerPrimaryAction(); });
+    add(QKeySequence(Qt::CTRL | Qt::Key_Enter), [this] { triggerPrimaryAction(); });    // numeric keypad
+    for (int i = 1; i <= 9; ++i)                                              // Ctrl+1..9: the first nine pages
+        add(QKeySequence(Qt::CTRL | static_cast<Qt::Key>(Qt::Key_0 + i)), [this, i] { setCurrentPage(i - 1); });
+    add(QKeySequence(Qt::CTRL | Qt::Key_Tab), [this] {                        // Ctrl+Tab: next page
+        setCurrentPage((currentPage() + 1) % pageCount());
+    });
+}
+
+void MainWindow::triggerPrimaryAction() {
+    QWidget* page = m_stack->currentWidget();
+    if (!page) return;
+    for (QPushButton* b : page->findChildren<QPushButton*>()) {
+        if (!b->isVisibleTo(page) || !b->isEnabled()) continue;
+        const QString text = b->text();
+        if (text.startsWith("Calculate") || text == "Solve" || text == "Evaluate") { b->click(); return; }
+    }
+}
+
+void MainWindow::openReportPage() {
+    for (int i = 0; i < m_stack->count(); ++i) {
+        const QString name = QString::fromLatin1(m_stack->widget(i)->metaObject()->className());
+        if (name.endsWith("ReportPage")) { setCurrentPage(i); return; }
+    }
 }
 
 QString MainWindow::statusLeftText() const { return m_statusLeft->text(); }
