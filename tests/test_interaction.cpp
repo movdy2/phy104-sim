@@ -884,7 +884,7 @@ private slots:
         auto* page = drawSpace();
         page->canvas()->setSnapEnabled(false);                                     // exact pixels for the comparison
         page->canvas()->clear();
-        page->setTool(DrawingCanvas::Rect);
+        page->setTool(DrawingCanvas::Rectangle);
         dragOnCanvas(page->canvas(), QPoint(80, 80), QPoint(160, 160));
         QCOMPARE(static_cast<int>(page->canvas()->drawing().shapes.size()), 1);
 

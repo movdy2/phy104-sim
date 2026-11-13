@@ -11,6 +11,7 @@ class QComboBox;
 class QLabel;
 class QPrinter;
 class QPushButton;
+class QShowEvent;
 class QTextBrowser;
 class QTimer;
 
