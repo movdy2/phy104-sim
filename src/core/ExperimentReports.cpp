@@ -1,10 +1,11 @@
 #include "ExperimentReports.h"
+#include "FieldIds.h"
 #include "NumberFormat.h"
 #include "PhysicsCalculator.h"
+#include "ReportSupport.h"
 #include "ThickLens.h"
 
 #include <algorithm>
-#include <cctype>
 #include <cmath>
 #include <numbers>
 
@@ -18,47 +19,6 @@ constexpr double kDeg = std::numbers::pi / 180.0;
 
 std::string num(double v) { return NF::general(v, 6); }
 std::string fx(double v) { return NF::fixed(v, 4); }
-
-std::string lower(std::string s) { for (char& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c))); return s; }
-
-std::string replaceAll(std::string text, const std::string& from, const std::string& to) {
-    for (std::size_t pos = 0; (pos = text.find(from, pos)) != std::string::npos; pos += to.size()) text.replace(pos, from.size(), to);
-    return text;
-}
-
-/// The paused pattern of the design: the current (invalid) input + the retained last valid result.
-Report pausedReport(const std::string& code, std::vector<FieldIssue> issues, std::vector<std::string> lines,
-                    Notice notice, const ReportContext& ctx) {
-    Report r;
-    r.valid = false;
-    r.paused = true;
-    r.errorCode = code;
-    r.issues = std::move(issues);
-
-    LcdRegister cur;
-    cur.title = "CURRENT INPUT / PAUSED";
-    cur.resultFirst = true;
-    cur.resultValue = code;
-    cur.lines = std::move(lines);
-    cur.footer = "NO NEW RESULT / MEMORY RETAINED";
-    cur.isError = true;
-    r.registers.push_back(cur);
-
-    const std::string run = lower(ctx.runLabel);                    // "run 021"
-    const bool haveLast = ctx.lastValid && ctx.lastValid->valid && !ctx.lastValid->retained.title.empty();
-    if (haveLast) {
-        LcdRegister kept = ctx.lastValid->retained;
-        kept.title = "LAST VALID" + (ctx.runLabel.empty() ? std::string() : " / " + ctx.runLabel);
-        kept.footer = "STALE / NOT CURRENT INPUTS";
-        r.registers.push_back(kept);
-        r.headline = ctx.lastValid->headline;
-    }
-    notice.error = true;
-    notice.body = replaceAll(notice.body, "%RUN%", ctx.runLabel.empty() ? "the last valid result" : run);
-    r.notices.push_back(notice);
-    r.statusText = code + " · " + (haveLast ? "last valid " + (ctx.runLabel.empty() ? std::string("result") : run) + " retained" : "nothing to retain");
-    return r;
-}
 
 std::string ordinal(int m) {
     switch (m) {
@@ -113,12 +73,12 @@ Report tirReport(const RefractionInput& in, const ReportContext& ctx);
 
 Report refraction(const RefractionInput& in, const ReportContext& ctx) {
     std::vector<FieldIssue> issues;
-    if (in.n1 <= 0.0) issues.push_back({"n1", "Enter n₁ > 0.", "n₁"});
-    if (in.n2 <= 0.0) issues.push_back({"n2", "Enter n₂ > 0.", "n₂"});
-    if (in.theta1 < 0.0 || in.theta1 >= 90.0) issues.push_back({"theta1", "Enter 0° ≤ θ₁ < 90°.", "θ₁"});
+    if (in.n1 <= 0.0) issues.push_back({FieldIds::refractiveIndex1, "Enter n₁ > 0.", "n₁"});
+    if (in.n2 <= 0.0) issues.push_back({FieldIds::refractiveIndex2, "Enter n₂ > 0.", "n₂"});
+    if (in.theta1 < 0.0 || in.theta1 >= 90.0) issues.push_back({FieldIds::incidentAngle, "Enter 0° ≤ θ₁ < 90°.", "θ₁"});
     if (!issues.empty()) {
         const std::string first = issues.front().label;
-        return pausedReport("E_INPUT_RANGE", issues,
+        return ReportSupport::pausedReport("E_INPUT_RANGE", issues,
                             {"n₁ = " + fx(in.n1) + "   n₂ = " + fx(in.n2), "θ₁ = " + fx(in.theta1) + "°", "ACTION: " + issues.front().message},
                             {"Calculation paused / " + first + " out of range",
                              "Refractive indices must be positive and 0° ≤ θ₁ < 90°. No new result has been calculated.\n\n"
@@ -224,10 +184,10 @@ Report tirReport(const RefractionInput& in, const ReportContext&) {
     const std::string n1 = in.name1, n2 = in.name2;
     if (tir)
         rep.notices.push_back({"Valid physical outcome, not an error",
-                               "All physical rays remain in " + lower(n1) + ". Above θc there is no propagating transmitted ray; the sweep stops at θ₂ = 90° at the critical limit.", false});
+                               "All physical rays remain in " + ReportSupport::lowercaseAscii(n1) + ". Above θc there is no propagating transmitted ray; the sweep stops at θ₂ = 90° at the critical limit.", false});
     else
         rep.notices.push_back({"Refraction occurs, no TIR",
-                               crit ? "θ₁ is below θc = " + fx(*crit) + "°, so part of the light is transmitted into " + lower(n2) + " and part is reflected."
+                               crit ? "θ₁ is below θc = " + fx(*crit) + "°, so part of the light is transmitted into " + ReportSupport::lowercaseAscii(n2) + " and part is reflected."
                                     : "TIR requires n₁ > n₂. Going into a denser medium the ray always refracts.", false});
     rep.headline = tir ? "θc = " + fx(*crit) + "° · TIR" : "θ₂ = " + fx(std::asin(std::min(1.0, sin2)) / kDeg) + "°";
     rep.statusText = tir ? "Valid outcome: TIR" : "Valid outcome: refraction";
@@ -284,11 +244,11 @@ LinearFit linearFit(const std::vector<double>& x, const std::vector<double>& y) 
 // ------------------------------------------------------------------------------ lenses & mirrors
 Report imaging(const ImagingInput& in, const ReportContext& ctx) {
     std::vector<FieldIssue> issues;
-    if (in.f == 0.0) issues.push_back({"f", "Enter f ≠ 0.", "f"});
-    if (in.s <= 0.0) issues.push_back({"s", "Enter dₒ > 0.", "dₒ"});
-    if (in.h <= 0.0) issues.push_back({"h", "Enter hₒ > 0.", "hₒ"});
+    if (in.f == 0.0) issues.push_back({FieldIds::focalLength, "Enter f ≠ 0.", "f"});
+    if (in.s <= 0.0) issues.push_back({FieldIds::objectDistance, "Enter dₒ > 0.", "dₒ"});
+    if (in.h <= 0.0) issues.push_back({FieldIds::objectHeight, "Enter hₒ > 0.", "hₒ"});
     if (!issues.empty())
-        return pausedReport("E_INPUT_RANGE", issues,
+        return ReportSupport::pausedReport("E_INPUT_RANGE", issues,
                             {"f = " + num(in.f) + " cm   dₒ = " + num(in.s) + " cm", "hₒ = " + num(in.h) + " cm", "ACTION: " + issues.front().message},
                             {"Calculation paused / " + issues.front().label + " out of range",
                              "Enter a non-zero focal length and positive object distance and height. No new result has been calculated.\n\n"
@@ -296,7 +256,7 @@ Report imaging(const ImagingInput& in, const ReportContext& ctx) {
 
     const auto img = PC::imageFormation(in.s, in.f);
     if (img.atInfinity)
-        return pausedReport("E_FOCAL_PLANE", {{"s", "Object in the focal plane: move dₒ away from f.", "dₒ"}},
+        return ReportSupport::pausedReport("E_FOCAL_PLANE", {{FieldIds::objectDistance, "Object in the focal plane: move dₒ away from f.", "dₒ"}},
                             {"dₒ = f = " + num(in.s) + " cm", "dᵢ → ∞  (image at infinity)", "m → undefined", "ACTION: MOVE dₒ AWAY FROM f"},
                             {"Guarded case / E_FOCAL_PLANE",
                              "Comparison: dₒ = f = " + num(in.s) + " cm. Image at infinity; finite dᵢ and m suppressed. Move the object away from the focal plane to calculate a finite image.\n\n"
@@ -374,11 +334,11 @@ DataSeries imagingSweep(const ImagingInput& in) {
 // ------------------------------------------------------------------------------ prisms
 Report prism(const PrismInput& in, const ReportContext& ctx) {
     std::vector<FieldIssue> issues;
-    if (in.apex <= 0.0 || in.apex >= 180.0) issues.push_back({"apex", "Enter 0° < A < 180°.", "A"});
-    if (in.incidence < 0.0 || in.incidence >= 90.0) issues.push_back({"incidence", "Enter 0° ≤ i₁ < 90°.", "i₁"});
-    if (in.wavelengthNm <= 0.0) issues.push_back({"lambda", "Enter λ > 0 nm.", "λ"});
+    if (in.apex <= 0.0 || in.apex >= 180.0) issues.push_back({FieldIds::prismApex, "Enter 0° < A < 180°.", "A"});
+    if (in.incidence < 0.0 || in.incidence >= 90.0) issues.push_back({FieldIds::incidenceAngle, "Enter 0° ≤ i₁ < 90°.", "i₁"});
+    if (in.wavelengthNm <= 0.0) issues.push_back({FieldIds::wavelength, "Enter λ > 0 nm.", "λ"});
     if (!issues.empty())
-        return pausedReport("E_INPUT_RANGE", issues,
+        return ReportSupport::pausedReport("E_INPUT_RANGE", issues,
                             {"A = " + num(in.apex) + "°   i₁ = " + num(in.incidence) + "°", "λ = " + num(in.wavelengthNm) + " nm", "ACTION: " + issues.front().message},
                             {"Calculation paused / " + issues.front().label + " out of range",
                              "Apex 0° < A < 180°, incidence 0° ≤ i₁ < 90°, wavelength > 0. No new result has been calculated.\n\n"
@@ -449,24 +409,24 @@ DataSeries prismSweep(const PrismInput& in) {
 // ------------------------------------------------------------------------------ double slit
 Report doubleSlit(const SlitInput& in, const ReportContext& ctx) {
     std::vector<FieldIssue> issues;
-    if (in.wavelengthNm <= 0.0) issues.push_back({"lambda", "Enter λ > 0 nm.", "λ"});
-    if (in.separationMm <= 0.0) issues.push_back({"d", "Enter d > 0 mm.", "d"});
-    if (in.screenM <= 0.0) issues.push_back({"L", "Enter L > 0 m.", "L"});
-    if (in.order < 0) issues.push_back({"m", "Enter m ≥ 0.", "m"});
+    if (in.wavelengthNm <= 0.0) issues.push_back({FieldIds::wavelength, "Enter λ > 0 nm.", "λ"});
+    if (in.separationMm <= 0.0) issues.push_back({FieldIds::slitSeparation, "Enter d > 0 mm.", "d"});
+    if (in.screenM <= 0.0) issues.push_back({FieldIds::screenDistance, "Enter L > 0 m.", "L"});
+    if (in.order < 0) issues.push_back({FieldIds::order, "Enter m ≥ 0.", "m"});
     if (!issues.empty()) {
         std::vector<std::string> lines;
         for (const auto& i : issues) {
-            if (i.field == "d") { lines.push_back("d = " + NF::fixed(in.separationMm, 3) + " mm"); lines.push_back("β = λL / d → UNDEFINED"); }
-            else if (i.field == "lambda") lines.push_back("λ = " + num(in.wavelengthNm) + " nm");
-            else if (i.field == "L") lines.push_back("L = " + num(in.screenM) + " m");
+            if (i.field == FieldIds::slitSeparation) { lines.push_back("d = " + NF::fixed(in.separationMm, 3) + " mm"); lines.push_back("β = λL / d → UNDEFINED"); }
+            else if (i.field == FieldIds::wavelength) lines.push_back("λ = " + num(in.wavelengthNm) + " nm");
+            else if (i.field == FieldIds::screenDistance) lines.push_back("L = " + num(in.screenM) + " m");
             else lines.push_back("m = " + std::to_string(in.order));
         }
         const std::string cond = issues.front().message.substr(6, issues.front().message.size() - 6 - 1);     // "d > 0 mm" without "Enter " and "."
-        lines.push_back("ACTION: ENTER " + (issues.front().field == "d" ? std::string("d > 0") : cond));
+        lines.push_back("ACTION: ENTER " + (issues.front().field == FieldIds::slitSeparation ? std::string("d > 0") : cond));
         const std::string label = issues.front().label;
-        return pausedReport("E_INPUT_RANGE", issues, lines,
-                            {"Calculation paused / " + (issues.front().field == "d" ? std::string("d must be > 0") : label + " out of range"),
-                             (issues.front().field == "d" ? "Enter a positive slit separation." : "Enter a valid value.") +
+        return ReportSupport::pausedReport("E_INPUT_RANGE", issues, lines,
+                            {"Calculation paused / " + (issues.front().field == FieldIds::slitSeparation ? std::string("d must be > 0") : label + " out of range"),
+                             (issues.front().field == FieldIds::slitSeparation ? "Enter a positive slit separation." : "Enter a valid value.") +
                              std::string(" No new result has been calculated.\n\nDiagram, chart and retained results show %RUN%, not the current inputs. "
                                          "Restore ") + label + " or edit the highlighted field to continue."}, ctx);
     }
@@ -536,7 +496,7 @@ Report thickLens(const ThickLensInput& in, const ReportContext& ctx) {
     ti.thickness = in.thickness; ti.diameter = in.diameter; ti.objectDistance = in.objectDistance;
     const TL::Result a = TL::analyse(ti);
     if (!a.valid)
-        return pausedReport("E_INPUT_RANGE", {{"t", a.error, "t"}},
+        return ReportSupport::pausedReport("E_INPUT_RANGE", {{FieldIds::thickness, a.error, "t"}},
                             {"n = " + num(in.n) + "   R₁ = " + num(in.r1) + " cm", "R₂ = " + num(in.r2) + " cm   t = " + num(in.thickness) + " cm",
                              "ACTION: " + a.error},
                             {"Calculation paused / element not usable", a.error + "\n\nDiagram, chart and retained results show %RUN%, not the current inputs."}, ctx);

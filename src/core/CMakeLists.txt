@@ -12,6 +12,7 @@ add_library(phy104_core STATIC
     LatexFormatter.cpp
     NumberFormat.cpp
     ExperimentReports.cpp
+    ReportSupport.cpp
     ReportDocument.cpp
     SessionLog.cpp
     XlsxWriter.cpp

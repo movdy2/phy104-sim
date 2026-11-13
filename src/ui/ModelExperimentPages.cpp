@@ -1,5 +1,6 @@
 #include "ModelExperimentPages.h"
 #include "AppContext.h"
+#include "FieldIds.h"
 #include "Components.h"
 #include "OpticsCanvases.h"
 
@@ -143,9 +144,9 @@ void ModelPage::apply(bool record) {
 NewtonRingsPage::NewtonRingsPage(AppContext* ctx, QWidget* parent)
     : ModelPage("Newton's Rings", "EXPERIMENT 10 / Dark rings in a thin air film, reflected or transmitted", "Newton's Rings", ctx, parent) {
     addTabs({"Reflected", "Dark rings"});
-    m_lambda = addField("lambda", "Vacuum wavelength · λ", "nm", 600, 2);
-    m_radius = addField("R", "Radius of curvature · R", "m", 1.0, 4);
-    m_order = addField("m", "Selected dark-ring order · m", "integer", 4, 0, false, true, 1);
+    m_lambda = addField(QString::fromLatin1(FieldIds::wavelength), "Vacuum wavelength · λ", "nm", 600, 2);
+    m_radius = addField(QString::fromLatin1(FieldIds::radiusOfCurvature), "Radius of curvature · R", "m", 1.0, 4);
+    m_order = addField(QString::fromLatin1(FieldIds::order), "Selected dark-ring order · m", "integer", 4, 0, false, true, 1);
     m_medium = addCombo("Film medium", {"Air · n = 1.0000", "Water · n = 1.3330", "Oil · n = 1.4000"}, {1.0, 1.333, 1.4});
     m_viewing = addCombo("Viewing mode", {"Reflected light", "Transmitted light"}, {0, 1});
     m_canvas = new NewtonCanvas;
@@ -172,8 +173,8 @@ QString NewtonRingsPage::runDescription() const {
 MichelsonPage::MichelsonPage(AppContext* ctx, QWidget* parent)
     : ModelPage("Michelson Interferometry", "EXPERIMENT 09 / Mirror displacement, fringe shift and fringe count", "Michelson Interferometry", ctx, parent) {
     addTabs({"Displacement", "Fringes"});
-    m_lambda = addField("lambda", "Wavelength · λ", "nm", 632.8, 2);
-    m_dx = addField("dx", "Mirror displacement · Δx", "µm", 0.75, 4, true, true, 0.05);
+    m_lambda = addField(QString::fromLatin1(FieldIds::wavelength), "Wavelength · λ", "nm", 632.8, 2);
+    m_dx = addField(QString::fromLatin1(FieldIds::mirrorDisplacement), "Mirror displacement · Δx", "µm", 0.75, 4, true, true, 0.05);
     m_medium = addCombo("Arm medium", {"Air · n = 1.0000", "Water cell · n = 1.3330"}, {1.0, 1.333});
     m_reference = addCombo("Reference arm", {"M1 fixed", "M1 on a piezo (static)"}, {0, 1});
     m_balance = addCombo("Beam balance", {"Equal beams · V = 1.00", "Unequal beams · V = 0.60"}, {1.0, 0.6});
@@ -201,9 +202,9 @@ QString MichelsonPage::runDescription() const {
 ThinFilmPage::ThinFilmPage(AppContext* ctx, QWidget* parent)
     : ModelPage("Thin-Film Interference", "EXPERIMENT 08 / Single film at normal incidence: reflection and transmission", "Thin-Film Interference", ctx, parent) {
     addTabs({"Reflection", "Transmission", "Colours"});
-    m_lambda = addField("lambda", "Vacuum wavelength · λ", "nm", 600, 2);
-    m_n = addField("n", "Film index · n", "", 1.5, 4, false, true, 0.01);
-    m_t = addField("t", "Film thickness · t", "nm", 100, 2, false, true, 5);
+    m_lambda = addField(QString::fromLatin1(FieldIds::wavelength), "Vacuum wavelength · λ", "nm", 600, 2);
+    m_n = addField(QString::fromLatin1(FieldIds::refractiveIndex), "Film index · n", "", 1.5, 4, false, true, 0.01);
+    m_t = addField(QString::fromLatin1(FieldIds::thickness), "Film thickness · t", "nm", 100, 2, false, true, 5);
     m_swatch = new QLabel;
     m_swatch->setObjectName("colourSwatch");
     m_swatch->setFixedHeight(34);
@@ -255,10 +256,10 @@ QString ThinFilmPage::runDescription() const {
 GratingPage::GratingPage(AppContext* ctx, QWidget* parent)
     : ModelPage("Diffraction Grating", "EXPERIMENT 07 / Principal maxima of a transmission grating", "Diffraction Grating", ctx, parent) {
     addTabs({"Transmission", "Orders", "Resolution"});
-    m_density = addField("N", "Line density · N", "lines/cm", 5000, 0, false, true, 100);
-    m_lambda = addField("lambda", "Wavelength · λ", "nm", 600, 2);
-    m_order = addField("m", "Selected order · m", "order", 1, 0, true, true, 1);
-    m_slits = addField("M", "Illuminated slit count · M", "slits", 20, 0, false, true, 1);
+    m_density = addField(QString::fromLatin1(FieldIds::gratingDensity), "Line density · N", "lines/cm", 5000, 0, false, true, 100);
+    m_lambda = addField(QString::fromLatin1(FieldIds::wavelength), "Wavelength · λ", "nm", 600, 2);
+    m_order = addField(QString::fromLatin1(FieldIds::order), "Selected order · m", "order", 1, 0, true, true, 1);
+    m_slits = addField(QString::fromLatin1(FieldIds::illuminatedSlits), "Illuminated slit count · M", "slits", 20, 0, false, true, 1);
     m_incidence = addCombo("Incidence", {"Normal · 0.00°", "15.00°", "30.00°"}, {0, 15, 30});
     m_canvas = new GratingCanvas;
     build("Grating / angular observation screen", m_canvas, "Diffracted intensity vs angle", "N is line density, not slit count. Transmission: intensity fan. Orders: every peak with its angle. Resolution: R = m·M — raise M to split closer lines.");
@@ -288,10 +289,10 @@ QString GratingPage::runDescription() const {
 SingleSlitPage::SingleSlitPage(AppContext* ctx, QWidget* parent)
     : ModelPage("Single-Slit Diffraction", "EXPERIMENT 06 / First minimum and central maximum width", "Single-Slit Diffraction", ctx, parent) {
     addTabs({"Intensity", "Geometry", "Envelope"});
-    m_width = addField("a", "Slit width · a", "mm", 0.1, 4, false, true, 0.01);
-    m_lambda = addField("lambda", "Wavelength · λ", "nm", 500, 2);
-    m_screen = addField("L", "Screen distance · L", "m", 1.0, 4);
-    m_separation = addField("d", "Second slit · d (envelope tab)", "mm", 0.4, 4);
+    m_width = addField(QString::fromLatin1(FieldIds::slitWidth), "Slit width · a", "mm", 0.1, 4, false, true, 0.01);
+    m_lambda = addField(QString::fromLatin1(FieldIds::wavelength), "Wavelength · λ", "nm", 500, 2);
+    m_screen = addField(QString::fromLatin1(FieldIds::screenDistance), "Screen distance · L", "m", 1.0, 4);
+    m_separation = addField(QString::fromLatin1(FieldIds::slitSeparation), "Second slit · d (envelope tab)", "mm", 0.4, 4);
     m_wave = addCombo("Incident wave", {"Plane · coherent"}, {0});
     m_scale = addCombo("Intensity scale", {"Normalized · I/I₀"}, {0});
     m_canvas = new SingleSlitCanvas;
@@ -329,10 +330,10 @@ PolarizationPage::PolarizationPage(AppContext* ctx, QWidget* parent)
     : ModelPage("Malus's law & Brewster's angle", "EXPERIMENT 05 / Polarizers and the Brewster angle", "Polarization (Malus & Brewster)", ctx, parent) {
     addTabs({"Malus", "Brewster"});
     m_beam = addCombo("Incident beam", {"Unpolarized", "Polarized"}, {1, 0});
-    m_intensity = addField("I", "Before polarizer · Iᵢₙ", "W/m²", 100, 2);
-    m_angle = addField("theta", "Relative axis angle · θ", "°", 60, 2, false, true, 1);
-    m_n1 = addField("n1", "Incident index · n₁ (air)", "", 1.0, 4, false, true, 0.01);
-    m_n2 = addField("n2", "Transmitted index · n₂", "", 1.5, 4, false, true, 0.01);
+    m_intensity = addField(QString::fromLatin1(FieldIds::incidentIntensity), "Before polarizer · Iᵢₙ", "W/m²", 100, 2);
+    m_angle = addField(QString::fromLatin1(FieldIds::relativeAngle), "Relative axis angle · θ", "°", 60, 2, false, true, 1);
+    m_n1 = addField(QString::fromLatin1(FieldIds::refractiveIndex1), "Incident index · n₁ (air)", "", 1.0, 4, false, true, 0.01);
+    m_n2 = addField(QString::fromLatin1(FieldIds::refractiveIndex2), "Transmitted index · n₂", "", 1.5, 4, false, true, 0.01);
     m_canvas = new PolarizationCanvas;
     build("Two polarizers / independent Brewster reference", m_canvas, "Intensity vs relative angle", "Malus: θ range 0–90°, the first polarizer transmits half of unpolarized light. Brewster: tan θB = n₂/n₁, R_p = 0 at θB.");
     reset();
