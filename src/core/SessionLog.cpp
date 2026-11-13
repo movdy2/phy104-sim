@@ -21,6 +21,13 @@ std::vector<RunRecord> SessionLog::recent(std::size_t count) const {
 
 void SessionLog::restoreRuns(std::vector<RunRecord> runs) { m_runs = std::move(runs); }
 
+bool SessionLog::removeRun(int id) {
+    const auto it = std::find_if(m_runs.begin(), m_runs.end(), [id](const RunRecord& r) { return r.id == id; });
+    if (it == m_runs.end()) return false;
+    m_runs.erase(it);
+    return true;
+}
+
 void SessionLog::setNotes(std::string text) {
     m_notes = std::move(text);
     for (auto& [name, snap] : m_snapshots) snap.notesContent = m_notes;

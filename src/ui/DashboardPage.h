@@ -1,10 +1,17 @@
 #pragma once
 #include "BasePage.h"
 
+class QComboBox;
 class QLabel;
+class QPushButton;
+class QStackedWidget;
 class QTableWidget;
 
 namespace phy104 {
+
+class LineChart;
+class ModeTabs;
+struct RunRecord;
 
 class DashboardPage : public BasePage {
     Q_OBJECT
@@ -17,6 +24,9 @@ public:
 
 private:
     void refresh();
+    void refreshCompare();                       // overlay two saved runs in the "Compare" tab
+    void deleteSelectedRun();
+    const RunRecord* runById(int id) const;
     int m_notesPage = 5;
     int m_exportPage = 5;
 
@@ -25,6 +35,12 @@ private:
     QList<QLabel*> m_results;          // "last result" line of each experiment card
     QTableWidget* m_table;
     QLabel* m_lastSaved;
+    ModeTabs* m_recentMode;
+    QStackedWidget* m_recentStack;
+    QComboBox *m_cmpA, *m_cmpB;
+    LineChart* m_cmpChart;
+    QLabel* m_cmpSummary;
+    QPushButton* m_deleteRun;
 };
 
 } // namespace phy104

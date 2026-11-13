@@ -78,7 +78,11 @@ int main() {
             const QString path = QDir::tempPath() + "/phy104_test_session.phy";
             JsonSessionStore store(path);
             SessionLog log;
-            log.addRun("Prisms", "A 60°", "δmin = 37.1808°", true);
+            RunRecord& first = log.addRun("Prisms", "A 60°", "δmin = 37.1808°", true);
+            first.series.id = "prism_sweep";
+            first.series.name = "Prism sweep";
+            first.series.headers = {"d_o (mm)", "d_i (mm)"};
+            first.series.rows = {{10, 15.2}, {20, 12.4}, {30, kNaN}};      // a gap survives the round trip
             log.addRun("Wave Interference", "532 nm", "β = 3.1920 mm", false);
             log.setNotes("# Notes\nunicode: θ₂ ≥ θc");
             LcdRegister reg; reg.title = "CALCULATION REGISTER"; reg.lines = {"01  n₁ sin θ₁ = n₂ sin θ₂"}; reg.resultLabel = "θ₂"; reg.resultValue = "48.5904°";
@@ -96,6 +100,11 @@ int main() {
             SessionLog back;
             expect(store.load(back) && back.runs().size() == 2 && back.runs()[1].id == 2 && !back.runs()[1].valid, "session runs restored");
             expect(back.notes() == log.notes(), "session notes restored (UTF-8)");
+            const RunRecord& kept = back.runs()[0];
+            expect(kept.series.id == "prism_sweep" && kept.series.headers.size() == 2 && kept.series.rows.size() == 3,
+                   "the sweep of a saved run survives the .phy file (version 5)");
+            expect(kept.series.rows[2][1] != kept.series.rows[2][1], "a missing cell comes back as NaN, not 0");
+            expect(back.runs()[1].series.rows.empty(), "a run without a sweep stays empty");
             const Snapshot* snap = back.snapshot("Refraction & TIR");
             expect(snap && snap->parameters.size() == 2 && snap->parameters[1].second == "30 °", "snapshot parameters restored");
             expect(snap && snap->registers.size() == 1 && snap->registers[0].resultValue == "48.5904°" && snap->registers[0].lines[0] == "01  n₁ sin θ₁ = n₂ sin θ₂",

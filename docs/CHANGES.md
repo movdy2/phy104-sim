@@ -107,3 +107,14 @@ formula/variable, 25 random data sets), Qt UI, five experiments, notes, theme.
 * Fixed: the notes preview showed no formulas. Qt's Markdown importer silently drops an image with an empty alt text
   (`![](…)`), so every generated formula image is now `![formula](latex://N)`; an image the student writes without alt
   text is rescued to `![image](…)` before import (fenced code is left alone). The interaction test asserts both.
+* **Compare saved runs** on the dashboard: the "Recent calculations" panel gained a **Recent / Compare** switch. Compare
+  shows two run pickers (Run A / Run B) and overlays both sweeps on one amber/blue chart with a legend and a summary
+  (`RUN 001 (exp) · N points vs RUN 002 (exp) · M points`). Runs are only offered when they carry a sweep, the previous
+  choice is kept across refreshes, and the newest pair is picked by default. The rows of the Recent table are now
+  selectable and **Delete selected run** removes the run (and its sweep) from the session, autosaves the `.phy` file and
+  reports it in the status bar. For that, a run now keeps the sweep it was calculated with: `RunRecord::series`,
+  remembered by `AppContext` from the last `publish()` of each experiment, written as `"series"` per run in the session
+  file (**format version 5**, version 4 and older files still load) and `SessionLog::removeRun(id)`.
+* **Continuous integration**: `.github/workflows/build.yml` builds on every push to `new-v2.1`/`main` and on every pull
+  request - Linux (Qt 6 + Ninja + ctest), Windows (MSVC, Qt 6.7.2 through `install-qt-action`) and a Qt-free job that
+  compiles the core with plain `g++` and runs `tests/test_core.cpp`. UI tests run with `QT_QPA_PLATFORM=offscreen`.

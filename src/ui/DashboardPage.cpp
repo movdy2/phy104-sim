@@ -3,16 +3,23 @@
 #include "Components.h"
 #include "Icons.h"
 #include "OpticsCanvases.h"
+#include "Plots.h"
 #include "ThemeManager.h"
 
+#include <QComboBox>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
 #include <QMouseEvent>
 #include <QPushButton>
+#include <QSignalBlocker>
+#include <QStackedWidget>
 #include <QTableWidget>
 #include <QVBoxLayout>
+#include <algorithm>
+#include <cmath>
+#include <limits>
 
 namespace phy104 {
 namespace {
@@ -134,12 +141,43 @@ DashboardPage::DashboardPage(AppContext* ctx, QWidget* parent)
     m_table->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
     m_table->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
     m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    m_table->setSelectionMode(QAbstractItemView::NoSelection);
+    m_table->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_table->setShowGrid(false);
     m_table->setFocusPolicy(Qt::NoFocus);
     m_table->setMinimumHeight(150);
+
+    // the same panel switches to "Compare": two saved runs overlaid on one chart
+    m_recentMode = new ModeTabs({"Recent", "Compare"});
+    m_recentStack = new QStackedWidget;
+    m_recentStack->addWidget(m_table);
+    auto* compareBox = new QWidget;
+    auto* cmp = new QVBoxLayout(compareBox);
+    cmp->setContentsMargins(0, 0, 0, 0);
+    cmp->setSpacing(6);
+    auto* pickers = new QHBoxLayout;
+    pickers->setSpacing(8);
+    m_cmpA = new QComboBox;
+    m_cmpB = new QComboBox;
+    pickers->addWidget(labeled("Run A", m_cmpA), 1);
+    pickers->addWidget(labeled("Run B", m_cmpB), 1);
+    cmp->addLayout(pickers);
+    m_cmpChart = new LineChart;
+    m_cmpChart->setMinimumHeight(130);
+    cmp->addWidget(m_cmpChart, 1);
+    m_cmpSummary = new QLabel;
+    m_cmpSummary->setObjectName("hint");
+    m_cmpSummary->setWordWrap(true);
+    cmp->addWidget(m_cmpSummary);
+    m_recentStack->addWidget(compareBox);
+
+    m_deleteRun = new QPushButton("Delete selected run");
+    m_deleteRun->setObjectName("secondary");
+    m_deleteRun->setEnabled(false);
     recent->body()->setContentsMargins(12, 0, 12, 8);
-    recent->body()->addWidget(m_table);
+    recent->body()->addWidget(m_recentMode);
+    recent->body()->addWidget(m_recentStack, 1);
+    recent->body()->addWidget(m_deleteRun);
     bottom->addWidget(recent, 3);
 
     auto* notebook = new Panel("Lab notebook", "AUTOSAVED");
@@ -164,6 +202,17 @@ DashboardPage::DashboardPage(AppContext* ctx, QWidget* parent)
 
     connect(openNotes, &QPushButton::clicked, this, [this] { emit openPageRequested(m_notesPage); });
     connect(exportData, &QPushButton::clicked, this, [this] { emit openPageRequested(m_exportPage); });
+    connect(m_recentMode, &ModeTabs::currentChanged, this, [this](int index) {
+        m_recentStack->setCurrentIndex(index);
+        if (index == 1) refreshCompare();
+    });
+    connect(m_cmpA, &QComboBox::activated, this, [this] { refreshCompare(); });
+    connect(m_cmpB, &QComboBox::activated, this, [this] { refreshCompare(); });
+    connect(m_table, &QTableWidget::itemSelectionChanged, this, [this] {
+        const int row = m_table->currentRow();
+        m_deleteRun->setEnabled(row >= 0 && m_table->item(row, 0) && m_table->item(row, 0)->data(Qt::UserRole).isValid());
+    });
+    connect(m_deleteRun, &QPushButton::clicked, this, &DashboardPage::deleteSelectedRun);
     connect(ctx, &AppContext::snapshotChanged, this, &DashboardPage::refresh);
     connect(ctx, &AppContext::runsChanged, this, &DashboardPage::refresh);
     connect(ctx, &AppContext::notesSaved, this, &DashboardPage::refresh);
@@ -193,6 +242,7 @@ void DashboardPage::refresh() {
     int row = 0;
     for (const RunRecord& r : recent) {
         auto* run = new QTableWidgetItem(QString::fromStdString(SessionLog::runLabel(r.id)));
+        run->setData(Qt::UserRole, r.id);
         run->setForeground(t.dim);
         auto* exp = new QTableWidgetItem(QString::fromStdString(r.description));
         exp->setForeground(t.text);
@@ -205,8 +255,106 @@ void DashboardPage::refresh() {
         ++row;
     }
     for (int i = 0; i < m_table->rowCount(); ++i) m_table->setRowHeight(i, 32);
+    const int selected = m_table->currentRow();
+    m_deleteRun->setEnabled(selected >= 0 && m_table->item(selected, 0) && m_table->item(selected, 0)->data(Qt::UserRole).isValid());
     const QString when = m_ctx->lastSavedTime();
     m_lastSaved->setText((when == "restored" ? QString("Session restored") : "Last saved " + when) + " · " + m_ctx->sessionFile);
+    refreshCompare();
+}
+
+const RunRecord* DashboardPage::runById(int id) const {
+    for (const RunRecord& r : m_ctx->log.runs())
+        if (r.id == id) return &r;
+    return nullptr;
+}
+
+void DashboardPage::refreshCompare() {
+    const int keepA = m_cmpA->currentData().toInt();
+    const int keepB = m_cmpB->currentData().toInt();
+    QList<const RunRecord*> usable;
+    for (const RunRecord& r : m_ctx->log.runs())
+        if (!r.series.rows.empty() && !r.series.headers.empty()) usable << &r;
+
+    {
+        const QSignalBlocker blockA(m_cmpA), blockB(m_cmpB);
+        m_cmpA->clear();
+        m_cmpB->clear();
+        for (const RunRecord* r : usable) {
+            const QString label = QString::fromStdString(SessionLog::runLabel(r->id)) + " · " + QString::fromStdString(r->experiment);
+            m_cmpA->addItem(label, r->id);
+            m_cmpB->addItem(label, r->id);
+        }
+        const auto restore = [](QComboBox* box, int id, int fromEnd) {
+            if (box->count() == 0) return;
+            int index = -1;
+            for (int i = 0; i < box->count(); ++i)
+                if (box->itemData(i).toInt() == id) index = i;
+            if (index < 0) index = std::max(0, box->count() - fromEnd);
+            box->setCurrentIndex(index);
+        };
+        restore(m_cmpA, keepA, 2);                       // newest pair by default
+        restore(m_cmpB, keepB, 1);
+    }
+
+    const RunRecord* a = runById(m_cmpA->currentData().toInt());
+    const RunRecord* b = runById(m_cmpB->currentData().toInt());
+    const Theme& t = ThemeManager::instance().theme();
+    if (!a || !b) {
+        m_cmpChart->setSeries({});
+        m_cmpChart->setLegend({}, QString());
+        m_cmpSummary->setText("Nothing to compare yet: press Calculate & Simulate on two settings and they appear here.");
+        return;
+    }
+
+    const auto toCurve = [](const DataSeries& series, const QColor& color) {
+        ChartSeries curve;
+        curve.line = true;
+        curve.color = color;
+        for (const auto& row : series.rows)
+            if (row.size() >= 2 && std::isfinite(row[0]) && std::isfinite(row[1])) curve.points << QPointF(row[0], row[1]);
+        return curve;
+    };
+    ChartSeries curveA = toCurve(a->series, t.amber), curveB = toCurve(b->series, t.blue);
+    double xMin = std::numeric_limits<double>::max(), xMax = std::numeric_limits<double>::lowest();
+    double yMin = std::numeric_limits<double>::max(), yMax = std::numeric_limits<double>::lowest();
+    for (const ChartSeries* curve : {&curveA, &curveB}) {
+        for (const QPointF& p : curve->points) {
+            xMin = std::min(xMin, p.x());
+            xMax = std::max(xMax, p.x());
+            yMin = std::min(yMin, p.y());
+            yMax = std::max(yMax, p.y());
+        }
+    }
+    if (curveA.points.isEmpty() || curveB.points.isEmpty() || yMin > yMax) {
+        m_cmpChart->setSeries({});
+        m_cmpSummary->setText("These runs carry no sweep data (they were saved by an older version of the session file).");
+        return;
+    }
+    if (xMax - xMin < 1e-12) xMax = xMin + 1.0;
+    const double pad = yMax > yMin ? (yMax - yMin) * 0.08 : 0.5;
+    const std::string& xName = a->series.headers.size() > 0 ? a->series.headers[0] : a->series.id;
+    const std::string yName = a->series.headers.size() > 1 ? a->series.headers[1] : std::string("value");
+    m_cmpChart->setAxes(xMin, xMax, 4, 2, QString::fromStdString(xName), yMin - pad, yMax + pad, 3, 3, QString::fromStdString(yName));
+    m_cmpChart->setSeries({curveA, curveB});
+    m_cmpChart->setLegend({"A · " + QString::fromStdString(a->experiment), "B · " + QString::fromStdString(b->experiment)},
+                          a->id == b->id ? "same run on both sides" : "two saved sweeps");
+    m_cmpSummary->setText(QString("RUN %1 (%2) · %3 points   vs   RUN %4 (%5) · %6 points%7")
+                              .arg(QString::fromStdString(SessionLog::runLabel(a->id)), QString::fromStdString(a->experiment))
+                              .arg(static_cast<int>(curveA.points.size()))
+                              .arg(QString::fromStdString(SessionLog::runLabel(b->id)), QString::fromStdString(b->experiment))
+                              .arg(static_cast<int>(curveB.points.size()))
+                              .arg(a->id == b->id ? QString()
+                                                  : (a->experiment == b->experiment ? "" : " · different experiments share one axis")));
+}
+
+void DashboardPage::deleteSelectedRun() {
+    const int row = m_table->currentRow();
+    if (row < 0) return;
+    const QTableWidgetItem* item = m_table->item(row, 0);
+    if (!item) return;
+    const int id = item->data(Qt::UserRole).toInt();
+    if (id <= 0) return;
+    if (m_ctx->deleteRun(id)) refresh();
 }
 
 } // namespace phy104

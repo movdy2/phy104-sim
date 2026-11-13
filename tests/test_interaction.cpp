@@ -175,6 +175,59 @@ private slots:
         click(findButton(m_app->dashboard, "Export data"));
         QCOMPARE(win().currentPage(), idx(m_app->exportPage));
     }
+    void dashboardComparesAndDeletesSavedRuns() {
+        AppContext& ctx = m_app->context();
+        const int before = ctx.log.savedCalculations();
+        for (int i = 0; i < 2; ++i) {
+            Snapshot snap;
+            snap.experiment = "Prism sweep";
+            snap.series.name = i == 0 ? "Sweep A" : "Sweep B";
+            snap.series.headers = {"d_o (mm)", "d_i (mm)"};
+            snap.series.rows = {{10.0, 15.0 + i}, {20.0, 12.0 + i}, {30.0, 10.0 + i}};
+            ctx.publish(snap);
+            ctx.recordRun(QStringLiteral("Prism sweep"), i == 0 ? "first setting" : "second setting", "n = 1.5", true);
+        }
+        QCOMPARE(ctx.log.savedCalculations(), before + 2);
+        const int newest = ctx.log.runs().back().id;
+        QVERIFY(ctx.log.runs().back().id > 0 && ctx.log.runs().back().series.rows.size() == 3);   // the sweep travelled with the run
+        go(0);
+
+        // the "Compare" tab overlays two saved sweeps on one chart
+        click(modeTab(m_app->dashboard, "Compare"));
+        QComboBox* pickA = nullptr;
+        QComboBox* pickB = nullptr;
+        for (auto* c : m_app->dashboard->findChildren<QComboBox*>()) {
+            if (c->count() >= 2 && c->itemData(0).isValid()) (pickA ? pickB : pickA) = c;
+        }
+        QVERIFY2(pickA && pickB, "the compare tab has two run pickers");
+        chooseItem(pickA, pickA->count() - 2);
+        chooseItem(pickB, pickB->count() - 1);
+        QApplication::processEvents();
+        bool summary = false;
+        for (auto* l : m_app->dashboard->findChildren<QLabel*>())
+            if (l->text().contains(" vs ") && l->text().contains("points")) summary = true;
+        QVERIFY2(summary, "the compare tab reports both runs");
+        click(modeTab(m_app->dashboard, "Recent"));
+
+        // "Delete selected run" drops the newest run and autosaves the session
+        QTableWidget* table = nullptr;
+        for (auto* t : m_app->dashboard->findChildren<QTableWidget*>())
+            if (t->columnCount() == 4) table = t;
+        QVERIFY(table);
+        int row = -1;
+        for (int i = 0; i < table->rowCount(); ++i)
+            if (table->item(i, 0) && table->item(i, 0)->data(Qt::UserRole).toInt() == newest) row = i;
+        QVERIFY2(row >= 0, "the newest run is listed");
+        table->setCurrentCell(row, 0);
+        QApplication::processEvents();
+        QPushButton* del = findButton(m_app->dashboard, "Delete selected run");
+        QVERIFY(del && del->isEnabled());
+        click(del);
+        QApplication::processEvents();
+        QCOMPARE(ctx.log.savedCalculations(), before + 1);
+        QVERIFY(ctx.log.runs().back().id < newest);
+        QVERIFY(QFile::exists(m_tmp.path() + "/session.phy"));       // the deletion was written to the .phy file
+    }
     void themeButtonTogglesRepeatedly() {
         const bool start = ThemeManager::instance().isDark();
         for (int i = 0; i < 4; ++i) click(win().themeButton());

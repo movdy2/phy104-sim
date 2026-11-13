@@ -14,6 +14,7 @@ struct RunRecord {
     std::string description;    // "Glass → air / 30°"
     std::string result;         // "θ₂ = 48.5904°"
     bool valid = true;
+    DataSeries series;          // the sweep the page published for this run (empty in old sessions)
 };
 
 /// What an experiment page is currently showing (used for export and the dashboard cards).
@@ -50,6 +51,8 @@ public:
     /// Newest first, at most `count` entries.
     std::vector<RunRecord> recent(std::size_t count) const;
     void restoreRuns(std::vector<RunRecord> runs);
+    /// Drops one saved calculation (the dashboard's "delete run"); false when the id is unknown.
+    bool removeRun(int id);
 
     /// Stores the snapshot; its `notesContent` is stamped with the current notes.
     void setSnapshot(const Snapshot& snapshot);
