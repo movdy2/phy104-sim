@@ -83,6 +83,15 @@ int main() {
             log.setNotes("# Notes\nunicode: θ₂ ≥ θc");
             LcdRegister reg; reg.title = "CALCULATION REGISTER"; reg.lines = {"01  n₁ sin θ₁ = n₂ sin θ₂"}; reg.resultLabel = "θ₂"; reg.resultValue = "48.5904°";
             log.setSnapshot({"Refraction & TIR", {{"n₁", "1.5"}, {"θ₁", "30 °"}}, {reg}, "θ₂ = 48.5904°", {}, ""});
+            expect(!log.hasExport(), "a fresh session has no recent export");
+            ExportRecord recent;
+            recent.path = "/home/student/Documents/PHY104/PHY104_refraction.xlsx";
+            recent.format = "Excel (.xlsx)";
+            recent.series = "refraction";
+            recent.when = "13 Nov 2026 · 01:42";
+            recent.rows = 8;
+            recent.columns = 3;
+            log.setLastExport(recent);
             expect(store.save(log), "session saved");
             SessionLog back;
             expect(store.load(back) && back.runs().size() == 2 && back.runs()[1].id == 2 && !back.runs()[1].valid, "session runs restored");
@@ -92,6 +101,9 @@ int main() {
             expect(snap && snap->registers.size() == 1 && snap->registers[0].resultValue == "48.5904°" && snap->registers[0].lines[0] == "01  n₁ sin θ₁ = n₂ sin θ₂",
                    "calculator registers restored");
             expect(snap && snap->notesContent == log.notes(), "snapshot carries the notes after loading");
+            expect(back.hasExport() && back.lastExport().path == recent.path && back.lastExport().format == recent.format &&
+                   back.lastExport().series == "refraction" && back.lastExport().when == recent.when &&
+                   back.lastExport().rows == 8 && back.lastExport().columns == 3, "recent export restored from the .phy file");
             QFile::remove(path);
             SessionLog none;
             expect(!JsonSessionStore(QDir::tempPath() + "/does_not_exist.phy").load(none), "missing session file is not an error");

@@ -10,6 +10,7 @@
 #include "ui/DashboardPage.h"
 #include "ui/DiagramsPage.h"
 #include "ui/EquationLabPage.h"
+#include "ui/ExportPage.h"
 #include "ui/ExperimentPages.h"
 #include "ui/ModelExperimentPages.h"
 #include "ui/MainWindow.h"
@@ -76,10 +77,12 @@ App::App(const Paths& paths) {
     m_window->addPage("Constants", "ruler", constants, 1);
     diagrams = new DiagramsPage;
     m_window->addPage("Optical Setups", "image", diagrams, 1);
-    m_window->addNavAlias("Export (Excel/CSV)", "file-spreadsheet", notesIndex, 1);
+    exportPage = new ExportPage(m_context.get());
+    const int exportIndex = m_window->addPage("Export (Excel/CSV)", "file-spreadsheet", exportPage, 1);   // tools entry, as in Figma
     dashboard->setNotesPage(notesIndex);
+    dashboard->setExportPage(exportIndex);
     for (BasePage* page : std::initializer_list<BasePage*>{polarization, singleSlit, grating, thinFilm, michelson, newton})
-        QObject::connect(page, &BasePage::exportRequested, m_window.get(), [this, notesIndex] { m_window->setCurrentPage(notesIndex); });
+        QObject::connect(page, &BasePage::exportRequested, m_window.get(), [this, exportIndex] { m_window->setCurrentPage(exportIndex); });
 
     QObject::connect(dashboard, &BasePage::openPageRequested, m_window.get(), &MainWindow::setCurrentPage);
 }

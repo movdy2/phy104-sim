@@ -200,9 +200,17 @@ bool JsonSessionStore::save(const SessionLog& log) const {
     for (const Shape& sh : log.drawing().shapes) shapes.append(shapeToJson(sh));
     QJsonArray snapshots;
     for (const auto& [name, snap] : log.snapshots()) snapshots.append(snapshotToJson(snap));
-    const QJsonObject root{{"format", "phy104-session"}, {"version", 3}, {"session", log.sessionNumber()},
+    QJsonObject recentExport;                                  // the "recent export" card of the Export page
+    if (log.hasExport()) {
+        const ExportRecord& e = log.lastExport();
+        recentExport = {{"path", QString::fromStdString(e.path)}, {"format", QString::fromStdString(e.format)},
+                        {"series", QString::fromStdString(e.series)}, {"when", QString::fromStdString(e.when)},
+                        {"rows", e.rows}, {"columns", e.columns}};
+    }
+    const QJsonObject root{{"format", "phy104-session"}, {"version", 4}, {"session", log.sessionNumber()},
                            {"notes", QString::fromStdString(log.notes())}, {"runs", runs}, {"snapshots", snapshots},
-                           {"equations", equations}, {"drawing", QJsonObject{{"shapes", shapes}}}};
+                           {"equations", equations}, {"drawing", QJsonObject{{"shapes", shapes}}},
+                           {"recentExport", recentExport}};
     QDir().mkpath(QFileInfo(m_path).absolutePath());
     QSaveFile file(m_path);                                   // atomic: never leaves a half-written file
     if (!file.open(QIODevice::WriteOnly)) return false;
@@ -237,6 +245,17 @@ bool JsonSessionStore::load(SessionLog& log) const {
     Drawing drawing;
     for (const auto& sh : root.value("drawing").toObject().value("shapes").toArray()) drawing.shapes.push_back(shapeFromJson(sh.toObject()));
     log.setDrawing(std::move(drawing));
+    const QJsonObject recent = root.value("recentExport").toObject();      // absent in version 3 files
+    if (!recent.isEmpty()) {
+        ExportRecord e;
+        e.path = str(recent, "path", false);
+        e.format = str(recent, "format", false);
+        e.series = str(recent, "series", false);
+        e.when = str(recent, "when", false);
+        e.rows = recent.value("rows").toInt();
+        e.columns = recent.value("columns").toInt();
+        log.setLastExport(std::move(e));
+    }
     return true;
 }
 

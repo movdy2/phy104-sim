@@ -77,6 +77,10 @@ formula/variable, 25 random data sets), Qt UI, five experiments, notes, theme.
 * Nine new Figma frames: six experiments (Newton's rings, Michelson, thin film, diffraction grating, single slit, Malus/Brewster)
   with Save/Export header and Send to Notes; Equation Lab; "Scientific input" keyboard (Greek / Math operators / Functions / Variables).
 * keyboard.json: Figma layout + all 55 variables of variables.json. LaTeX-rendered formulas (notes preview, formula reference).
+* **Export (Excel/CSV)** is its own screen: every data series with its description and columns, the **full** table (the Notes
+  page shows a 7-row sample), the workbook/CSV settings on the right, and a **recent export** card that remembers the last
+  file in the `.phy` session (session format version 4; version 3 files still load). The Notes page keeps its quick export
+  and both write the same record. Dashboard "Export data" and the Export header of the six new screens open it.
 * Fixed: formulas typed half-way (e.g. \frac{1}) crashed the LaTeX renderer.
 * Fixed: the notes preview showed no formulas. Qt's Markdown importer silently drops an image with an empty alt text
   (`![](…)`), so every generated formula image is now `![formula](latex://N)`; an image the student writes without alt

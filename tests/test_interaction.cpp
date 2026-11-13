@@ -9,6 +9,7 @@
 #include "ui/ExperimentPages.h"
 #include "ui/MainWindow.h"
 #include "ui/EquationLabPage.h"
+#include "ui/ExportPage.h"
 #include "ui/MarkdownHighlighter.h"
 #include "ui/ModelExperimentPages.h"
 #include "ui/ScientificKeyboard.h"
@@ -24,6 +25,7 @@
 #include <QComboBox>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QLabel>
 #include <QLineEdit>
 #include <QSignalSpy>
@@ -38,6 +40,7 @@
 #include <QTextEdit>
 #include <QTextFragment>
 #include <QToolButton>
+#include <algorithm>
 
 using namespace phy104;
 
@@ -138,7 +141,7 @@ private slots:
         QCOMPARE(win().currentPage(), idx(m_app->notes));
         go(0);
         click(findButton(m_app->dashboard, "Export data"));
-        QVERIFY(win().currentPage() == idx(m_app->notes));
+        QCOMPARE(win().currentPage(), idx(m_app->exportPage));
     }
     void themeButtonTogglesRepeatedly() {
         const bool start = ThemeManager::instance().isDark();
@@ -515,7 +518,7 @@ private slots:
             QVERIFY2(findButton(page, "Export"), "missing Export");
             QVERIFY2(!findButton(page, "Save session"), "old header still shown");
             click(findButton(page, "Export"));
-            QCOMPARE(win().currentPage(), idx(m_app->notes));                      // Export opens the export page
+            QCOMPARE(win().currentPage(), idx(m_app->exportPage));                 // Export opens the export page
         }
     }
     void newScreensCalculateAndSendToNotes() {
@@ -656,13 +659,82 @@ private slots:
         QVERIFY(!kb->isVisible() && !toggle->isChecked());
     }
 
-    // ------------------------------------------------------------------ export
+    // ------------------------------------------------------------------ export (Notes page keeps its quick export)
     void exportWorkbookButtonWritesAFile() {
         goTo(m_app->notes);
         const QString dir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/PHY104";
         QDir(dir).removeRecursively();
         click(findButton(m_app->notes, "Export workbook"));
         QVERIFY2(QFile::exists(dir + "/PHY104_refraction.xlsx"), qPrintable("no file in " + dir));
+    }
+
+    // ------------------------------------------------------------------ dedicated Export (Excel/CSV) page
+    const Snapshot* selectedSeries() {
+        auto* list = m_app->exportPage->seriesList();
+        if (!list || !list->currentItem()) return nullptr;
+        return m_app->context().log.snapshot(list->currentItem()->data(Qt::UserRole).toString().toStdString());
+    }
+    void exportPageListsEverySeriesAndDescribesIt() {
+        goTo(m_app->exportPage);
+        auto* list = m_app->exportPage->seriesList();
+        QVERIFY(list && list->count() > 0);
+        int withRows = 0;                                                       // every published series that has rows
+        for (const auto& entry : m_app->context().log.snapshots()) if (!entry.second.series.rows.empty()) ++withRows;
+        QCOMPARE(list->count(), withRows);
+        for (int i = 0; i < list->count(); ++i) {
+            list->setCurrentRow(i);
+            QApplication::processEvents();
+            const Snapshot* snap = selectedSeries();
+            QVERIFY2(snap && !snap->series.rows.empty(), "series without data in the list");
+            const QStringList texts = allLabelTexts(m_app->exportPage);
+            QVERIFY2(texts.contains(QString::fromStdString(snap->series.name)), "series name not described");
+            QVERIFY2(texts.contains(QString::fromStdString(snap->series.description)), "series description missing");
+        }
+    }
+    void exportPageShowsEveryRowOfTheChosenSeries() {
+        goTo(m_app->exportPage);
+        auto* list = m_app->exportPage->seriesList();
+        QVERIFY(list && list->count() > 0);
+        int mostRows = 0;
+        for (int i = 0; i < list->count(); ++i) {
+            list->setCurrentRow(i);
+            QApplication::processEvents();
+            const Snapshot* snap = selectedSeries();
+            QVERIFY(snap);
+            QCOMPARE(m_app->exportPage->previewTable()->rowCount(), static_cast<int>(snap->series.rows.size()));
+            QCOMPARE(m_app->exportPage->previewTable()->columnCount(), static_cast<int>(snap->series.headers.size()));
+            mostRows = std::max(mostRows, m_app->exportPage->previewTable()->rowCount());
+        }
+        QVERIFY2(mostRows > 7, "the dedicated page must show every row, not the 7-row sample of the Notes page");
+    }
+    void exportPageWritesBothFormatsAndRemembersTheFile() {
+        goTo(m_app->exportPage);
+        const Snapshot* snap = selectedSeries();
+        QVERIFY(snap);
+        const QString base = "PHY104_" + QString::fromStdString(snap->series.id).section('_', 0, 0);
+        const QString dir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/PHY104";
+        QDir(dir).removeRecursively();
+
+        click(findButton(m_app->exportPage, "Export workbook"));
+        QVERIFY2(QFile::exists(dir + "/" + base + ".xlsx"), qPrintable("no workbook in " + dir));
+        QCOMPARE(QString::fromStdString(m_app->context().log.lastExport().path), dir + "/" + base + ".xlsx");
+        QCOMPARE(QString::fromStdString(m_app->context().log.lastExport().format), QString("Excel (.xlsx)"));
+        QVERIFY(allLabelTexts(m_app->exportPage).contains(base + ".xlsx"));      // the recent-export card
+
+        click(findButton(m_app->exportPage, "Export as CSV instead"));
+        QVERIFY2(QFile::exists(dir + "/" + base + ".csv"), qPrintable("no CSV in " + dir));
+        QCOMPARE(QString::fromStdString(m_app->context().log.lastExport().format), QString("CSV (.csv)"));
+        QVERIFY(allLabelTexts(m_app->exportPage).contains(base + ".csv"));
+    }
+    void recentExportSurvivesARestart() {
+        QVERIFY(m_app->context().log.hasExport());                              // written by the test above
+        const QString path = QString::fromStdString(m_app->context().log.lastExport().path);
+        App second(App::Paths{DATA_DIR, m_tmp.path() + "/session.phy"});
+        QVERIFY(second.context().log.hasExport());
+        QCOMPARE(QString::fromStdString(second.context().log.lastExport().path), path);
+        QStringList texts;
+        for (auto* l : second.exportPage->findChildren<QLabel*>()) texts << l->text();
+        QVERIFY2(texts.contains(QFileInfo(path).fileName()), "the recent-export card forgot the file");
     }
 };
 

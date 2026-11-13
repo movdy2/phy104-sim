@@ -12,7 +12,8 @@ Wave Interference, Formulas Notes & Export, Component Sheet).
 | Lenses & Mirrors | `LensesPage` + `LensCanvas`, `MirrorCanvas` | |
 | Prisms | `PrismsPage` + `PrismCanvas`, `LineChart` | dispersion mode draws three rays |
 | Wave Interference | `WavePage` + `WaveCanvas`, `LineChart` | Intensity / Wavefronts tabs |
-| Formulas, Notes & Export | `NotesExportPage` | `XlsxWriter` builds real .xlsx files without a library |
+| Formulas, Notes & Export | `NotesExportPage` | formula reference, notes and a quick export |
+| Export (Excel/CSV) | `ExportPage` | series description + full preview + "recent export" card; `XlsxWriter` builds real .xlsx files without a library |
 | Component sheet | `Components.h` + `ThemeManager` | see below |
 
 ## Component sheet
@@ -38,8 +39,8 @@ Wave Interference, Formulas Notes & Export, Component Sheet).
 * **Error red** is the design's `#fb4934` (earlier brief: `#cc241d`); physics notices use the design's amber card.
 * **Real functionality behind the frames**: Calculate & Simulate saves runs, the session autosaves and restores,
   export writes real files. The "21 saved calculations" in the frame is demo data; a fresh session starts at 00.
-* **"Export (Excel/CSV)"** is a second sidebar entry that opens the same page as Formulas & Notes (the design shows
-  one combined screen).
+* **Export (Excel/CSV)** is its own screen (second batch) next to the combined Formulas & Notes page: the export
+  settings live on both, the recent-export record is shared and stored in the `.phy` session.
 * Charts are drawn with QPainter (`LineChart`), not Qt Charts, to avoid an extra Qt module; the panel meta keeps
   the design's "QT CHARTS" label.
 * The faux title bar of the frame is the native window title.
