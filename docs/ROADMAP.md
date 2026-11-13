@@ -18,11 +18,11 @@
   (every peak with its angle, `d/λ` capacity, all maxima marked on the chart), Single slit **Geometry** (minima positions
   on the screen, `yₘ`-vs-order chart) and Malus **Brewster** (Fresnel `R_p`/`R_s`, `R_p(θ)` chart). Newton's viewing-mode
   dropdown now switches the physics and the ring pattern, and the Michelson reference arm draws a piezo stack.
-* **Draw Space** (sketchpad): pen, line, ray, rectangle/ellipse, lens, mirror, prism, interface, axis, normal, text and
-  LaTeX labels; select/move, Delete, undo/redo, grid snap, six colours, three widths, PNG (2x) and SVG export; the sketch
-  autosaves into the `.phy` session.
-* **Markdown Study Workspace** (Notes & Formula Jotter): Gruvbox highlighter (H1-H4, formulas, bullets), snippet toolbar,
-  problem template, Edit/Split/Preview, autosave into `Snapshot.notesContent` and the `.phy` file.
+* **Markdown Study Workspace** (Notes): Gruvbox highlighter (H1-H4, formulas, bullets), snippet toolbar, problem
+  template, Edit/Split/Preview, autosave into `Snapshot.notesContent` and the `.phy` file - and **only** that: the
+  formula reference (now on the Formula Solver page) and the export panels (Export / PDF Report screens) were removed.
+* **One export icon** in every page header: PDF report / Excel (.xlsx) / CSV (.csv), opening the matching screen with the
+  format preselected. Every page fills the whole window (the old 1500-px content cap is gone); the Draw Space page is gone.
 * **Compare saved runs**: dashboard **Recent / Compare** switch - two run pickers overlay their sweeps on one chart
   (kept with the run as `RunRecord::series`, session format version 5); rows are selectable and **Delete selected run**
   drops a run and autosaves.

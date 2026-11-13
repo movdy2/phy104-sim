@@ -10,7 +10,6 @@
 #include "ui/DashboardPage.h"
 #include "ui/DiagramsPage.h"
 #include "ui/EquationLabPage.h"
-#include "ui/DrawSpacePage.h"
 #include "ui/ExportPage.h"
 #include "ui/ExperimentPages.h"
 #include "ui/ModelExperimentPages.h"
@@ -71,8 +70,6 @@ App::App(const Paths& paths) {
     const int notesIndex = m_window->addPage("Notes", "notebook-pen", notes);                // 11
     equationLab = new EquationLabPage(m_context.get(), keyboardRepo.scientific());
     m_window->addPage("Equation Lab", "square-function", equationLab);                      // 12
-    drawSpace = new DrawSpacePage(m_context.get());
-    m_window->addPage("Draw Space", "pen-tool", drawSpace, 1);
     solver = new SolverPage(m_engine, m_manager, m_solver);
     m_window->addPage("Formula Solver", "sigma", solver, 1);
     calculator = new MathSolverPage;
@@ -84,12 +81,21 @@ App::App(const Paths& paths) {
     exportPage = new ExportPage(m_context.get());
     const int exportIndex = m_window->addPage("Export (Excel/CSV)", "file-spreadsheet", exportPage, 1);   // tools entry, as in Figma
     reportPage = new ReportPage(m_context.get());
-    m_window->addPage("PDF Report", "printer", reportPage, 1);
+    const int reportIndex = m_window->addPage("PDF Report", "printer", reportPage, 1);
     reportPage->setSources({refraction, lenses, prisms, wave, polarization, singleSlit, grating, thinFilm, michelson, newton});
     dashboard->setNotesPage(notesIndex);
     dashboard->setExportPage(exportIndex);
-    for (BasePage* page : std::initializer_list<BasePage*>{polarization, singleSlit, grating, thinFilm, michelson, newton})
-        QObject::connect(page, &BasePage::exportRequested, m_window.get(), [this, exportIndex] { m_window->setCurrentPage(exportIndex); });
+
+    // the download icon of every page header: PDF report, Excel or CSV
+    for (int i = 0; i < m_window->pageCount(); ++i) {
+        auto* page = qobject_cast<BasePage*>(m_window->page(i));
+        if (!page) continue;
+        QObject::connect(page, &BasePage::exportFormatRequested, m_window.get(), [this, exportIndex, reportIndex](int format) {
+            if (format == 0) { m_window->setCurrentPage(reportIndex); return; }
+            exportPage->setFormat(format == 1);            // 1 = Excel (.xlsx), 2 = CSV (.csv)
+            m_window->setCurrentPage(exportIndex);
+        });
+    }
 
     QObject::connect(dashboard, &BasePage::openPageRequested, m_window.get(), &MainWindow::setCurrentPage);
 }

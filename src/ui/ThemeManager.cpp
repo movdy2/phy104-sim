@@ -141,6 +141,12 @@ QFrame#field[focused="true"] { border: 2px solid @amber@; }
 QFrame#field[error="true"] { border: 2px solid @error@; }
 QFrame#field QLineEdit { background: transparent; border: none; padding: 0; color: @text@; font-family: 'JetBrains Mono'; font-size: 12px; selection-background-color: @amber@; selection-color: @bg@; }
 QLabel#fieldError { color: @error@; font-size: 11px; }
+QToolButton#exportMenu { background: transparent; border: 1px solid @border@; border-radius: 3px; padding: 7px 10px; }
+QToolButton#exportMenu:hover { border-color: @amber@; background: @amberTint@; }
+QToolButton#exportMenu::menu-indicator { image: none; }
+QMenu { background: @card@; color: @text@; border: 1px solid @border@; padding: 4px; }
+QMenu::item { padding: 6px 20px 6px 14px; }
+QMenu::item:selected { background: @amberTint@; color: @amber@; }
 QToolButton#spinUp, QToolButton#spinDown { background: transparent; border: none; padding: 0; }
 QToolButton#spinUp:hover, QToolButton#spinDown:hover { background: @cardHover@; border-radius: 2px; }
 QLabel#unit { font-family: 'JetBrains Mono'; font-size: 11px; color: @dim@; }

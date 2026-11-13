@@ -39,6 +39,7 @@
         <file alias="notebook-pen.svg">icons/notebook-pen.svg</file>
         <file alias="pen-tool.svg">icons/pen-tool.svg</file>
         <file alias="printer.svg">icons/printer.svg</file>
+        <file alias="download.svg">icons/download.svg</file>
         <file alias="ruler.svg">icons/ruler.svg</file>
         <file alias="scan-line.svg">icons/scan-line.svg</file>
         <file alias="sigma.svg">icons/sigma.svg</file>

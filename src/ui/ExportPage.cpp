@@ -295,6 +295,11 @@ void ExportPage::refreshRecent() {
     m_openFolder->setEnabled(true);
 }
 
+void ExportPage::setFormat(bool xlsx) {
+    m_format->setCurrent(xlsx ? 0 : 1);      // setCurrent does not emit currentChanged
+    onFormatChanged();
+}
+
 void ExportPage::onFormatChanged() {
     const bool excel = m_format->current() == 0;
     m_fileName->setUnit(excel ? ".xlsx" : ".csv");

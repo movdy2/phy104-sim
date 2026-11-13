@@ -17,6 +17,7 @@
 #include <QMenu>
 #include <QPainter>
 #include <QPlainTextEdit>
+#include <QPushButton>
 #include <QTableWidget>
 #include <QTextBlock>
 #include <QTimer>
@@ -127,6 +128,12 @@ EquationLabPage::EquationLabPage(AppContext* ctx, std::vector<ScientificPage> ke
     m_renderPanel->body()->addWidget(m_rendered);
     m_renderPanel->body()->addWidget(m_substitution);
     m_renderPanel->body()->addWidget(m_result);
+    auto* pngRow = new QHBoxLayout;                        // the header icon exports PDF/Excel/CSV, so the
+    pngRow->addStretch();                                  // rendered equation keeps its own PNG button
+    auto* exportPngButton = new QPushButton("Export PNG");
+    exportPngButton->setObjectName("outlineAmber");
+    pngRow->addWidget(exportPngButton);
+    m_renderPanel->body()->addLayout(pngRow);
     right->addWidget(m_renderPanel);
 
     m_varsPanel = new Panel("Extracted variables", "");
@@ -161,7 +168,7 @@ EquationLabPage::EquationLabPage(AppContext* ctx, std::vector<ScientificPage> ke
     connect(m_vars, &QTableWidget::itemChanged, this, [this] { if (!m_updatingTable) m_timer->start(); });
     connect(m_keyboardToggle, &QToolButton::toggled, this, &EquationLabPage::showKeyboard);
     connect(m_keyboard, &ScientificKeyboard::closeRequested, this, [this] { m_keyboardToggle->setChecked(false); });
-    connect(this, &BasePage::exportRequested, this, &EquationLabPage::exportPng);
+    connect(exportPngButton, &QPushButton::clicked, this, &EquationLabPage::exportPng);
     connect(m_source, &QPlainTextEdit::textChanged, this, [this] { saveEquations(); });
     evaluate();
 }
