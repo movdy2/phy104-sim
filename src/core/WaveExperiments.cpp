@@ -1,10 +1,13 @@
 #include "WaveExperiments.h"
+#include "FieldIds.h"
 #include "NumberFormat.h"
+#include "ReportSupport.h"
 #include "Spectrum.h"
 
 #include <algorithm>
 #include <cmath>
 #include <numbers>
+#include <utility>
 
 namespace phy104::WaveExperiments {
 namespace NF = NumberFormat;
@@ -13,10 +16,13 @@ namespace {
 constexpr double kDeg = std::numbers::pi / 180.0;
 std::string fx(double v) { return NF::fixed(v, 4); }
 std::string num(double v) { return NF::general(v, 6); }
-std::string lower(std::string s) { for (char& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c))); return s; }
 std::string sub(int i) {
     static const char* d[] = {"₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"};
-    return i >= 0 && i < 10 ? d[i] : "(" + std::to_string(i) + ")";
+    if (i >= 0 && i < 10) return d[i];
+    std::string result{"("};
+    result += std::to_string(i);
+    result += ')';
+    return result;
 }
 bool isInteger(double v) { return std::fabs(v - std::round(v)) < 1e-9; }
 
@@ -32,31 +38,10 @@ LcdRegister retained(std::vector<std::string> lines, const std::string& label, c
 /// Invalid input: nothing is calculated, the last valid result stays on screen (same pattern as the first four screens).
 ModelReport paused(const std::string& title, std::vector<FieldIssue> issues, std::vector<std::string> lines,
                    const std::string& guardBody, const ReportContext& ctx) {
-    ModelReport m;
-    Report& r = m.report;
-    r.valid = false;
-    r.paused = true;
-    r.errorCode = "E_INPUT_RANGE";
-    r.issues = std::move(issues);
-    LcdRegister cur;
-    cur.title = "CURRENT INPUT / PAUSED";
-    cur.resultFirst = true;
-    cur.resultValue = "E_INPUT_RANGE";
-    cur.lines = std::move(lines);
-    cur.footer = "NO NEW RESULT / MEMORY RETAINED";
-    cur.isError = true;
-    r.registers.push_back(cur);
-    const bool haveLast = ctx.lastValid && ctx.lastValid->valid && !ctx.lastValid->retained.title.empty();
-    if (haveLast) {
-        LcdRegister kept = ctx.lastValid->retained;
-        kept.title = "LAST VALID" + (ctx.runLabel.empty() ? std::string() : " / " + ctx.runLabel);
-        kept.footer = "STALE / NOT CURRENT INPUTS";
-        r.registers.push_back(kept);
-        r.headline = ctx.lastValid->headline;
-    }
-    r.notices.push_back({"Calculation paused / " + title, guardBody, true});
-    r.statusText = "E_INPUT_RANGE · " + (haveLast ? "last valid " + (ctx.runLabel.empty() ? std::string("result") : lower(ctx.runLabel)) + " retained" : std::string("nothing to retain"));
-    return m;
+    ModelReport report;
+    report.report = ReportSupport::pausedReport("E_INPUT_RANGE", std::move(issues), std::move(lines),
+                                                {"Calculation paused / " + title, guardBody, true}, ctx);
+    return report;
 }
 
 Notice interpretation(const std::string& body) { return {"Interpretation", body, false}; }
@@ -67,10 +52,10 @@ Notice guard(const std::string& body) { return {"Input guard", body, false}; }
 // ================================================================================ Newton's rings
 ModelReport newtonRings(const NewtonInput& in, const ReportContext& ctx) {
     std::vector<FieldIssue> issues;
-    if (in.lambdaNm <= 0) issues.push_back({"lambda", "Enter λ > 0 nm.", "λ"});
-    if (in.radiusM <= 0) issues.push_back({"R", "Enter R > 0 m.", "R"});
-    if (in.n <= 0) issues.push_back({"n", "Enter n > 0.", "n"});
-    if (in.order < 0 || !isInteger(in.order)) issues.push_back({"m", "Enter an integer m ≥ 0.", "m"});
+    if (in.lambdaNm <= 0) issues.push_back({FieldIds::wavelength, "Enter λ > 0 nm.", "λ"});
+    if (in.radiusM <= 0) issues.push_back({FieldIds::radiusOfCurvature, "Enter R > 0 m.", "R"});
+    if (in.n <= 0) issues.push_back({FieldIds::refractiveIndex, "Enter n > 0.", "n"});
+    if (in.order < 0 || !isInteger(in.order)) issues.push_back({FieldIds::order, "Enter an integer m ≥ 0.", "m"});
     const std::string guardText = "Require λ, R, n > 0 and integer m ≥ 0. This relation assumes normal incidence, contact at the center and r ≪ R.";
     if (!issues.empty())
         return paused(issues.front().label + " out of range", issues,
@@ -129,8 +114,8 @@ ModelReport newtonRings(const NewtonInput& in, const ReportContext& ctx) {
 // ================================================================================ Michelson interferometer
 ModelReport michelson(const MichelsonInput& in, const ReportContext& ctx) {
     std::vector<FieldIssue> issues;
-    if (in.lambdaNm <= 0) issues.push_back({"lambda", "Enter λ > 0 nm.", "λ"});
-    if (in.n < 1) issues.push_back({"n", "Enter n ≥ 1.", "n"});
+    if (in.lambdaNm <= 0) issues.push_back({FieldIds::wavelength, "Enter λ > 0 nm.", "λ"});
+    if (in.n < 1) issues.push_back({FieldIds::refractiveIndex, "Enter n ≥ 1.", "n"});
     const std::string guardText = "Require λ > 0 and n ≥ 1. Equal-amplitude beams give full visibility; unequal beams reduce fringe contrast.";
     if (!issues.empty())
         return paused(issues.front().label + " out of range", issues, {"λ = " + num(in.lambdaNm) + " nm", "n = " + num(in.n), "ACTION: " + issues.front().message},
@@ -217,9 +202,9 @@ ModelReport michelson(const MichelsonInput& in, const ReportContext& ctx) {
 // ================================================================================ thin film
 ModelReport thinFilm(const ThinFilmInput& in, const ReportContext& ctx) {
     std::vector<FieldIssue> issues;
-    if (in.lambdaNm <= 0) issues.push_back({"lambda", "Enter λ > 0 nm.", "λ"});
-    if (in.n <= 0) issues.push_back({"n", "Enter n > 0.", "n"});
-    if (in.thicknessNm <= 0) issues.push_back({"t", "Enter t > 0 nm.", "t"});
+    if (in.lambdaNm <= 0) issues.push_back({FieldIds::wavelength, "Enter λ > 0 nm.", "λ"});
+    if (in.n <= 0) issues.push_back({FieldIds::refractiveIndex, "Enter n > 0.", "n"});
+    if (in.thicknessNm <= 0) issues.push_back({FieldIds::thickness, "Enter t > 0 nm.", "t"});
     const std::string guardText = "Require λ, n, t > 0. Assumes normal incidence, equal-amplitude interface reflections, and a film with n between the surrounding media.";
     if (!issues.empty())
         return paused(issues.front().label + " out of range", issues, {"λ = " + num(in.lambdaNm) + " nm   n = " + num(in.n), "t = " + num(in.thicknessNm) + " nm", "ACTION: " + issues.front().message},
@@ -361,15 +346,15 @@ double gratingIntensity(double thetaDeg, double linesPerCm, double lambdaNm, dou
 
 ModelReport grating(const GratingInput& in, const ReportContext& ctx) {
     std::vector<FieldIssue> issues;
-    if (in.linesPerCm <= 0) issues.push_back({"N", "Enter N > 0 lines/cm.", "N"});
-    if (in.lambdaNm <= 0) issues.push_back({"lambda", "Enter λ > 0 nm.", "λ"});
-    if (in.slits < 2 || !isInteger(in.slits)) issues.push_back({"M", "Enter an integer M ≥ 2.", "M"});
-    if (!isInteger(in.order)) issues.push_back({"m", "Enter an integer order m.", "m"});
+    if (in.linesPerCm <= 0) issues.push_back({FieldIds::gratingDensity, "Enter N > 0 lines/cm.", "N"});
+    if (in.lambdaNm <= 0) issues.push_back({FieldIds::wavelength, "Enter λ > 0 nm.", "λ"});
+    if (in.slits < 2 || !isInteger(in.slits)) issues.push_back({FieldIds::illuminatedSlits, "Enter an integer M ≥ 2.", "M"});
+    if (!isInteger(in.order)) issues.push_back({FieldIds::order, "Enter an integer order m.", "m"});
     const std::string guardText = "Require N, λ > 0 and integer M ≥ 2. Reject selected m if |mλ/d| > 1; never evaluate asin outside its domain.";
     if (issues.empty()) {
         const double d = 0.01 / in.linesPerCm, lam = in.lambdaNm * 1e-9;
         const double s = in.order * lam / d + std::sin(in.incidenceDeg * kDeg);
-        if (std::fabs(s) > 1.0) issues.push_back({"m", "No real angle: |mλ/d| > 1.", "m"});
+        if (std::fabs(s) > 1.0) issues.push_back({FieldIds::order, "No real angle: |mλ/d| > 1.", "m"});
     }
     if (!issues.empty())
         return paused(issues.front().label + " out of range", issues, {"N = " + num(in.linesPerCm) + " lines/cm   λ = " + num(in.lambdaNm) + " nm", "m = " + num(in.order) + "   M = " + num(in.slits), "ACTION: " + issues.front().message},
@@ -468,10 +453,10 @@ double singleSlitIntensity(double thetaDeg, double widthMm, double lambdaNm) {
 
 ModelReport singleSlit(const SingleSlitInput& in, const ReportContext& ctx) {
     std::vector<FieldIssue> issues;
-    if (in.widthMm <= 0) issues.push_back({"a", "Enter a > 0 mm.", "a"});
-    if (in.lambdaNm <= 0) issues.push_back({"lambda", "Enter λ > 0 nm.", "λ"});
-    if (in.screenM <= 0) issues.push_back({"L", "Enter L > 0 m.", "L"});
-    if (issues.empty() && in.lambdaNm * 1e-9 / (in.widthMm * 1e-3) > 1.0) issues.push_back({"a", "No first minimum: λ/a > 1.", "a"});
+    if (in.widthMm <= 0) issues.push_back({FieldIds::slitWidth, "Enter a > 0 mm.", "a"});
+    if (in.lambdaNm <= 0) issues.push_back({FieldIds::wavelength, "Enter λ > 0 nm.", "λ"});
+    if (in.screenM <= 0) issues.push_back({FieldIds::screenDistance, "Enter L > 0 m.", "L"});
+    if (issues.empty() && in.lambdaNm * 1e-9 / (in.widthMm * 1e-3) > 1.0) issues.push_back({FieldIds::slitWidth, "No first minimum: λ/a > 1.", "a"});
     const std::string guardText = "At β = 0 use the limit I/I₀ = 1, not 0/0. A real first minimum needs λ/a ≤ 1.";
     if (!issues.empty())
         return paused(issues.front().label + " out of range", issues, {"a = " + NF::fixed(in.widthMm, 4) + " mm   λ = " + num(in.lambdaNm) + " nm", "L = " + num(in.screenM) + " m", "ACTION: " + issues.front().message},
@@ -547,10 +532,10 @@ ModelReport singleSlit(const SingleSlitInput& in, const ReportContext& ctx) {
 // ================================================================================ Malus' law and Brewster's angle
 ModelReport polarization(const PolarizationInput& in, const ReportContext& ctx) {
     std::vector<FieldIssue> issues;
-    if (in.incidentIntensity < 0) issues.push_back({"I", "Enter Iᵢₙ ≥ 0.", "Iᵢₙ"});
-    if (in.angleDeg < 0 || in.angleDeg > 90) issues.push_back({"theta", "Enter 0° ≤ θ ≤ 90°.", "θ"});
-    if (in.n1 <= 0) issues.push_back({"n1", "Enter n₁ > 0.", "n₁"});
-    if (in.n2 <= 0) issues.push_back({"n2", "Enter n₂ > 0.", "n₂"});
+    if (in.incidentIntensity < 0) issues.push_back({FieldIds::incidentIntensity, "Enter Iᵢₙ ≥ 0.", "Iᵢₙ"});
+    if (in.angleDeg < 0 || in.angleDeg > 90) issues.push_back({FieldIds::relativeAngle, "Enter 0° ≤ θ ≤ 90°.", "θ"});
+    if (in.n1 <= 0) issues.push_back({FieldIds::refractiveIndex1, "Enter n₁ > 0.", "n₁"});
+    if (in.n2 <= 0) issues.push_back({FieldIds::refractiveIndex2, "Enter n₂ > 0.", "n₂"});
     const std::string guardText = "Require Iᵢₙ ≥ 0 and n₁, n₂ > 0. Brewster assumes transparent, nonmagnetic media.";
     if (!issues.empty())
         return paused(issues.front().label + " out of range", issues, {"Iᵢₙ = " + num(in.incidentIntensity) + " W/m²   θ = " + num(in.angleDeg) + "°", "n₁ = " + num(in.n1) + "   n₂ = " + num(in.n2), "ACTION: " + issues.front().message},
@@ -663,11 +648,11 @@ double doubleSlitEnvelopeIntensity(double thetaDeg, double widthMm, double separ
 
 ModelReport doubleSlitEnvelope(const SingleSlitInput& in, const ReportContext& ctx) {
     std::vector<FieldIssue> issues;
-    if (in.widthMm <= 0) issues.push_back({"a", "Enter a > 0 mm.", "a"});
-    if (in.lambdaNm <= 0) issues.push_back({"lambda", "Enter λ > 0 nm.", "λ"});
-    if (in.screenM <= 0) issues.push_back({"L", "Enter L > 0 m.", "L"});
-    if (in.separationMm <= 0) issues.push_back({"d", "Enter d > 0 mm.", "d"});
-    if (issues.empty() && in.separationMm < in.widthMm) issues.push_back({"d", "The slit separation must exceed the slit width.", "d"});
+    if (in.widthMm <= 0) issues.push_back({FieldIds::slitWidth, "Enter a > 0 mm.", "a"});
+    if (in.lambdaNm <= 0) issues.push_back({FieldIds::wavelength, "Enter λ > 0 nm.", "λ"});
+    if (in.screenM <= 0) issues.push_back({FieldIds::screenDistance, "Enter L > 0 m.", "L"});
+    if (in.separationMm <= 0) issues.push_back({FieldIds::slitSeparation, "Enter d > 0 mm.", "d"});
+    if (issues.empty() && in.separationMm < in.widthMm) issues.push_back({FieldIds::slitSeparation, "The slit separation must exceed the slit width.", "d"});
     const std::string guardText = "Two identical slits of finite width a, separation d > a, equal amplitudes and L large. Missing fringes appear where d/a is an integer.";
     if (!issues.empty())
         return paused(issues.front().label + " out of range", issues,
@@ -724,14 +709,14 @@ ModelReport doubleSlitEnvelope(const SingleSlitInput& in, const ReportContext& c
 // -------------------------------------------------------------------------------- grating: resolving power
 ModelReport gratingResolution(const GratingResolutionInput& in, const ReportContext& ctx) {
     std::vector<FieldIssue> issues;
-    if (in.linesPerCm <= 0) issues.push_back({"N", "Enter N > 0 lines/cm.", "N"});
-    if (in.lambdaNm <= 0) issues.push_back({"lambda", "Enter λ > 0 nm.", "λ"});
-    if (in.order < 1 || !isInteger(in.order)) issues.push_back({"m", "Enter an integer order m ≥ 1.", "m"});
-    if (in.slits < 2) issues.push_back({"M", "Enter M ≥ 2 illuminated lines.", "M"});
+    if (in.linesPerCm <= 0) issues.push_back({FieldIds::gratingDensity, "Enter N > 0 lines/cm.", "N"});
+    if (in.lambdaNm <= 0) issues.push_back({FieldIds::wavelength, "Enter λ > 0 nm.", "λ"});
+    if (in.order < 1 || !isInteger(in.order)) issues.push_back({FieldIds::order, "Enter an integer order m ≥ 1.", "m"});
+    if (in.slits < 2) issues.push_back({FieldIds::illuminatedSlits, "Enter M ≥ 2 illuminated lines.", "M"});
     const std::string guardText = "Resolving power uses the whole illuminated width: with B the illuminated width, N_used = B/d and R = mN_used. Rayleigh separation δλ = λ / R.";
     if (issues.empty()) {
         const double d = 0.01 / in.linesPerCm, lam = in.lambdaNm * 1e-9;
-        if (in.order * lam / d > 1.0) issues.push_back({"m", "This order does not propagate: |mλ/d| > 1.", "m"});
+        if (in.order * lam / d > 1.0) issues.push_back({FieldIds::order, "This order does not propagate: |mλ/d| > 1.", "m"});
     }
     if (!issues.empty())
         return paused(issues.front().label + " out of range", issues,

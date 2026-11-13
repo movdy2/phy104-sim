@@ -29,7 +29,23 @@ jobs:
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
-        run: cmake --build build --parallel
+        run: |
+          set -o pipefail
+          cmake --build build --parallel 2>&1 | tee build.log
+
+      - name: Annotate compiler warnings
+        if: always()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          log = Path("build.log")
+          if log.exists():
+              warnings = list(dict.fromkeys(line.strip() for line in log.read_text(errors="replace").splitlines()
+                                            if "warning:" in line))
+              if warnings:
+                  message = " | ".join(warnings).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+                  print(f"::warning title=compiler warnings::{message}")
+          PY
 
       - name: Test
         env:
@@ -92,6 +108,19 @@ jobs:
             Select-String -Path build.log -Pattern ": error|error C[0-9]|error LNK" | Select-Object -First 25 |
               ForEach-Object { Write-Host "::error title=build::$($_.Line)" }
             exit 1
+          }
+
+      - name: Annotate compiler warnings
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path build.log) {
+            $warnings = @(Select-String -Path build.log -Pattern "warning C[0-9]+:" |
+              ForEach-Object { $_.Line.Trim() } | Select-Object -Unique)
+            if ($warnings.Count -gt 0) {
+              $message = [string]::Join(" | ", $warnings).Replace("%", "%25").Replace("`r", "%0D").Replace("`n", "%0A")
+              Write-Host "::warning title=compiler warnings::$message"
+            }
           }
 
       - name: Test

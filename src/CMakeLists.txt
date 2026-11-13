@@ -16,9 +16,11 @@ set(PHY104_UI_SOURCES
 add_library(phy104_ui STATIC ${PHY104_UI_SOURCES})
 target_include_directories(phy104_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/ui)
 target_link_libraries(phy104_ui PUBLIC phy104_data phy104_core Qt6::Widgets Qt6::Svg Qt6::PrintSupport)
+phy104_enable_warnings(phy104_ui STRICT)
 
 add_executable(PHY104OpticalAssistant main.cpp ../assets/assets.qrc)
 target_link_libraries(PHY104OpticalAssistant PRIVATE phy104_ui)
+phy104_enable_warnings(PHY104OpticalAssistant STRICT)
 
 # Copy the JSON database next to the executable
 add_custom_command(TARGET PHY104OpticalAssistant POST_BUILD

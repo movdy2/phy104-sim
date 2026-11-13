@@ -6,7 +6,6 @@
 #include "SolverEngine.h"
 #include "ui/AppContext.h"
 #include "ui/BasePage.h"
-#include "ui/ConstantsPage.h"
 #include "ui/DashboardPage.h"
 #include "ui/DiagramsPage.h"
 #include "ui/EquationLabPage.h"
@@ -75,10 +74,9 @@ App::App(const Paths& paths) {
     const int notesIndex = m_window->addPage("Notes", "notebook-pen", notes, 1);             // standalone Notes shortcut
     equationLab = new EquationLabPage(m_context.get(), keyboardRepo.scientific());
     m_window->addPage("Equation Lab", "square-function", equationLab, 1);
-    constants = new ConstantsPage(constantsRepo);
     diagrams = new DiagramsPage;
-    studyHub = new StudyHubPage(studyHubRepo.loadAll(), m_context.get(), constants, diagrams);
-    m_window->addPage("Study Hub", "book-open", studyHub, 1);                                // chapters, notes, setups, constants
+    studyHub = new StudyHubPage(studyHubRepo.loadAll(), m_context.get(), diagrams);
+    m_window->addPage("Study Hub", "book-open", studyHub, 1);                                // chapters, notes, setups
     solver = new SolverPage(m_engine, m_manager, m_solver, m_context.get());
     m_window->addPage("Formula Solver", "sigma", solver, 1);
     calculator = new MathSolverPage(m_context.get());

@@ -12,6 +12,7 @@ add_library(phy104_core STATIC
     LatexFormatter.cpp
     NumberFormat.cpp
     ExperimentReports.cpp
+    ReportSupport.cpp
     ReportDocument.cpp
     SessionLog.cpp
     XlsxWriter.cpp
@@ -21,3 +22,4 @@ add_library(phy104_core STATIC
     Drawing.cpp
 )
 target_include_directories(phy104_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+phy104_enable_warnings(phy104_core STRICT)

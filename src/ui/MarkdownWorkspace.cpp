@@ -40,12 +40,16 @@ MarkdownEditor::MarkdownEditor(QWidget* parent) : QPlainTextEdit(parent) {
 void MarkdownEditor::insertSnippet(const QString& text) {
     QTextCursor c = textCursor();
     const QString selected = c.selectedText().replace(QChar(0x2029), '\n');
-    const int marker = text.indexOf("%1");
+    const qsizetype marker = text.indexOf("%1");
     c.beginEditBlock();
     c.removeSelectedText();
     const int start = c.position();
     c.insertText(marker >= 0 ? QString(text).replace("%1", selected) : text);
-    if (marker >= 0) c.setPosition(start + marker + (selected.isEmpty() ? 0 : static_cast<int>(selected.size())));
+    if (marker >= 0) {
+        const qsizetype cursorPosition = static_cast<qsizetype>(start) + marker +
+                                         (selected.isEmpty() ? qsizetype{0} : selected.size());
+        c.setPosition(static_cast<int>(cursorPosition));
+    }
     c.endEditBlock();
     setTextCursor(c);
     setFocus();
@@ -308,7 +312,8 @@ void MarkdownWorkspace::insertTemplate() {
     c.insertText(prefix);
     const int start = c.position();
     c.insertText(problemTemplate());
-    c.setPosition(start + 2 + QString("### Given:\n- ").size() - 2);          // cursor right after the first "- "
+    const int givenBulletOffset = static_cast<int>(QString("### Given:\n- ").size());
+    c.setPosition(start + givenBulletOffset);                                // cursor right after the first "- ".
     c.endEditBlock();
     m_editor->setTextCursor(c);
     m_editor->setFocus();

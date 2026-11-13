@@ -4,6 +4,7 @@
 #include <map>
 #include <set>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 namespace phy104::EquationText {
@@ -76,7 +77,12 @@ private:
             return {m_s.substr(start, m_i - start), true, true};
         }
         if (isAlpha(c)) { ++m_i; return identifier(std::string(1, c)); }
-        if (c == '{') return {"(" + group() + ")", true, true};
+        if (c == '{') {
+            std::string grouped{"("};
+            grouped += group();
+            grouped += ')';
+            return {std::move(grouped), true, true};
+        }
         if (c == '\\') { ++m_i; return command(); }
         throw std::runtime_error(std::string("Unexpected '") + c + "' in the LaTeX");
     }

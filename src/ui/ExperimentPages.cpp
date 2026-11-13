@@ -1,4 +1,5 @@
 #include "ExperimentPages.h"
+#include "FieldIds.h"
 #include "AppContext.h"
 #include "Components.h"
 #include "NumberFormat.h"
@@ -14,6 +15,7 @@
 #include <QVBoxLayout>
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 
 namespace phy104 {
 namespace ER = ExperimentReports;
@@ -235,7 +237,7 @@ RefractionPage::RefractionPage(AppContext* ctx, QWidget* parent)
     m_n1 = new UnitField;  m_n1->setSpinner(true, 0.01);
     m_n2 = new UnitField;  m_n2->setSpinner(true, 0.01);
     m_theta = new UnitField("°");
-    bind("n1", m_n1); bind("n2", m_n2); bind("theta1", m_theta);
+    bind(QString::fromLatin1(FieldIds::refractiveIndex1), m_n1); bind(QString::fromLatin1(FieldIds::refractiveIndex2), m_n2); bind(QString::fromLatin1(FieldIds::incidentAngle), m_theta);
     auto* f = controls->body();
     f->addWidget(m_mode);
     f->addWidget(labeled("Incident medium", m_med1));
@@ -354,8 +356,8 @@ void RefractionPage::apply(bool record) {
         curve.line = true;
         const double top = crit ? *crit : 90.0;
         for (double a = 0; a <= top + 1e-9; a += 0.5) {
-            const double s = in.n1 * std::sin(a * M_PI / 180.0) / in.n2;
-            if (std::fabs(s) <= 1.0) curve.points << QPointF(a, std::asin(s) * 180.0 / M_PI);
+            const double s = in.n1 * std::sin(a * std::numbers::pi / 180.0) / in.n2;
+            if (std::fabs(s) <= 1.0) curve.points << QPointF(a, std::asin(s) * 180.0 / std::numbers::pi);
         }
         const Theme& t = ThemeManager::instance().theme();
         QList<ChartVLine> v{{in.theta1, QString::number(in.theta1, 'g', 5) + "° input", t.text, false}};
@@ -411,7 +413,7 @@ LensesPage::LensesPage(AppContext* ctx, QWidget* parent)
     m_r = new UnitField("cm");  m_r->setShowPlus(true);
     m_s = new UnitField("cm");  m_s->setShowPlus(true);
     m_h = new UnitField("cm");  m_h->setShowPlus(true);
-    bind("f", m_f); bind("s", m_s); bind("h", m_h);
+    bind(QString::fromLatin1(FieldIds::focalLength), m_f); bind(QString::fromLatin1(FieldIds::objectDistance), m_s); bind(QString::fromLatin1(FieldIds::objectHeight), m_h);
     m_typeLabel = new QLabel("Lens type");
     m_typeLabel->setObjectName("fieldLabel");
     auto* typeBox = new QWidget;
@@ -639,7 +641,7 @@ PrismsPage::PrismsPage(AppContext* ctx, QWidget* parent)
     m_apex = new UnitField("°");
     m_incidence = new UnitField("°");
     m_lambda = new UnitField("nm");
-    bind("apex", m_apex); bind("incidence", m_incidence); bind("lambda", m_lambda);
+    bind(QString::fromLatin1(FieldIds::prismApex), m_apex); bind(QString::fromLatin1(FieldIds::incidenceAngle), m_incidence); bind(QString::fromLatin1(FieldIds::wavelength), m_lambda);
     m_materialLabel = new QLabel;
     m_materialLabel->setObjectName("fieldLabel");
     m_surroundLabel = new QLabel;
@@ -782,7 +784,7 @@ WavePage::WavePage(AppContext* ctx, QWidget* parent)
     m_d = new UnitField("mm");
     m_L = new UnitField("m");
     m_order = new UnitField;  m_order->setSpinner(true, 1.0);
-    bind("lambda", m_lambda); bind("d", m_d); bind("L", m_L); bind("m", m_order);
+    bind(QString::fromLatin1(FieldIds::wavelength), m_lambda); bind(QString::fromLatin1(FieldIds::slitSeparation), m_d); bind(QString::fromLatin1(FieldIds::screenDistance), m_L); bind(QString::fromLatin1(FieldIds::order), m_order);
     m_view = new ModeTabs({"Intensity", "Wavefronts"});
     auto* f = controls->body();
     f->addWidget(labeled("Source preset", m_source));

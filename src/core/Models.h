@@ -30,9 +30,9 @@ struct Formula {
     std::map<std::string, std::string> unitOverrides;  // e.g. {"phi","deg"} for Malus' law
     std::vector<Variable> variables;
 
-    const Variable* findVariable(const std::string& id) const {
+    const Variable* findVariable(const std::string& variableId) const {
         for (const auto& v : variables)
-            if (v.id == id) return &v;
+            if (v.id == variableId) return &v;
         return nullptr;
     }
 };

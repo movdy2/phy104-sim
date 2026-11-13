@@ -8,7 +8,6 @@
 namespace phy104 {
 
 class AppContext;
-class ConstantsPage;
 class DashboardPage;
 class DiagramsPage;
 class EquationLabPage;
@@ -68,7 +67,6 @@ public:
     ReportPage* reportPage = nullptr;
     SolverPage* solver = nullptr;
     MathSolverPage* calculator = nullptr;
-    ConstantsPage* constants = nullptr;
     DiagramsPage* diagrams = nullptr;
 
     /// Warnings found while loading the data files (shown once at start-up).

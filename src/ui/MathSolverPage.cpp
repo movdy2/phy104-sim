@@ -27,6 +27,7 @@ MathSolverPage::MathSolverPage(AppContext* context, QWidget* parent)
     auto* historyPanel = new Panel("History");
     m_history = new QTextBrowser;
     m_history->setObjectName("lcdScreen");
+    ThemeManager::polishLcdFont(m_history);
     m_history->setMinimumWidth(250);
     historyPanel->body()->addWidget(m_history, 1);
     columns->addWidget(historyPanel, 2);
@@ -58,6 +59,7 @@ MathSolverPage::MathSolverPage(AppContext* context, QWidget* parent)
 
     m_result = new QLabel("0");
     m_result->setObjectName("lcdResult");
+    ThemeManager::polishLcdFont(m_result, true);
     m_result->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     m_result->setMinimumHeight(64);
     calculatorPanel->body()->addWidget(m_result);

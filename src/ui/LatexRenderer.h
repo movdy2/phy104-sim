@@ -47,6 +47,7 @@ protected:
 private:
     QColor ink() const;
 
+    QFont m_baseFont;
     QString m_latex;
     qreal m_points = 18.0;
     bool m_lcd = false;

@@ -115,6 +115,7 @@ SolverPage::SolverPage(std::shared_ptr<FormulaEngine> engine, std::shared_ptr<Fo
 
     m_output = new QTextBrowser;
     m_output->setObjectName("lcdScreen");
+    ThemeManager::polishLcdFont(m_output);
     m_output->setMinimumHeight(140);
 
     auto* right = new QVBoxLayout;

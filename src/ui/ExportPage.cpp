@@ -36,8 +36,9 @@ QString formatName(bool excel) { return excel ? "Excel (.xlsx)" : "CSV (.csv)"; 
 /// "912 B", "12.4 KB", "1.3 MB" - used by the recent-export card.
 QString fileSize(qint64 bytes) {
     if (bytes < 1024) return QString("%1 B").arg(bytes);
-    if (bytes < 1024 * 1024) return QString("%1 KB").arg(bytes / 1024.0, 0, 'f', 1);
-    return QString("%1 MB").arg(bytes / (1024.0 * 1024.0), 0, 'f', 1);
+    const double size = static_cast<double>(bytes);
+    if (bytes < 1024 * 1024) return QString("%1 KB").arg(size / 1024.0, 0, 'f', 1);
+    return QString("%1 MB").arg(size / (1024.0 * 1024.0), 0, 'f', 1);
 }
 
 QString seriesBaseName(const std::string& id) { return "PHY104_" + QString::fromStdString(id).section('_', 0, 0); }

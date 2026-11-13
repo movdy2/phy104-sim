@@ -5,7 +5,6 @@
 
 #include <QButtonGroup>
 #include <QEvent>
-#include <QFont>
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QLabel>
@@ -254,8 +253,10 @@ void LcdRegisterView::setRegister(const LcdRegister& reg) {
     auto* top = new QHBoxLayout;
     auto* title = new QLabel(QString::fromStdString(reg.title));
     title->setObjectName("lcdTitle");
+    ThemeManager::polishLcdFont(title);
     auto* mode = new QLabel(reg.isError ? "● ERR" : "● " + QString::fromStdString(reg.mode));
     mode->setObjectName("lcdTitle");
+    ThemeManager::polishLcdFont(mode);
     top->addWidget(title);
     top->addStretch();
     top->addWidget(mode);
@@ -273,6 +274,7 @@ void LcdRegisterView::setRegister(const LcdRegister& reg) {
     for (const std::string& line : reg.lines) {
         auto* l = new QLabel(QString::fromStdString(line).toHtmlEscaped().replace("  ", "&nbsp;&nbsp;").replace(" ", "&nbsp;"));
         l->setObjectName("lcdLine");
+        ThemeManager::polishLcdFont(l);
         l->setTextFormat(Qt::RichText);
         m_layout->addWidget(l);
     }
@@ -280,15 +282,10 @@ void LcdRegisterView::setRegister(const LcdRegister& reg) {
         m_layout->addSpacing(2);
         auto* cap = new QLabel(QString::fromStdString(reg.resultLabel));
         cap->setObjectName("lcdCaption");
+        ThemeManager::polishLcdFont(cap);
         auto* big = new QLabel(QString::fromStdString(reg.resultValue));
         big->setObjectName("lcdBig");
-        // Casio 7-segment digits for the number; any glyph the segment font does not have (θ, °, mm) falls back to
-        // JetBrains Mono through the family list, so units and Greek letters stay readable.
-        QFont segment("DSEG7 Classic");
-        segment.setFamilies({"DSEG7 Classic", "DSEG14 Classic", "JetBrains Mono"});
-        segment.setPixelSize(26);
-        segment.setWeight(QFont::Bold);
-        big->setFont(segment);
+        ThemeManager::polishLcdFont(big, true);
         m_layout->addWidget(cap);
         m_layout->addWidget(big);
     }
@@ -296,6 +293,7 @@ void LcdRegisterView::setRegister(const LcdRegister& reg) {
     addDivider(125);
     auto* foot = new QLabel(QString::fromStdString(reg.footer).replace(" ", "\u00a0"));
     foot->setObjectName("lcdFoot");
+    ThemeManager::polishLcdFont(foot);
     m_layout->addWidget(foot);
 }
 
@@ -335,11 +333,11 @@ CalculatorKeypad::CalculatorKeypad(QWidget* parent) : QWidget(parent) {
     struct Key { const char* label; const char* insert; const char* kind; };   // insert: text to type, or "" for special keys
     const Key rows[6][6] = {
         {{"sin", "sin(", "keyFn"}, {"cos", "cos(", "keyFn"}, {"tan", "tan(", "keyFn"}, {"ln", "ln(", "keyFn"}, {"log", "log(", "keyFn"}, {"√", "√(", "keyFn"}},
-        {{"asin", "asin(", "keyFn"}, {"acos", "acos(", "keyFn"}, {"atan", "atan(", "keyFn"}, {"abs", "abs(", "keyFn"}, {"^", "^", "keyFn"}, {"x²", "^2", "keyFn"}},
+        {{"asin", "asin(", "keyFn"}, {"acos", "acos(", "keyFn"}, {"atan", "atan(", "keyFn"}, {"^", "^", "keyFn"}, {"π", "π", "keyFn"}, {"e", "e", "keyFn"}},
         {{"7", "7", "key"}, {"8", "8", "key"}, {"9", "9", "key"}, {"÷", "÷", "keyOp"}, {"DEL", "", "keyOp"}, {"AC", "", "keyOp"}},
         {{"4", "4", "key"}, {"5", "5", "key"}, {"6", "6", "key"}, {"×", "×", "keyOp"}, {"(", "(", "keyOp"}, {")", ")", "keyOp"}},
-        {{"1", "1", "key"}, {"2", "2", "key"}, {"3", "3", "key"}, {"−", "-", "keyOp"}, {"Ans", "Ans", "keyFn"}, {"π", "π", "keyFn"}},
-        {{"0", "0", "key"}, {".", ".", "key"}, {"e", "e", "keyFn"}, {"+", "+", "keyOp"}, {"=", "", "keyEq"}, {"", "", ""}}};
+        {{"1", "1", "key"}, {"2", "2", "key"}, {"3", "3", "key"}, {"−", "-", "keyOp"}, {"Ans", "Ans", "keyFn"}, {"", "", ""}},
+        {{"0", "0", "key"}, {".", ".", "key"}, {"", "", ""}, {"+", "+", "keyOp"}, {"=", "", "keyEq"}, {"", "", ""}}};
     for (int r = 0; r < 6; ++r) {
         for (int c = 0; c < 6; ++c) {
             const Key& k = rows[r][c];
