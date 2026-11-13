@@ -85,7 +85,14 @@ jobs:
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
-        run: cmake --build build --config Release --parallel
+        shell: pwsh
+        run: |
+          cmake --build build --config Release --parallel 2>&1 | Tee-Object -FilePath build.log
+          if ($LASTEXITCODE -ne 0) {
+            Select-String -Path build.log -Pattern ": error|error C[0-9]|error LNK" | Select-Object -First 25 |
+              ForEach-Object { Write-Host "::error title=build::$($_.Line)" }
+            exit 1
+          }
 
       - name: Test
         env:
