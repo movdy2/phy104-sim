@@ -20,6 +20,7 @@
 #include <QSignalBlocker>
 #include <QStandardPaths>
 #include <QTableWidget>
+#include <QToolButton>
 #include <QUrl>
 #include <QVBoxLayout>
 #include <cmath>
@@ -43,6 +44,7 @@ QString seriesBaseName(const std::string& id) { return "PHY104_" + QString::from
 ExportPage::ExportPage(AppContext* ctx, QWidget* parent)
     : BasePage("Export (Excel/CSV)", "REPORT DATA / What the series contains, every row of the table, and the file you last wrote",
                ctx, parent) {
+    exportButton()->hide();            // this IS the export screen: no menu pointing at itself
     auto cols = addThreeColumns(252, 268);
 
     // ---------------------------------------------------------------- left: the series and its description

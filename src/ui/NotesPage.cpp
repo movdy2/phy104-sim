@@ -1,4 +1,4 @@
-#include "NotesExportPage.h"
+#include "NotesPage.h"
 #include "AppContext.h"
 #include "Components.h"
 #include "MarkdownWorkspace.h"
@@ -12,7 +12,7 @@ const char* const kStarterNotes =
     "#### Exam warning\nAngles are measured from the normal, not from the surface.\n";
 }
 
-NotesExportPage::NotesExportPage(AppContext* ctx, QWidget* parent)
+NotesPage::NotesPage(AppContext* ctx, QWidget* parent)
     : BasePage("Notes", "MARKDOWN STUDY WORKSPACE / Write, edit and preview your lab notes", ctx, parent) {
     // One panel across the whole window: the editor, its toolbar and the live preview, nothing else.
     m_notesPanel = new Panel("Session notes", "SAVED " + ctx->lastSavedTime());

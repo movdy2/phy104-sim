@@ -24,7 +24,7 @@ class FormulaManager;
 class LensesPage;
 class MainWindow;
 class MathSolverPage;
-class NotesExportPage;
+class NotesPage;
 class PrismsPage;
 class ReportPage;
 class RefractionPage;
@@ -59,7 +59,7 @@ public:
     MichelsonPage* michelson = nullptr;
     NewtonRingsPage* newton = nullptr;
     EquationLabPage* equationLab = nullptr;
-    NotesExportPage* notes = nullptr;
+    NotesPage* notes = nullptr;
     ExportPage* exportPage = nullptr;
     ReportPage* reportPage = nullptr;
     SolverPage* solver = nullptr;

@@ -15,7 +15,7 @@
 #include "ui/ModelExperimentPages.h"
 #include "ui/MainWindow.h"
 #include "ui/MathSolverPage.h"
-#include "ui/NotesExportPage.h"
+#include "ui/NotesPage.h"
 #include "ui/ReportPage.h"
 #include "ui/SolverPage.h"
 
@@ -66,7 +66,7 @@ App::App(const Paths& paths) {
     m_window->addPage("Michelson Interferometry", "git-merge", michelson);                  // 9
     newton = new NewtonRingsPage(m_context.get());
     m_window->addPage("Newton's Rings", "circle-dot", newton);                              // 10
-    notes = new NotesExportPage(m_context.get());
+    notes = new NotesPage(m_context.get());
     const int notesIndex = m_window->addPage("Notes", "notebook-pen", notes);                // 11
     equationLab = new EquationLabPage(m_context.get(), keyboardRepo.scientific());
     m_window->addPage("Equation Lab", "square-function", equationLab);                      // 12

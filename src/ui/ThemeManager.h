@@ -46,6 +46,8 @@ public:
     void apply(QApplication& app, bool dark);
     const Theme& theme() const { return m_theme; }
     bool isDark() const { return m_theme.dark; }
+    /// The theme chosen in the last run (saved by apply(); read by main() before the UI is built).
+    static bool storedDarkTheme();
 
     /// Call on every Casio-LCD input field (readable placeholder colour).
     static void polishLcdInput(QLineEdit* edit);

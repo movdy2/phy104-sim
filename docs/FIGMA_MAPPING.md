@@ -12,7 +12,7 @@ Wave Interference, Formulas Notes & Export, Component Sheet).
 | Lenses & Mirrors | `LensesPage` + `LensCanvas`, `MirrorCanvas` | |
 | Prisms | `PrismsPage` + `PrismCanvas`, `LineChart` | dispersion mode draws three rays |
 | Wave Interference | `WavePage` + `WaveCanvas`, `LineChart` | Intensity / Wavefronts tabs |
-| Formulas, Notes & Export | `NotesExportPage` | formula reference, notes and a quick export |
+| Notes | `NotesPage` | the Markdown study workspace (editor + live preview); the reference is on the Formula Solver screen |
 | Export (Excel/CSV) | `ExportPage` | series description + full preview + "recent export" card; `XlsxWriter` builds real .xlsx files without a library |
 | Component sheet | `Components.h` + `ThemeManager` | see below |
 
