@@ -16,10 +16,13 @@
 #include <QHeaderView>
 #include <QLabel>
 #include <QListWidget>
+#include <QPrintDialog>
+#include <QPrinter>
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QStandardPaths>
 #include <QTableWidget>
+#include <QTextDocument>
 #include <QToolButton>
 #include <QUrl>
 #include <QVBoxLayout>
@@ -115,6 +118,8 @@ ExportPage::ExportPage(AppContext* ctx, QWidget* parent)
     m_primary->setObjectName("primary");
     m_secondary = new QPushButton;
     m_secondary->setObjectName("secondary");
+    m_print = new QPushButton("Print…");
+    m_print->setObjectName("secondary");
     auto* hint = new QLabel("CSV: the chosen series as UTF-8. Excel also includes notes and calculation steps.");
     hint->setObjectName("hint");
     hint->setWordWrap(true);
@@ -129,6 +134,7 @@ ExportPage::ExportPage(AppContext* ctx, QWidget* parent)
     sb->addWidget(m_ready);
     sb->addWidget(m_primary);
     sb->addWidget(m_secondary);
+    sb->addWidget(m_print);
     sb->addWidget(hint);
     sb->addStretch();
     cols.right->addWidget(settings, 1);
@@ -165,6 +171,7 @@ ExportPage::ExportPage(AppContext* ctx, QWidget* parent)
     });
     connect(m_primary, &QPushButton::clicked, this, &ExportPage::exportPrimary);
     connect(m_secondary, &QPushButton::clicked, this, &ExportPage::exportSecondary);
+    connect(m_print, &QPushButton::clicked, this, &ExportPage::printTable);
     connect(m_openFolder, &QPushButton::clicked, this, &ExportPage::openDestination);
     connect(ctx, &AppContext::snapshotChanged, this, &ExportPage::refreshSeries);
     connect(ctx, &AppContext::exportRecorded, this, &ExportPage::refreshRecent);
@@ -226,6 +233,7 @@ void ExportPage::refreshPreview() {
         m_ready->setNotice("Nothing to export", "Choose or create a series that has rows.", true);
         m_primary->setEnabled(false);
         m_secondary->setEnabled(false);
+        m_print->setEnabled(false);
         m_openFolder->setEnabled(m_ctx->log.hasExport());
         return;
     }
@@ -274,6 +282,7 @@ void ExportPage::refreshPreview() {
                                : QString("%1 rows · %2 columns · UTF-8").arg(rows).arg(cols);
     m_ready->setNotice(excel ? "Workbook ready" : "CSV ready", info + ". Numeric cells use full precision.", false);
     m_primary->setEnabled(true);
+    m_print->setEnabled(true);
     m_secondary->setEnabled(true);
     m_openFolder->setEnabled(m_ctx->log.hasExport());
 }
@@ -348,6 +357,32 @@ bool ExportPage::exportAs(bool xlsx) {
     m_ctx->recordExport(rec);
     refreshRecent();
     return true;
+}
+
+void ExportPage::printTable() {
+    const Snapshot* snap = currentSnapshot();
+    if (!snap || snap->series.rows.empty()) { emit m_ctx->message("Nothing to print: publish a sweep first"); return; }
+    QPrinter printer(QPrinter::HighResolution);
+    printer.setDocName("PHY104 data");
+    QPrintDialog dialog(&printer, this);
+    dialog.setWindowTitle("Print the data table");
+    if (dialog.exec() != QDialog::Accepted) return;
+
+    // the same table as the preview, as simple HTML (no CSS tricks: Qt's rich text engine prints it as it is shown)
+    QString html = "<h2>" + QString::fromStdString(snap->series.name).toHtmlEscaped() + "</h2><p>"
+                 + QString::fromStdString(snap->series.description).toHtmlEscaped() + "</p><table border='1' cellspacing='0' cellpadding='4'><tr>";
+    for (const std::string& h : snap->series.headers) html += "<th>" + QString::fromStdString(h).toHtmlEscaped() + "</th>";
+    html += "</tr>";
+    for (const auto& row : snap->series.rows) {
+        html += "<tr>";
+        for (double v : row) html += "<td>" + (std::isnan(v) ? QString("—") : QString::number(v, 'g', 6)) + "</td>";
+        html += "</tr>";
+    }
+    html += "</table>";
+    QTextDocument doc;
+    doc.setHtml(html);
+    doc.print(&printer);
+    emit m_ctx->message("Printed " + QString::fromStdString(snap->series.name));
 }
 
 void ExportPage::exportPrimary() { exportAs(m_format->current() == 0); }

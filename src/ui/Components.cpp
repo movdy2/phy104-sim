@@ -5,6 +5,7 @@
 
 #include <QButtonGroup>
 #include <QEvent>
+#include <QFont>
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QLabel>
@@ -281,6 +282,13 @@ void LcdRegisterView::setRegister(const LcdRegister& reg) {
         cap->setObjectName("lcdCaption");
         auto* big = new QLabel(QString::fromStdString(reg.resultValue));
         big->setObjectName("lcdBig");
+        // Casio 7-segment digits for the number; any glyph the segment font does not have (θ, °, mm) falls back to
+        // JetBrains Mono through the family list, so units and Greek letters stay readable.
+        QFont segment("DSEG7 Classic");
+        segment.setFamilies({"DSEG7 Classic", "DSEG14 Classic", "JetBrains Mono"});
+        segment.setPixelSize(26);
+        segment.setWeight(QFont::Bold);
+        big->setFont(segment);
         m_layout->addWidget(cap);
         m_layout->addWidget(big);
     }

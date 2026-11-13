@@ -43,7 +43,6 @@ private:
     void rebuildTable(const std::vector<std::string>& ids, const std::string& output);
     void showKeyboard(bool visible);
     void placeKeyboard();
-    void exportPng();
     void saveEquations();
 
     QPlainTextEdit* m_source;

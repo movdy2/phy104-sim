@@ -10,14 +10,11 @@
 #include "ThemeManager.h"
 #include "Units.h"
 
-#include <QFileDialog>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
 #include <QMenu>
-#include <QPainter>
 #include <QPlainTextEdit>
-#include <QPushButton>
 #include <QTableWidget>
 #include <QTextBlock>
 #include <QTimer>
@@ -128,12 +125,6 @@ EquationLabPage::EquationLabPage(AppContext* ctx, std::vector<ScientificPage> ke
     m_renderPanel->body()->addWidget(m_rendered);
     m_renderPanel->body()->addWidget(m_substitution);
     m_renderPanel->body()->addWidget(m_result);
-    auto* pngRow = new QHBoxLayout;                        // the header icon exports PDF/Excel/CSV, so the
-    pngRow->addStretch();                                  // rendered equation keeps its own PNG button
-    auto* exportPngButton = new QPushButton("Export PNG");
-    exportPngButton->setObjectName("outlineAmber");
-    pngRow->addWidget(exportPngButton);
-    m_renderPanel->body()->addLayout(pngRow);
     right->addWidget(m_renderPanel);
 
     m_varsPanel = new Panel("Extracted variables", "");
@@ -168,7 +159,6 @@ EquationLabPage::EquationLabPage(AppContext* ctx, std::vector<ScientificPage> ke
     connect(m_vars, &QTableWidget::itemChanged, this, [this] { if (!m_updatingTable) m_timer->start(); });
     connect(m_keyboardToggle, &QToolButton::toggled, this, &EquationLabPage::showKeyboard);
     connect(m_keyboard, &ScientificKeyboard::closeRequested, this, [this] { m_keyboardToggle->setChecked(false); });
-    connect(exportPngButton, &QPushButton::clicked, this, &EquationLabPage::exportPng);
     connect(m_source, &QPlainTextEdit::textChanged, this, [this] { saveEquations(); });
     evaluate();
 }
@@ -310,19 +300,5 @@ void EquationLabPage::showKeyboard(bool visible) {
 void EquationLabPage::placeKeyboard() { m_keyboard->move(24, std::max(60, height() - m_keyboard->height() - 16)); }
 void EquationLabPage::resizeEvent(QResizeEvent* e) { BasePage::resizeEvent(e); if (m_keyboard->isVisible()) placeKeyboard(); }
 
-void EquationLabPage::exportPng() {
-    const QString file = QFileDialog::getSaveFileName(this, "Export equation", "equation.png", "PNG image (*.png)");
-    if (file.isEmpty()) return;
-    QFont f; f.setPixelSize(40);
-    const QPixmap pix = LatexRenderer::render(currentEquation(), f, ThemeManager::instance().theme().text, 3.0);
-    QPixmap withBg(pix.size());
-    withBg.setDevicePixelRatio(pix.devicePixelRatio());
-    withBg.fill(ThemeManager::instance().theme().canvas);
-    QPainter p(&withBg);
-    p.drawPixmap(0, 0, pix);
-    p.end();
-    withBg.save(file, "PNG");
-    emit m_ctx->message("Exported " + file);
-}
 
 } // namespace phy104

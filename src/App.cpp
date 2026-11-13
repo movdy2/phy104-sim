@@ -57,7 +57,7 @@ App::App(const Paths& paths) {
     polarization = new PolarizationPage(m_context.get());
     m_window->addPage("Polarization (Malus & Brewster)", "contrast", polarization);         // 5
     singleSlit = new SingleSlitPage(m_context.get());
-    m_window->addPage("Single-Slit Diffraction", "minus", singleSlit);                      // 6
+    m_window->addPage("Single-Slit Diffraction", "slit", singleSlit);                      // 6
     grating = new GratingPage(m_context.get());
     m_window->addPage("Diffraction Grating", "align-justify", grating);                     // 7
     thinFilm = new ThinFilmPage(m_context.get());
@@ -66,10 +66,10 @@ App::App(const Paths& paths) {
     m_window->addPage("Michelson Interferometry", "git-merge", michelson);                  // 9
     newton = new NewtonRingsPage(m_context.get());
     m_window->addPage("Newton's Rings", "circle-dot", newton);                              // 10
-    notes = new NotesPage(m_context.get());
-    const int notesIndex = m_window->addPage("Notes", "notebook-pen", notes);                // 11
+    notes = new NotesPage(m_context.get(), keyboardRepo.scientific());
+    const int notesIndex = m_window->addPage("Notes", "notebook-pen", notes, 1);             // 11 (tool)
     equationLab = new EquationLabPage(m_context.get(), keyboardRepo.scientific());
-    m_window->addPage("Equation Lab", "square-function", equationLab);                      // 12
+    m_window->addPage("Equation Lab", "square-function", equationLab, 1);                    // 12 (tool)
     solver = new SolverPage(m_engine, m_manager, m_solver);
     m_window->addPage("Formula Solver", "sigma", solver, 1);
     calculator = new MathSolverPage;
