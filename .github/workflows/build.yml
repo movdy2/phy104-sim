@@ -61,6 +61,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # aqtinstall breaks on the (very new) default Python of the runner: pin a known interpreter first
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Install Qt 6
         uses: jurplel/install-qt-action@v4
         with:
