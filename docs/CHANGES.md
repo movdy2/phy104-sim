@@ -203,6 +203,11 @@ formula/variable, 25 random data sets), Qt UI, five experiments, notes, theme.
 * **Cleanup**: the `QT CHARTS` / `MATH MODE` panel metas, the format hint under the export buttons, and the two
   sidebar footer lines (`Undergraduate physics lab`, `Local workspace · autosaved`) are gone; the calculator
   subtitle no longer lists the functions its own keypad shows.
+* **CI is green again on all three jobs** (it had been red for several releases): the style sheet is appended from
+  three string literals (`MSVC C2026` rejects a literal over 16380 bytes, which the Windows build hit), the export test
+  selects the Excel format it asserts on (the header-icon test had left the page on CSV), and the Windows job installs
+  Qt with `aqt` on a pinned Python 3.12 without the non-existent `qtsvg` module. A failing test now shows up as a
+  check annotation instead of only inside the job log.
 * Tests: `studyHubShowsTheChaptersOfTheJson` (sidebar entry, list order, summary + constants switch with the
   selection) and `calculatorHasPlainTextScientificKeys` (the `sin(` key inserts plain text, never `$…$`), plus the
   data test now checks every chapter of `study_hub.json` (id/title/chapter, summary, at least one explained rule).
