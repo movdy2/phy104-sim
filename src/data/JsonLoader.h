@@ -1,12 +1,12 @@
-# pragma once 
+#pragma once
 #include <QJsonObject>
 #include <QString>
 
 namespace phy104 {
 
-class Jsonloader {
-    public:
-    static QJsonObject loadObject(const QString& path );
+class JsonLoader {
+public:
+    static QJsonObject loadObject(const QString& path);
 };
 
-}
+} // namespace phy104

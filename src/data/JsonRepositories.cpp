@@ -17,7 +17,6 @@ using std::runtime_error;
 namespace phy104 {
 namespace {
 
-// يقرأ حقل نصي. يرمي خطأ إذا كان الحقل مفقوداً أو ليس نصاً.
 string str(const QJsonObject& o, const char* key, bool required = true) {
     if (!o.contains(key)) {
         if (required) throw runtime_error(string("Missing key \"") + key + "\" in JSON object");
@@ -118,6 +117,7 @@ vector<PhysicsConstant> JsonConstantsRepository::loadAll() const {
         c.id = str(o, "id");
         c.symbol = str(o, "symbol");
         c.name = str(o, "name");
+        c.category = str(o, "category", false); // <--- قراءة التصنيف الجديد
         c.value = o.value("value").toDouble();
         c.unit = str(o, "unit", false);
         c.description = str(o, "description", false);
@@ -216,7 +216,7 @@ bool JsonSessionStore::save(const SessionLog& log) const {
 
     QJsonArray snapshots;
     for (const auto& [name, snap] : log.snapshots()) {
-        QJsonArray params, regs;
+        QJsonArray params;
         for (const auto& [k, v] : snap.parameters) {
             params.append(QJsonObject{{"name", QString::fromStdString(k)}, {"value", QString::fromStdString(v)}});
         }

@@ -1,104 +1,104 @@
 #pragma once
-#include <string>
 #include <map>
+#include <string>
 #include <vector>
-using std::string;
-using std::vector;
-using std::map;
-//------------------------------------------------
 
 namespace phy104 {
 
-/// One variable of a formula. `id` is the ASCII name used inside equations
-/// (e.g. "thetaa"); `display` is the pretty symbol shown to the user (e.g. "θ_a").
+/// One variable of a formula.
 struct Variable {
-    string id;
-    string display;
-    string name;
-    string unit; 
-    string latex; // "m", "deg", "rad", "" ... (SI; angles may be deg or rad)
-    string description;
-    string defaultValue; // pre-filled text, e.g. the value of c (filled from constants)
+    std::string id;
+    std::string display;
+    std::string name;
+    std::string unit;
+    std::string latex;
+    std::string description;
+    std::string defaultValue;
 };
 
-/// A formula. Only the equation TEXT is stored; the solver works with that text,
-/// so no hand-written rearrangements are needed. `variables` is filled by FormulaEngine.
+/// A formula. Only the equation TEXT is stored.
 struct Formula {
-    string id;
-    string name;
-    string equation; // "na*sin(thetaa)=nb*sin(thetab)"
-    string latex;
-    string chapter;
-    string noSolutionHint;
-    map<string, string> unitOverrides; // e.g. {"phi","deg"} for Malus' law
-    vector<Variable> variables;
+    std::string id;
+    std::string name;
+    std::string equation;
+    std::string latex;
+    std::string chapter;
+    std::string noSolutionHint;
+    std::map<std::string, std::string> unitOverrides;
+    std::vector<Variable> variables;
 
-    const Variable* findVariable(const string& id) const {
+    const Variable* findVariable(const std::string& id) const {
         for (const auto& v : variables)
             if (v.id == id) return &v;
         return nullptr;
     }
 };
 
-struct PhysicsConstant {
-    string id; // ASCII name usable in expressions: "epsilon0"
-    string symbol; // pretty symbol: "ε₀"
-    string name;
-    double value = 0.0;
-    string unit;
-    string description;
+/// A course chapter.
+struct Chapter {
+    std::string id;
+    std::string title;
+    int order = 0;
 };
 
-struct NoteEntry {
-    string id;
-    string chapter;
-    string type; // "summary" | "concept" | "exam" | "equation"
-    string title;
-    vector<string> content;
-    vector<string> equations;
+/// Physical constant.
+struct PhysicsConstant {
+    std::string id;
+    std::string symbol;
+    std::string name;
+    std::string category;      // <--- أضفنا هذا الحقل
+    double value = 0.0;
+    std::string unit;
+    std::string description;
 };
 
 /// A row of keys on the virtual keyboard.
 struct KeyboardGroup {
-    string name;
-    vector<string> keys; // text inserted when pressed (e.g. "sin(")
+    std::string name;
+    std::vector<std::string> keys;
 };
-struct Chapter {
-    string id;
-    string title;
-    int order = 0;
-};
+
+/// A transparent medium.
 struct OpticalMedium {
-    string id;
-    string name;          // "Glass · crown"
+    std::string id;
+    std::string name;
     double n = 1.0;
     double cauchyA = 0.0;
     double cauchyB = 0.0;
 };
 
-/// A monochromatic light source preset for the double-slit experiment.
+/// A monochromatic light source.
 struct LightSource {
-    string id;
-    string name;          // "Green laser · 532 nm"
+    std::string id;
+    std::string name;
     double wavelengthNm = 550.0;
 };
 
 struct OpticsPresets {
-   vector<OpticalMedium> media;
-    vector<LightSource> sources;
+    std::vector<OpticalMedium> media;
+    std::vector<LightSource> sources;
 
-    const OpticalMedium* findMedium(const string& id) const {
+    const OpticalMedium* findMedium(const std::string& id) const {
         for (const auto& m : media) if (m.id == id) return &m;
         return nullptr;
     }
 };
 
-/// A formula topic of the "Formulas & Notes" page.
+/// A formula topic of the reference page.
 struct ReferenceTopic {
-    string title;
-    vector<std::string> equations;
-    string note;
+    std::string title;
+    std::vector<std::string> equations;
+    std::string note;
 };
 
+/// A note entry from the JSON reference.
+struct NoteEntry {
+    std::string id;
+    std::string chapter;
+    std::string type;
+    std::string title;
+    std::vector<std::string> content;
+    std::vector<std::string> equations;
+};
 
 } // namespace phy104

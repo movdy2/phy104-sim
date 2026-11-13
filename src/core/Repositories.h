@@ -57,5 +57,9 @@ public:
     virtual ~IKeyboardRepository() = default;
     virtual std::vector<KeyboardGroup> loadAll() const = 0;
 };
-
+class ISummaryRepository {
+public:
+    virtual ~ISummaryRepository() = default;
+    virtual std::vector<NoteEntry> loadAll() const = 0;
+};
 } // namespace phy104

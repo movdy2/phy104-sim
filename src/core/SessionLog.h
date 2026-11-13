@@ -1,5 +1,4 @@
 #pragma once
-#include "Drawing.h"
 #include "ExperimentReports.h"
 #include <map>
 #include <string>
@@ -57,10 +56,6 @@ public:
     const std::vector<std::string>& equations() const { return m_equations; }
     void setEquations(std::vector<std::string> list) { m_equations = std::move(list); }
 
-    /// Draw Space: the sketch of the session.
-    const Drawing& drawing() const { return m_drawing; }
-    void setDrawing(Drawing d) { m_drawing = std::move(d); }
-
     int sessionNumber() const { return m_sessionNumber; }
     void setSessionNumber(int n) { m_sessionNumber = n; }
 
@@ -72,7 +67,6 @@ private:
     std::map<std::string, Snapshot> m_snapshots;
     std::string m_notes;
     std::vector<std::string> m_equations;
-    Drawing m_drawing;
     int m_sessionNumber = 7;
 };
 
