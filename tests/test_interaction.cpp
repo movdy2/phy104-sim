@@ -722,7 +722,7 @@ private slots:
         goTo(m_app->singleSlit);
         QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->singleSlit), QString("0.2865°"), 1500);
         click(modeTab(m_app->singleSlit, "Envelope"));
-        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->singleSlit), QString("7 bright"), 1500);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->singleSlit, 1), QString("7 bright"), 1500);     // second register: fringe count
         QVERIFY2(allLabelTexts(m_app->singleSlit).contains("Two slits / fringes inside the envelope"), "envelope title missing");
         click(findButton(m_app->singleSlit, "Reset parameters"));
         QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->singleSlit), QString("0.2865°"), 1500);
