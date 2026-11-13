@@ -41,6 +41,7 @@
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTextBlock>
+#include <QTextCursor>
 #include <QTextBrowser>
 #include <QTextEdit>
 #include <QTextFragment>
@@ -887,12 +888,14 @@ private slots:
         QVERIFY2(toggle, "no keyboard toggle on the notes page");
         auto* keyboard = m_app->notes->findChild<ScientificKeyboard*>();
         QVERIFY2(keyboard && !keyboard->isVisibleTo(&win()), "the keyboard starts closed");
-        const int before = m_app->notes->findChild<MarkdownWorkspace*>()->markdown().size();
+        auto* workspace = m_app->notes->findChild<MarkdownWorkspace*>();
+        workspace->editor()->moveCursor(QTextCursor::End);                 // no selection: the snippet only inserts
+        const int before = workspace->markdown().size();
         click(toggle);
         QApplication::processEvents();
         QVERIFY2(keyboard->isVisibleTo(&win()), "the keyboard did not open");
         // opening the keyboard puts the caret inside a formula:  $…$
-        QCOMPARE(m_app->notes->findChild<MarkdownWorkspace*>()->markdown().size(), before + 2);
+        QCOMPARE(workspace->markdown().size(), before + 2);
         click(toggle);
         QVERIFY2(!keyboard->isVisibleTo(&win()), "the keyboard did not close");
     }
