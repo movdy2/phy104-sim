@@ -1,0 +1,52 @@
+{
+  "constants": [
+    {
+      "id": "c",
+      "symbol": "c",
+      "name": "Speed of light in vacuum",
+      "value": 299792458,
+      "unit": "m/s",
+      "description": "Speed of all electromagnetic waves in vacuum."
+    },
+    {
+      "id": "epsilon0",
+      "symbol": "ε₀",
+      "name": "Vacuum permittivity",
+      "value": 8.8541878128e-12,
+      "unit": "F/m",
+      "description": "Electric constant: how easily electric field lines pass through vacuum."
+    },
+    {
+      "id": "mu0",
+      "symbol": "μ₀",
+      "name": "Vacuum permeability",
+      "value": 1.25663706212e-06,
+      "unit": "H/m",
+      "description": "Magnetic constant (about 4π×10⁻⁷). Related to c by c² = 1/(ε₀μ₀)."
+    },
+    {
+      "id": "h",
+      "symbol": "h",
+      "name": "Planck constant",
+      "value": 6.62607015e-34,
+      "unit": "J·s",
+      "description": "Relates photon energy and frequency: E = hf."
+    },
+    {
+      "id": "qe",
+      "symbol": "e",
+      "name": "Elementary charge",
+      "value": 1.602176634e-19,
+      "unit": "C",
+      "description": "Magnitude of the charge of a proton or electron."
+    },
+    {
+      "id": "pi",
+      "symbol": "π",
+      "name": "Pi",
+      "value": 3.14159265358979,
+      "unit": "",
+      "description": "Ratio of a circle's circumference to its diameter."
+    }
+  ]
+}

@@ -1,0 +1,956 @@
+{
+ "groups": [
+  {
+   "name": "Greek",
+   "keys": [
+    "λ",
+    "θ",
+    "φ",
+    "Δ",
+    "α",
+    "β",
+    "γ",
+    "δ",
+    "ε",
+    "μ"
+   ]
+  },
+  {
+   "name": "Constants",
+   "keys": [
+    "π",
+    "e",
+    "c",
+    "ε₀",
+    "μ₀",
+    "h",
+    "°"
+   ]
+  },
+  {
+   "name": "Functions",
+   "keys": [
+    "sin(",
+    "cos(",
+    "tan(",
+    "asin(",
+    "acos(",
+    "atan(",
+    "sec(",
+    "csc(",
+    "cot(",
+    "log(",
+    "ln("
+   ]
+  },
+  {
+   "name": "Operators",
+   "keys": [
+    "+",
+    "-",
+    "×",
+    "÷",
+    "√(",
+    "^",
+    "(",
+    ")",
+    "."
+   ]
+  },
+  {
+   "name": "Numbers",
+   "keys": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9"
+   ]
+  },
+  {
+   "name": "Variables",
+   "keys": [
+    "n",
+    "n_a",
+    "n_b",
+    "n₁",
+    "n₂",
+    "n_film",
+    "NA",
+    "c",
+    "v",
+    "f",
+    "λ",
+    "λ₀",
+    "ε₀",
+    "μ₀",
+    "E_max",
+    "B_max",
+    "E",
+    "B",
+    "S",
+    "I",
+    "I₀",
+    "I₁",
+    "I_max",
+    "θ_a",
+    "θ_b",
+    "θ_p",
+    "θ_c",
+    "θ",
+    "θ_a1",
+    "θ_a2",
+    "A",
+    "δ",
+    "δ_min",
+    "δ_d",
+    "δ_violet",
+    "δ_red",
+    "φ",
+    "β",
+    "R",
+    "R₁",
+    "R₂",
+    "s",
+    "s'",
+    "m",
+    "P",
+    "Δr",
+    "d",
+    "y_m",
+    "Δy",
+    "t",
+    "r_m",
+    "y",
+    "a",
+    "w",
+    "N"
+   ]
+  }
+ ],
+ "scientific": [
+  {
+   "name": "Greek symbols",
+   "rows": [
+    [
+     {
+      "legend": "α",
+      "latex": "\\alpha",
+      "shiftLegend": "Α",
+      "shiftLatex": "A"
+     },
+     {
+      "legend": "β",
+      "latex": "\\beta",
+      "shiftLegend": "Β",
+      "shiftLatex": "B"
+     },
+     {
+      "legend": "γ",
+      "latex": "\\gamma",
+      "shiftLegend": "Γ",
+      "shiftLatex": "\\Gamma"
+     },
+     {
+      "legend": "δ",
+      "latex": "\\delta",
+      "shiftLegend": "Δ",
+      "shiftLatex": "\\Delta"
+     },
+     {
+      "legend": "ε",
+      "latex": "\\epsilon",
+      "shiftLegend": "Ε",
+      "shiftLatex": "E"
+     },
+     {
+      "legend": "θ",
+      "latex": "\\theta",
+      "shiftLegend": "Θ",
+      "shiftLatex": "\\Theta"
+     },
+     {
+      "legend": "λ",
+      "latex": "\\lambda",
+      "shiftLegend": "Λ",
+      "shiftLatex": "\\Lambda"
+     },
+     {
+      "legend": "μ",
+      "latex": "\\mu",
+      "shiftLegend": "Μ",
+      "shiftLatex": "M"
+     },
+     {
+      "legend": "ν",
+      "latex": "\\nu",
+      "shiftLegend": "Ν",
+      "shiftLatex": "N"
+     },
+     {
+      "legend": "π",
+      "latex": "\\pi",
+      "shiftLegend": "Π",
+      "shiftLatex": "\\Pi"
+     }
+    ],
+    [
+     {
+      "legend": "ρ",
+      "latex": "\\rho",
+      "shiftLegend": "Ρ",
+      "shiftLatex": "P"
+     },
+     {
+      "legend": "σ",
+      "latex": "\\sigma",
+      "shiftLegend": "Σ",
+      "shiftLatex": "\\Sigma"
+     },
+     {
+      "legend": "τ",
+      "latex": "\\tau",
+      "shiftLegend": "Τ",
+      "shiftLatex": "T"
+     },
+     {
+      "legend": "φ",
+      "latex": "\\phi",
+      "shiftLegend": "Φ",
+      "shiftLatex": "\\Phi"
+     },
+     {
+      "legend": "ψ",
+      "latex": "\\psi",
+      "shiftLegend": "Ψ",
+      "shiftLatex": "\\Psi"
+     },
+     {
+      "legend": "ω",
+      "latex": "\\omega",
+      "shiftLegend": "Ω",
+      "shiftLatex": "\\Omega"
+     },
+     {
+      "legend": "Γ",
+      "latex": "\\Gamma"
+     },
+     {
+      "legend": "Δ",
+      "latex": "\\Delta"
+     },
+     {
+      "legend": "Θ",
+      "latex": "\\Theta"
+     },
+     {
+      "legend": "Λ",
+      "latex": "\\Lambda"
+     }
+    ],
+    [
+     {
+      "legend": "Ξ",
+      "latex": "\\Xi"
+     },
+     {
+      "legend": "Π",
+      "latex": "\\Pi"
+     },
+     {
+      "legend": "Σ",
+      "latex": "\\Sigma"
+     },
+     {
+      "legend": "Φ",
+      "latex": "\\Phi"
+     },
+     {
+      "legend": "Ψ",
+      "latex": "\\Psi"
+     },
+     {
+      "legend": "Ω",
+      "latex": "\\Omega"
+     },
+     {
+      "legend": "η",
+      "latex": "\\eta",
+      "shiftLegend": "Η",
+      "shiftLatex": "H"
+     },
+     {
+      "legend": "κ",
+      "latex": "\\kappa",
+      "shiftLegend": "Κ",
+      "shiftLatex": "K"
+     },
+     {
+      "legend": "ξ",
+      "latex": "\\xi",
+      "shiftLegend": "Ξ",
+      "shiftLatex": "\\Xi"
+     },
+     {
+      "legend": "ζ",
+      "latex": "\\zeta",
+      "shiftLegend": "Ζ",
+      "shiftLatex": "Z"
+     }
+    ],
+    [
+     {
+      "control": "@shift"
+     },
+     {
+      "legend": "7",
+      "latex": "7"
+     },
+     {
+      "legend": "8",
+      "latex": "8"
+     },
+     {
+      "legend": "9",
+      "latex": "9"
+     },
+     {
+      "legend": "θ",
+      "latex": "\\theta"
+     },
+     {
+      "legend": ".",
+      "latex": "."
+     },
+     {
+      "control": "@left"
+     },
+     {
+      "control": "@right"
+     },
+     {
+      "control": "@back"
+     },
+     {
+      "control": "@clear"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Math operators",
+   "rows": [
+    [
+     {
+      "legend": "0",
+      "latex": "0"
+     },
+     {
+      "legend": "1",
+      "latex": "1"
+     },
+     {
+      "legend": "2",
+      "latex": "2"
+     },
+     {
+      "legend": "3",
+      "latex": "3"
+     },
+     {
+      "legend": "4",
+      "latex": "4"
+     },
+     {
+      "legend": "5",
+      "latex": "5"
+     },
+     {
+      "legend": "6",
+      "latex": "6"
+     },
+     {
+      "legend": "7",
+      "latex": "7"
+     },
+     {
+      "legend": "8",
+      "latex": "8"
+     },
+     {
+      "legend": "9",
+      "latex": "9"
+     }
+    ],
+    [
+     {
+      "legend": "+",
+      "latex": "+"
+     },
+     {
+      "legend": "-",
+      "latex": "-"
+     },
+     {
+      "legend": "×",
+      "latex": "\\times"
+     },
+     {
+      "legend": "÷",
+      "latex": "\\div"
+     },
+     {
+      "legend": "=",
+      "latex": "="
+     },
+     {
+      "legend": "≠",
+      "latex": "\\neq"
+     },
+     {
+      "legend": "∫",
+      "latex": "\\int"
+     },
+     {
+      "legend": "±",
+      "latex": "\\pm"
+     },
+     {
+      "legend": "<",
+      "latex": "<"
+     },
+     {
+      "legend": ">",
+      "latex": ">"
+     }
+    ],
+    [
+     {
+      "legend": "(",
+      "latex": "("
+     },
+     {
+      "legend": ")",
+      "latex": ")"
+     },
+     {
+      "legend": "[",
+      "latex": "["
+     },
+     {
+      "legend": "]",
+      "latex": "]"
+     },
+     {
+      "legend": "{",
+      "latex": "\\{"
+     },
+     {
+      "legend": "}",
+      "latex": "\\}"
+     },
+     {
+      "legend": "|x|",
+      "latex": "\\left|\\right|"
+     },
+     {
+      "legend": "1",
+      "latex": "1"
+     },
+     {
+      "legend": "2",
+      "latex": "2"
+     },
+     {
+      "legend": "°",
+      "latex": "^{\\circ}"
+     }
+    ],
+    [
+     {
+      "control": "@shift"
+     },
+     {
+      "legend": "√",
+      "latex": "\\sqrt{}"
+     },
+     {
+      "legend": "x²",
+      "latex": "^{2}"
+     },
+     {
+      "legend": "xʸ",
+      "latex": "^{}"
+     },
+     {
+      "legend": "/",
+      "latex": "\\frac{}{}"
+     },
+     {
+      "legend": ".",
+      "latex": "."
+     },
+     {
+      "control": "@left"
+     },
+     {
+      "control": "@right"
+     },
+     {
+      "control": "@back"
+     },
+     {
+      "control": "@clear"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Functions",
+   "rows": [
+    [
+     {
+      "legend": "sin",
+      "latex": "\\sin()"
+     },
+     {
+      "legend": "cos",
+      "latex": "\\cos()"
+     },
+     {
+      "legend": "tan",
+      "latex": "\\tan()"
+     },
+     {
+      "legend": "asin",
+      "latex": "\\arcsin()"
+     },
+     {
+      "legend": "acos",
+      "latex": "\\arccos()"
+     },
+     {
+      "legend": "atan",
+      "latex": "\\arctan()"
+     },
+     {
+      "legend": "ln",
+      "latex": "\\ln()"
+     },
+     {
+      "legend": "log",
+      "latex": "\\log()"
+     },
+     {
+      "legend": "exp",
+      "latex": "\\exp()"
+     },
+     {
+      "legend": "√x",
+      "latex": "\\sqrt{}"
+     }
+    ],
+    [
+     {
+      "legend": "sinh",
+      "latex": "\\sinh()"
+     },
+     {
+      "legend": "cosh",
+      "latex": "\\cosh()"
+     },
+     {
+      "legend": "tanh",
+      "latex": "\\tanh()"
+     },
+     {
+      "legend": "abs",
+      "latex": "\\left|\\right|"
+     },
+     {
+      "legend": "min",
+      "latex": "\\operatorname{min}()"
+     },
+     {
+      "legend": "max",
+      "latex": "\\operatorname{max}()"
+     },
+     {
+      "legend": "floor",
+      "latex": "\\operatorname{floor}()"
+     },
+     {
+      "legend": "ceil",
+      "latex": "\\operatorname{ceil}()"
+     },
+     {
+      "legend": "round",
+      "latex": "\\operatorname{round}()"
+     },
+     {
+      "legend": "sgn",
+      "latex": "\\operatorname{sgn}()"
+     }
+    ],
+    [
+     {
+      "legend": "sin⁻¹",
+      "latex": "\\sin^{-1}()"
+     },
+     {
+      "legend": "cos⁻¹",
+      "latex": "\\cos^{-1}()"
+     },
+     {
+      "legend": "tan⁻¹",
+      "latex": "\\tan^{-1}()"
+     },
+     {
+      "legend": "log₁₀",
+      "latex": "\\log_{10}()"
+     },
+     {
+      "legend": "eˣ",
+      "latex": "e^{}"
+     },
+     {
+      "legend": "10ˣ",
+      "latex": "10^{}"
+     },
+     {
+      "legend": "x!",
+      "latex": "!"
+     },
+     {
+      "legend": "mod",
+      "latex": "\\operatorname{mod}"
+     },
+     {
+      "legend": "sinc",
+      "latex": "\\operatorname{sinc}()"
+     },
+     {
+      "legend": "atan2",
+      "latex": "\\operatorname{atan2}()"
+     }
+    ],
+    [
+     {
+      "control": "@shift"
+     },
+     {
+      "legend": "√",
+      "latex": "\\sqrt{}"
+     },
+     {
+      "legend": "(",
+      "latex": "("
+     },
+     {
+      "legend": ")",
+      "latex": ")"
+     },
+     {
+      "legend": "θ",
+      "latex": "\\theta"
+     },
+     {
+      "legend": ".",
+      "latex": "."
+     },
+     {
+      "control": "@left"
+     },
+     {
+      "control": "@right"
+     },
+     {
+      "control": "@back"
+     },
+     {
+      "control": "@clear"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Variables",
+   "rows": [
+    [
+     {
+      "legend": "n",
+      "latex": "n"
+     },
+     {
+      "legend": "n_a",
+      "latex": "n_{a}"
+     },
+     {
+      "legend": "n_b",
+      "latex": "n_{b}"
+     },
+     {
+      "legend": "n₁",
+      "latex": "n_{1}"
+     },
+     {
+      "legend": "n₂",
+      "latex": "n_{2}"
+     },
+     {
+      "legend": "n_film",
+      "latex": "n_{film}"
+     },
+     {
+      "legend": "NA",
+      "latex": "NA"
+     },
+     {
+      "legend": "c",
+      "latex": "c"
+     },
+     {
+      "legend": "v",
+      "latex": "v"
+     },
+     {
+      "legend": "f",
+      "latex": "f"
+     }
+    ],
+    [
+     {
+      "legend": "λ",
+      "latex": "\\lambda"
+     },
+     {
+      "legend": "λ₀",
+      "latex": "\\lambda_{0}"
+     },
+     {
+      "legend": "ε₀",
+      "latex": "\\epsilon_{0}"
+     },
+     {
+      "legend": "μ₀",
+      "latex": "\\mu_{0}"
+     },
+     {
+      "legend": "E_max",
+      "latex": "E_{max}"
+     },
+     {
+      "legend": "B_max",
+      "latex": "B_{max}"
+     },
+     {
+      "legend": "E",
+      "latex": "E"
+     },
+     {
+      "legend": "B",
+      "latex": "B"
+     },
+     {
+      "legend": "S",
+      "latex": "S"
+     },
+     {
+      "legend": "I",
+      "latex": "I"
+     }
+    ],
+    [
+     {
+      "legend": "I₀",
+      "latex": "I_{0}"
+     },
+     {
+      "legend": "I₁",
+      "latex": "I_{1}"
+     },
+     {
+      "legend": "I_max",
+      "latex": "I_{max}"
+     },
+     {
+      "legend": "θ_a",
+      "latex": "\\theta_{a}"
+     },
+     {
+      "legend": "θ_b",
+      "latex": "\\theta_{b}"
+     },
+     {
+      "legend": "θ_p",
+      "latex": "\\theta_{p}"
+     },
+     {
+      "legend": "θ_c",
+      "latex": "\\theta_{c}"
+     },
+     {
+      "legend": "θ",
+      "latex": "\\theta"
+     },
+     {
+      "legend": "θ_a1",
+      "latex": "\\theta_{a1}"
+     },
+     {
+      "legend": "θ_a2",
+      "latex": "\\theta_{a2}"
+     }
+    ],
+    [
+     {
+      "legend": "A",
+      "latex": "A"
+     },
+     {
+      "legend": "δ",
+      "latex": "\\delta"
+     },
+     {
+      "legend": "δ_min",
+      "latex": "\\delta_{min}"
+     },
+     {
+      "legend": "δ_d",
+      "latex": "\\delta_{d}"
+     },
+     {
+      "legend": "δ_violet",
+      "latex": "\\delta_{violet}"
+     },
+     {
+      "legend": "δ_red",
+      "latex": "\\delta_{red}"
+     },
+     {
+      "legend": "φ",
+      "latex": "\\phi"
+     },
+     {
+      "legend": "β",
+      "latex": "\\beta"
+     },
+     {
+      "legend": "R",
+      "latex": "R"
+     },
+     {
+      "legend": "R₁",
+      "latex": "R_{1}"
+     }
+    ],
+    [
+     {
+      "legend": "R₂",
+      "latex": "R_{2}"
+     },
+     {
+      "legend": "s",
+      "latex": "s"
+     },
+     {
+      "legend": "s'",
+      "latex": "s'"
+     },
+     {
+      "legend": "m",
+      "latex": "m"
+     },
+     {
+      "legend": "P",
+      "latex": "P"
+     },
+     {
+      "legend": "Δr",
+      "latex": "\\Delta r"
+     },
+     {
+      "legend": "d",
+      "latex": "d"
+     },
+     {
+      "legend": "y_m",
+      "latex": "y_{m}"
+     },
+     {
+      "legend": "Δy",
+      "latex": "\\Delta y"
+     },
+     {
+      "legend": "t",
+      "latex": "t"
+     }
+    ],
+    [
+     {
+      "legend": "r_m",
+      "latex": "r_{m}"
+     },
+     {
+      "legend": "y",
+      "latex": "y"
+     },
+     {
+      "legend": "a",
+      "latex": "a"
+     },
+     {
+      "legend": "w",
+      "latex": "w"
+     },
+     {
+      "legend": "N",
+      "latex": "N"
+     }
+    ],
+    [
+     {
+      "control": "@shift"
+     },
+     {
+      "legend": "(",
+      "latex": "("
+     },
+     {
+      "legend": ")",
+      "latex": ")"
+     },
+     {
+      "legend": "_",
+      "latex": "_{}"
+     },
+     {
+      "legend": "^",
+      "latex": "^{}"
+     },
+     {
+      "legend": "=",
+      "latex": "="
+     },
+     {
+      "control": "@left"
+     },
+     {
+      "control": "@right"
+     },
+     {
+      "control": "@back"
+     },
+     {
+      "control": "@clear"
+     }
+    ]
+   ]
+  }
+ ]
+}

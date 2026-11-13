@@ -1,0 +1,4 @@
+Fonts bundled with PHY104 Optical Assistant (both under the SIL Open Font License 1.1, https://openfontlicense.org):
+  * Inter            - Copyright (c) The Inter Project Authors (https://github.com/rsms/inter)
+  * JetBrains Mono   - Copyright (c) JetBrains s.r.o. (https://github.com/JetBrains/JetBrainsMono)
+Icons (assets/icons) are from Lucide (https://lucide.dev), ISC License.

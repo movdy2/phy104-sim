@@ -1,0 +1,39 @@
+{
+  "chapters": [
+    {
+      "id": "nature_of_light",
+      "title": "Nature of Light & Propagation",
+      "order": 1
+    },
+    {
+      "id": "polarization",
+      "title": "Polarization & Malus's Law",
+      "order": 2
+    },
+    {
+      "id": "tir_prisms",
+      "title": "TIR & Prisms",
+      "order": 3
+    },
+    {
+      "id": "mirrors_lenses",
+      "title": "Spherical Mirrors & Thin Lenses",
+      "order": 4
+    },
+    {
+      "id": "interference",
+      "title": "Wave Interference",
+      "order": 5
+    },
+    {
+      "id": "thin_film",
+      "title": "Thin-Film Interference",
+      "order": 6
+    },
+    {
+      "id": "diffraction",
+      "title": "Diffraction",
+      "order": 7
+    }
+  ]
+}
