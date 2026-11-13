@@ -1,9 +1,15 @@
 #include "BasePage.h"
 #include "AppContext.h"
+#include "Icons.h"
+#include "ThemeManager.h"
 
+#include <QAction>
+#include <utility>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QMenu>
 #include <QPushButton>
+#include <QToolButton>
 #include <QVBoxLayout>
 
 namespace phy104 {
@@ -11,14 +17,12 @@ namespace phy104 {
 BasePage::BasePage(const QString& title, const QString& subtitle, AppContext* context, QWidget* parent)
     : QWidget(parent), m_ctx(context) {
     setObjectName("pageArea");
-    // the content is centred and limited in width, so very wide windows do not stretch the layout
+    // every page fills the whole window: no width cap, no centring, so a maximised window is used end to end
     auto* outer = new QHBoxLayout(this);
     outer->setContentsMargins(0, 0, 0, 0);
     auto* inner = new QWidget;
-    inner->setMaximumWidth(1500);
     inner->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    outer->addWidget(inner);
-    outer->setAlignment(inner, Qt::AlignHCenter);
+    outer->addWidget(inner, 1);
     auto* root = new QVBoxLayout(inner);
     root->setContentsMargins(20, 22, 20, 14);
     root->setSpacing(14);
@@ -39,11 +43,25 @@ BasePage::BasePage(const QString& title, const QString& subtitle, AppContext* co
     m_saveButton = save;
     save->setObjectName("outline");
     save->setCursor(Qt::PointingHandCursor);
-    m_exportButton = new QPushButton("Export");
-    m_exportButton->setObjectName("primary");
-    m_exportButton->setMinimumWidth(130);
+    // one icon, three formats: PDF report / Excel / CSV (the menu is attached below)
+    m_exportButton = new QToolButton;
+    m_exportButton->setObjectName("exportMenu");
     m_exportButton->setCursor(Qt::PointingHandCursor);
-    m_exportButton->hide();
+    m_exportButton->setPopupMode(QToolButton::InstantPopup);
+    m_exportButton->setToolTip("Export: PDF report, Excel (.xlsx) or CSV (.csv)");
+    m_exportButton->setIconSize(QSize(18, 18));
+    auto* exportMenu = new QMenu(m_exportButton);
+    for (const auto& entry : {std::pair<const char*, int>{"PDF report…", 0}, {"Excel (.xlsx)…", 1}, {"CSV (.csv)…", 2}}) {
+        QAction* action = exportMenu->addAction(QString::fromUtf8(entry.first));
+        const int format = entry.second;
+        connect(action, &QAction::triggered, this, [this, format] { emit exportFormatRequested(format); });
+    }
+    m_exportButton->setMenu(exportMenu);
+    const auto refreshExportIcon = [this] {
+        m_exportButton->setIcon(Icons::pixmap("download", ThemeManager::instance().theme().amber, 18));
+    };
+    refreshExportIcon();
+    connect(&ThemeManager::instance(), &ThemeManager::themeChanged, this, refreshExportIcon);
     header->addLayout(titles, 1);
     header->addWidget(units, 0, Qt::AlignTop);
     header->addSpacing(10);
@@ -67,8 +85,6 @@ void BasePage::useSaveExportHeader() {
     m_units->hide();
     m_saveButton->setText("Save");
     m_saveButton->setMinimumWidth(130);
-    m_exportButton->show();
-    connect(m_exportButton, &QPushButton::clicked, this, &BasePage::exportRequested);
 }
 
 void BasePage::setStatusInfo(const StatusInfo& info, bool paused) {

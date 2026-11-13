@@ -118,3 +118,24 @@ formula/variable, 25 random data sets), Qt UI, five experiments, notes, theme.
 * **Continuous integration**: `.github/workflows/build.yml` builds on every push to `new-v2.1`/`main` and on every pull
   request - Linux (Qt 6 + Ninja + ctest), Windows (MSVC, Qt 6.7.2 through `install-qt-action`) and a Qt-free job that
   compiles the core with plain `g++` and runs `tests/test_core.cpp`. UI tests run with `QT_QPA_PLATFORM=offscreen`.
+
+---
+
+# Version 2.3 - full-width pages, one export icon, leaner screens
+
+* **Every page fills the window.** `BasePage` no longer caps the content at 1500 px and centres it, so the whole
+  window is used end to end (the empty strips left and right of a maximised window are gone). Fixed side columns of
+  the experiment screens keep their width; only the middle column grows.
+* **One export icon in every header** (new `download` Lucide icon, amber, with a menu and its own dark/light styling):
+  **PDF report…**, **Excel (.xlsx)…**, **CSV (.csv)…**. PDF opens the report screen; Excel/CSV open the
+  Export screen with that format already selected (`ExportPage::setFormat`). The old per-page "Export" text button and
+  the `exportRequested()` signal are gone; the Equation Lab keeps its own **Export PNG** button for the rendered equation.
+* **Notes page is only the Markdown workspace** (as in the Figma screen): the "Formula reference" panel, the
+  "Export preview" table and the "Export (Excel/CSV)" settings panel were removed. The reference lives on the
+  Formula Solver page, the settings on the Export page; the session notes, snippet toolbar, live LaTeX preview and
+  autosave are unchanged.
+* **Draw Space removed** at the author's request: the page, its sidebar entry, its sources and its click-through tests
+  are gone. The `Drawing` core model stays (the `.phy` file keeps its `drawing` key, older sessions still load).
+* Tests updated: the header test checks the three menu entries, a new test drives them (Excel, CSV, PDF) and checks the
+  Notes page carries no export UI, and the icon list of `test_ui` follows `download`/`pen-tool`.
+

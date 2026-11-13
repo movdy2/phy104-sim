@@ -26,6 +26,8 @@ public:
 
     QListWidget* seriesList() const { return m_series; }
     QTableWidget* previewTable() const { return m_table; }
+    /// The header export icon picks the format before the page is shown (1 = Excel, 2 = CSV).
+    void setFormat(bool xlsx);
 
 private slots:
     void refreshSeries();
