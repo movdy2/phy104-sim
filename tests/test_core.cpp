@@ -10,6 +10,7 @@
 #include "NumberFormat.h"
 #include "SessionLog.h"
 #include "WaveExperiments.h"
+#include "ReportDocument.h"
 #include "XlsxWriter.h"
 #include "LatexFormatter.h"
 #include "MathCalculator.h"
@@ -627,6 +628,66 @@ int main() {
         CHECK(kept.report.registers.size() == 2 && kept.report.registers[1].title == "LAST VALID / RUN 007" && kept.report.registers[1].resultValue == "1.5492 mm");
         // number helpers used above
         CHECK(NumberFormat::scientificCompact(5e-7) == "5×10⁻⁷" && NumberFormat::scientificCompact(1e-4) == "10⁻⁴" && NumberFormat::scientificCompact(600e-9) == "6×10⁻⁷");
+    }
+
+    // ====================================================================== printable report (HTML)
+    {
+        ReportContent content;
+        content.notes = "# Notes\n- n₁ sin θ₁ = **0.5**\n- transmitted";
+        ReportSection sec;
+        sec.title = "Thin-Film Interference";
+        sec.headline = "I_r/I_r,max = 1.0000";
+        sec.parameters = {{"λ", "600 nm"}, {"n", "1.5"}};
+        LcdRegister reg;
+        reg.title = "OPTICAL PATH / PHASE";
+        reg.lines = {"OPD = 2nt", " = 300 nm"};
+        reg.resultLabel = "NORMALIZED REFLECTION";
+        reg.resultValue = "1.0000";
+        sec.registers = {reg};
+        sec.diagramKey = reportImageKey("diagram", sec.title);
+        sec.chartKey = reportImageKey("chart", sec.title);
+        content.sections = {sec};
+        content.runs = {RunRecord{1, "Prisms", "A = 60°", "δ = 38.5°", true}};
+
+        ReportOptions o;
+        o.generated = "13 November 2026 · 02:15";
+        const std::string html = reportHtml(content, o);
+        CHECK(html.find("<h1>PHY104 Laboratory Report</h1>") != std::string::npos);
+        CHECK(html.find("1. Thin-Film Interference") != std::string::npos && html.find("I_r/I_r,max = 1.0000") != std::string::npos);
+        CHECK(html.find("img://diagram-thin-film-interference") != std::string::npos);
+        CHECK(html.find("img://chart-thin-film-interference") != std::string::npos);
+        CHECK(html.find("width=\"520\"") != std::string::npos);
+        CHECK(html.find("NORMALIZED REFLECTION") != std::string::npos && html.find("OPD = 2nt") != std::string::npos);
+        CHECK(html.find("<h3>Notes</h3>") != std::string::npos && html.find("<li>n₁ sin θ₁ = <b>0.5</b></li>") != std::string::npos);
+        CHECK(html.find("Saved calculations") != std::string::npos && html.find("<td>Prisms</td>") != std::string::npos);
+        CHECK(html.find("13 November 2026 · 02:15") != std::string::npos);
+
+        ReportOptions none = o;
+        none.notes = none.registers = none.diagrams = none.charts = none.runs = false;
+        const std::string bare = reportHtml(content, none);
+        CHECK(bare.find("img://") == std::string::npos && bare.find("NORMALIZED REFLECTION") == std::string::npos);
+        CHECK(bare.find("Session notes") == std::string::npos && bare.find("Saved calculations") == std::string::npos);
+        CHECK(bare.find("Thin-Film Interference") != std::string::npos && bare.find("Nothing selected yet") == std::string::npos);
+
+        ReportOptions narrow = o;
+        narrow.imageWidth = 320;
+        CHECK(reportHtml(content, narrow).find("width=\"320\"") != std::string::npos);
+
+        ReportContent risky;                                                    // user text must not break the document
+        ReportSection bad;
+        bad.title = "A < B & C";
+        bad.headline = "\"quoted\"";
+        risky.sections = {bad};
+        const std::string safe = reportHtml(risky, o);
+        CHECK(safe.find("A &lt; B &amp; C") != std::string::npos && safe.find("&quot;quoted&quot;") != std::string::npos);
+
+        CHECK(markdownToHtml("### RUN 007") == "<h5>RUN 007</h5>" && markdownToHtml("# Notes") == "<h3>Notes</h3>");
+        CHECK(markdownToHtml("- a\n- b") == "<ul><li>a</li><li>b</li></ul>");
+        CHECK(markdownToHtml("use `Ans` here") == "<p>use <span style=\"font-family:monospace\">Ans</span> here</p>");
+        CHECK(markdownToHtml("a < b") == "<p>a &lt; b</p>");
+        CHECK(markdownToHtml("") .empty());
+        CHECK(reportFileStem("2026-11-13") == "PHY104_report_2026-11-13" && reportFileStem("") == "PHY104_report");
+        CHECK(reportImageKey("chart", "Newton's Rings") == "img://chart-newton-s-rings");
     }
 
     if (g_failures == 0) std::cout << "All core tests passed\n";

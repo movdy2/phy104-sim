@@ -30,6 +30,7 @@ into the session, into every snapshot's `notesContent`, and into the `.phy` file
 | **Wave Interference** | Young's double slit: wavefronts, fringes, intensity profile, 6 light-source presets |
 | **Polarization**, **Single slit**, **Grating**, **Thin film**, **Michelson**, **Newton's rings** | the six screens of the second Figma batch (Save / Export header, Send to Notes); **both tabs of every screen work** (thin-film transmission, Michelson fringe count, grating orders, slit geometry, Malus/Brewster) and Newton's viewing-mode dropdown switches to the transmitted rings |
 | **Notes** | formula reference, Markdown study workspace (live LaTeX preview), quick Excel/CSV export |
+| *Tools:* **PDF Report** | printable laboratory report: every experiment's headline, diagram and chart, the registers, the notes and the saved runs in one A4 document (Save PDF / Print…) |
 | *Tools:* **Export (Excel/CSV)** | data series and what it contains, every row of the table, workbook/CSV settings, remembered recent export |
 | *Tools:* **Draw Space** | sketchpad: pen, lines, rays, lenses, mirrors, prisms, interfaces, axes, normals, text and LaTeX labels; move/undo, PNG + SVG |
 | *Tools:* **Formula Solver** | 42 formulas in 7 chapters: search, chapter filter, paging, LaTeX, LCD input/answer |

@@ -17,12 +17,15 @@
 #include "ui/MarkdownWorkspace.h"
 #include "ui/MathSolverPage.h"
 #include "ui/NotesExportPage.h"
+#include "ui/ReportPage.h"
 #include "ui/SolverPage.h"
 #include "ui/ThemeManager.h"
 #include "ui/VirtualKeyboard.h"
 
 #include <QApplication>
+#include <QCheckBox>
 #include <QClipboard>
+#include <QDate>
 #include <QComboBox>
 #include <QDir>
 #include <QFile>
@@ -909,6 +912,40 @@ private slots:
         QCOMPARE(static_cast<int>(second.context().log.drawing().shapes.size()), 1);
         QCOMPARE(static_cast<int>(second.drawSpace->canvas()->drawing().shapes.size()), 1);
         QCOMPARE(second.drawSpace->canvas()->drawing().shapes[0].type, ShapeType::Line);
+    }
+    // ------------------------------------------------------------------ the printable report
+    void reportPageCapturesEveryScreenAndWritesAPdf() {
+        goTo(m_app->reportPage);
+        auto* page = m_app->reportPage;
+        QTRY_VERIFY_WITH_TIMEOUT(page->sectionCount() >= 6, 2000);
+        QVERIFY(page->html().contains("PHY104 Laboratory Report"));
+        QVERIFY2(page->html().contains("img://diagram-"), "the diagrams were not captured");
+        QVERIFY(page->html().contains("img://chart-"));
+        QVERIFY(page->html().contains("Thin-Film Interference"));
+
+        // a section that is unticked leaves the document immediately
+        QCheckBox* diagrams = nullptr;
+        for (auto* c : page->findChildren<QCheckBox*>())
+            if (c->text().startsWith("Diagrams")) diagrams = c;
+        QVERIFY2(diagrams, "no diagrams checkbox");
+        click(diagrams);
+        QVERIFY(!page->html().contains("img://diagram-"));
+        click(diagrams);
+        QVERIFY(page->html().contains("img://diagram-"));
+
+        // the file really is a PDF, and the recent-export card remembers it
+        const QString dir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/PHY104";
+        QDir(dir).removeRecursively();
+        click(page->saveButton());
+        const QString path = dir + "/PHY104_report_" + QDate::currentDate().toString("yyyy-MM-dd") + ".pdf";
+        QVERIFY2(QFile::exists(path), qPrintable("no PDF at " + path));
+        QVERIFY(QFileInfo(path).size() > 2000);
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        QCOMPARE(file.read(5), QByteArray("%PDF-"));
+        file.close();
+        QCOMPARE(QString::fromStdString(m_app->context().log.lastExport().format), QString("PDF report"));
+        QVERIFY(allLabelTexts(page).contains(QFileInfo(path).fileName()));
     }
     void drawSpaceExportsPngAndSvg() {
         auto* page = drawSpace();

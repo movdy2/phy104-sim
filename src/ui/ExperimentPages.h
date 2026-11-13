@@ -29,6 +29,13 @@ class WaveCanvas;
 /// "paused" pattern (Calculate disabled, Restore button, last valid result retained), panel meta text.
 class ExperimentPage : public BasePage {
     Q_OBJECT
+public:
+    /// The experiment name the session uses ("Thin-Film Interference", "Refraction & TIR", ...).
+    QString experimentName() const { return m_experiment; }
+    /// The live diagram canvas and chart, captured into the printable report.
+    QWidget* diagramCanvas() const;
+    QWidget* chartWidget() const;
+
 protected:
     ExperimentPage(const QString& title, const QString& subtitle, const QString& experiment, AppContext* context, QWidget* parent);
 

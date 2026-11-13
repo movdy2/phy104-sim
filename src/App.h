@@ -27,6 +27,7 @@ class MainWindow;
 class MathSolverPage;
 class NotesExportPage;
 class PrismsPage;
+class ReportPage;
 class RefractionPage;
 class SolverEngine;
 class SolverPage;
@@ -61,6 +62,7 @@ public:
     EquationLabPage* equationLab = nullptr;
     NotesExportPage* notes = nullptr;
     ExportPage* exportPage = nullptr;
+    ReportPage* reportPage = nullptr;
     DrawSpacePage* drawSpace = nullptr;
     SolverPage* solver = nullptr;
     MathSolverPage* calculator = nullptr;

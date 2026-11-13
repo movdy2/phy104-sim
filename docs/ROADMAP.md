@@ -10,6 +10,9 @@
 * Formula Solver (42 formulas, search, chapters, paging, LaTeX), constants, SVG optical setups.
 * **Export (Excel/CSV)** page: every data series with its description, the full table (no 7-row sample), workbook/CSV
   settings, and a "recent export" card remembered in the `.phy` session.
+* **PDF Report** (print): header + every experiment's headline, diagram and chart (captured at 2x), parameters, LCD
+  registers, session notes and the saved-calculations table; tick boxes for the sections, A4 portrait/landscape,
+  live preview, Save PDF / Print…, remembered in the `.phy` session.
 * **Second tabs on all six model screens**: Michelson **Fringes** (spacing λ/(2n), count over ±2 µm, contrast from the
   beam balance), Thin-Film **Transmission** (`cos²(2πnt/λ)`, no net reversal, transmitted-beam diagram), Grating **Orders**
   (every peak with its angle, `d/λ` capacity, all maxima marked on the chart), Single slit **Geometry** (minima positions
@@ -21,7 +24,8 @@
 * **Markdown Study Workspace** (Notes & Formula Jotter): Gruvbox highlighter (H1-H4, formulas, bullets), snippet toolbar,
   problem template, Edit/Split/Preview, autosave into `Snapshot.notesContent` and the `.phy` file.
 * Session file (`.phy`): runs, notes, snapshots (parameters + calculator registers), equations and drawing storage.
-* Tests: core numbers of every Figma frame (plus both modes of Newton, Michelson and thin film), data round trips,
+* Tests: core numbers of every Figma frame (plus both modes of Newton, Michelson and thin film), the report HTML
+  builder (escaping, options, image keys), data round trips,
   UI (colours, fonts, highlighter), click-through tests of every screen (now including the second tabs of
   thin film and Michelson and Newton's viewing-mode dropdown).
 
@@ -30,12 +34,12 @@
   tested engines (`EquationText`/`EquationSolver`, `Drawing`/`DrawingHistory`).
 
 ## Should add next (priority order)
-1. Print / PDF report: notes + registers + diagrams + chart images in one document.
-2. Experiment extras: thick lens, spherical aberration, single-slit diffraction envelope, thin-film colours,
+1. Experiment extras: thick lens, spherical aberration, single-slit diffraction envelope, thin-film colours,
    grating resolving power / free spectral range - the formulas already exist in `formulas.json`.
-3. Compare runs: overlay two saved runs on one chart; edit/delete saved runs from the dashboard.
-4. Notes: note templates per chapter, search, export to .md/.pdf (LaTeX formula images in the preview are done).
-5. Keyboard shortcuts (Ctrl+Enter calculate, Ctrl+S save, Ctrl+1..9 pages), undo for field edits, drag-and-drop of data files.
-6. Units: unit dropdown per field (nm/µm/mm/cm/m), significant-figures setting, copy-as-LaTeX for every register.
-7. Accessibility and polish: high-contrast theme, font-size setting, window-size tests (1080x700), translations (Arabic UI).
-8. Packaging: Windows installer (windeployqt + NSIS), Linux AppImage, GitHub Actions build matrix.
+2. Compare runs: overlay two saved runs on one chart; edit/delete saved runs from the dashboard.
+3. Notes: note templates per chapter, search, export to .md/.pdf (LaTeX formula images in the preview are done).
+4. Keyboard shortcuts (Ctrl+Enter calculate, Ctrl+S save, Ctrl+1..9 pages, Ctrl+P print), undo for field edits,
+   drag-and-drop of data files.
+5. Units: unit dropdown per field (nm/µm/mm/cm/m), significant-figures setting, copy-as-LaTeX for every register.
+6. Accessibility and polish: high-contrast theme, font-size setting, window-size tests (1080x700), translations (Arabic UI).
+7. Packaging: Windows installer (windeployqt + NSIS), Linux AppImage, GitHub Actions build matrix.
