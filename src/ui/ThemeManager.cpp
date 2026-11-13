@@ -97,6 +97,7 @@ void ThemeManager::polishLcdInput(QLineEdit* edit) {
 }
 
 QString ThemeManager::styleSheet(const Theme& t) {
+    // MSVC rejects a single string literal over 16380 bytes (C2026): the sheet is appended in three parts.
     QString css = R"CSS(
 * { font-family: 'Inter'; }
 QMainWindow, QWidget#central, QWidget#pageArea { background: @bg@; }
@@ -176,7 +177,8 @@ QCheckBox { color: @text@; spacing: 8px; font-size: 12px; }
 QCheckBox::indicator { width: 16px; height: 16px; border: 1px solid @border@; border-radius: 3px; background: @input@; }
 QCheckBox::indicator:checked { background: @amber@; border-color: @amber@; image: url(:/icons/check.svg); }
 
-/* ---------- buttons ---------- */
+)CSS";
+    css += R"CSS(/* ---------- buttons ---------- */
 QPushButton { background: @card@; color: @text@; border: 1px solid @border@; border-radius: 4px; padding: 6px 14px; font-size: 12px; }
 QPushButton:hover { border-color: @amber@; }
 QPushButton:pressed { background: @bg@; }
@@ -232,7 +234,8 @@ QListWidget#studyTopics { background: transparent; border: none; font-size: 12px
 QListWidget#studyTopics::item { min-height: 30px; padding: 2px 6px; border-radius: 4px; }
 QListWidget#studyTopics::item:selected { background: @amberTint@; color: @amber@; }
 
-/* ---------- notices ---------- */
+)CSS";
+    css += R"CSS(/* ---------- notices ---------- */
 QFrame#notice { background: @bg@; border: 1px solid @border@; border-radius: 6px; }
 QFrame#notice[error="true"] { background: @errorBg@; border: 1px solid @error@; }
 QLabel#noticeTitle { font-size: 12px; font-weight: 600; color: @amber@; }
