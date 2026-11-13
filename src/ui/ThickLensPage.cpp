@@ -18,6 +18,7 @@
 #include <utility>
 
 namespace phy104 {
+namespace ER = ExperimentReports;
 namespace TL = ThickLens;
 namespace {
 QString q(const std::string& s) { return QString::fromStdString(s); }
