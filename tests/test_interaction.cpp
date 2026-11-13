@@ -621,6 +621,8 @@ private slots:
         w->editor()->setFocus();
         QSignalSpy spy(w, &MarkdownWorkspace::contentChanged);
         typeText(w->editor(), QString::fromUtf8("# Study notes"));
+        const QString typedNotes = w->markdown();
+        QVERIFY2(typedNotes == "# Study notes", qPrintable(QString("editor text mismatch after typing: '%1'").arg(typedNotes)));
         QVERIFY2(spy.count() == 0, qPrintable(QString("autosave fired before debounce: %1 signal(s)").arg(spy.count())));
         QTRY_VERIFY_WITH_TIMEOUT(spy.count() == 1, 2500);
         const QString savedNotes = QString::fromStdString(m_app->context().log.notes());
