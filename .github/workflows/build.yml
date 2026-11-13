@@ -64,9 +64,9 @@ jobs:
       - name: Install Qt 6
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.7.2'
+          version: '6.8.3'
           modules: 'qtsvg'
-          cache: true
+          cache: false
 
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -78,6 +78,16 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Annotate failing tests
+        if: failure()
+        shell: pwsh
+        run: |
+          $log = "build/Testing/Temporary/LastTest.log"
+          if (Test-Path $log) {
+            Select-String -Path $log -Pattern "FAIL!|QFATAL|Segmentation" | Select-Object -First 20 |
+              ForEach-Object { Write-Host "::error title=failing test::$($_.Line)" }
+          }
 
   # ------------------------------------------------------------------ the business layer alone, no Qt needed
   core-only:

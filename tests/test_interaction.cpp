@@ -885,9 +885,9 @@ private slots:
     }
     // ------------------------------------------------------------------ Study Hub (JSON array -> page)
     void studyHubShowsTheChaptersOfTheJson() {
-        QPushButton* nav = nullptr;
-        for (auto* b : win().findChildren<QPushButton*>())
-            if (b->text() == "Study Hub") nav = b;
+        QPushButton* nav = nullptr;                                    // the nav buttons paint their own label
+        for (auto* b : win().navButtons())
+            if (b->accessibleName() == "Study Hub") nav = b;
         QVERIFY2(nav, "no Study Hub entry in the sidebar");
         goTo(m_app->studyHub);
         auto* list = m_app->studyHub->topicList();
@@ -986,6 +986,7 @@ private slots:
     }
     void exportPageWritesBothFormatsAndRemembersTheFile() {
         goTo(m_app->exportPage);
+        m_app->exportPage->setFormat(true);                        // the icon test above left the CSV format selected
         const Snapshot* snap = selectedSeries();
         QVERIFY(snap);
         const QString base = "PHY104_" + QString::fromStdString(snap->series.id).section('_', 0, 0);
