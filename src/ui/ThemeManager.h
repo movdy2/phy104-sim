@@ -1,9 +1,11 @@
 #pragma once
 #include <QColor>
+#include <QFont>
 #include <QObject>
 
 class QApplication;
 class QLineEdit;
+class QWidget;
 
 namespace phy104 {
 
@@ -32,7 +34,7 @@ struct Theme {
     static Theme gruvboxLight() { return figmaLight(); }
 };
 
-/// Loads the bundled fonts (Inter, JetBrains Mono), applies palette + style sheet,
+/// Loads the bundled UI, mono and Casio segment fonts, applies palette + style sheet,
 /// and announces theme changes.
 class ThemeManager : public QObject {
     Q_OBJECT
@@ -49,7 +51,12 @@ public:
     /// The theme chosen in the last run (saved by apply(); read by main() before the UI is built).
     static bool storedDarkTheme();
 
-    /// Call on every Casio-LCD input field (readable placeholder colour).
+    /// Shared segmented display fonts: DSEG14 for text, DSEG7 for large numeric readouts,
+    /// with readable bundled fallbacks for glyphs the segment faces do not contain.
+    static QFont lcdFont(const QFont& base = QFont(), bool numeric = false);
+    static void polishLcdFont(QWidget* widget, bool numeric = false);
+
+    /// Call on every Casio-LCD input field (segmented font + readable placeholder colour).
     static void polishLcdInput(QLineEdit* edit);
 
 signals:

@@ -6,6 +6,8 @@
 #include <QLineEdit>
 #include <QPalette>
 #include <QSettings>
+#include <QStringList>
+#include <QWidget>
 #include <QStyleFactory>
 
 namespace phy104 {
@@ -88,7 +90,24 @@ void ThemeManager::apply(QApplication& app, bool dark) {
     emit themeChanged();
 }
 
+QFont ThemeManager::lcdFont(const QFont& base, bool numeric) {
+    QFont font = base;
+    font.setFamilies(numeric ? QStringList{"DSEG7 Classic", "DSEG14 Classic", "JetBrains Mono"}
+                             : QStringList{"DSEG14 Classic", "JetBrains Mono"});
+    return font;
+}
+
+void ThemeManager::polishLcdFont(QWidget* widget, bool numeric) {
+    if (!widget) return;
+    widget->setFont(lcdFont(widget->font(), numeric));
+    QObject::connect(&instance(), &ThemeManager::themeChanged, widget, [widget, numeric] {
+        widget->setFont(ThemeManager::lcdFont(widget->font(), numeric));
+    });
+}
+
 void ThemeManager::polishLcdInput(QLineEdit* edit) {
+    if (!edit) return;
+    polishLcdFont(edit);
     QPalette p = edit->palette();
     QColor ink = Theme::figmaDark().lcdText;
     ink.setAlpha(115);
@@ -220,7 +239,7 @@ QPushButton#keyEq:pressed { background: @amberPressed@; }
 /* ---------- Scientific input keyboard (raised keys) ---------- */
 QFrame#sciKeyboard { background: @card@; border: 1px solid @border@; border-radius: 8px; }
 QLabel#sciTitle { font-family: 'JetBrains Mono'; font-size: 10px; font-weight: 700; color: @amber@; }
-QLabel#lcdKeyDisplay { font-family: 'JetBrains Mono'; font-size: 20px; font-weight: 700; color: @lcdText@; }
+QLabel#lcdKeyDisplay { font-size: 20px; font-weight: 700; color: @lcdText@; }
 QToolButton#keyClose { background: transparent; border: none; color: @dim@; font-size: 16px; }
 QToolButton#keyClose:hover { color: @amber@; }
 QPushButton#rkey, QPushButton#rkeyCtl { background: @card@; color: @text@; border: 1px solid @border@; border-bottom: 3px solid @titleBar@; border-radius: 4px;
@@ -292,29 +311,29 @@ QStatusBar { background: @titleBar@; color: @dim@; border-top: 1px solid @border
 QStatusBar::item { border: none; }
 QLabel#statusText { font-family: 'JetBrains Mono'; font-size: 10px; color: @dim@; }
 
-/* ---------- Casio segment font: the Calculator page only ---------- */
-QWidget#calcPage QLineEdit#lcdInput { font-family: 'DSEG14 Classic'; font-size: 22px; font-weight: 700; padding: 10px 12px; }
-QWidget#calcPage QLabel#lcdResult { font-family: 'DSEG7 Classic'; font-size: 44px; font-weight: 700; padding: 8px 14px; }
-QWidget#calcPage QTextBrowser#lcdScreen { font-family: 'DSEG14 Classic'; font-size: 13px; font-weight: 700; }
-QWidget#calcPage QLabel#lcdBadge { font-family: 'DSEG14 Classic'; font-size: 11px; font-weight: 700; }
+/* ---------- Casio LCD typography: shared by the calculator, solver and register displays ---------- */
+QWidget#calcPage QLineEdit#lcdInput { font-size: 22px; font-weight: 700; padding: 10px 12px; }
+QWidget#calcPage QLabel#lcdResult { font-size: 44px; font-weight: 700; padding: 8px 14px; }
+QWidget#calcPage QTextBrowser#lcdScreen { font-size: 13px; font-weight: 700; }
+QWidget#calcPage QLabel#lcdBadge { font-size: 11px; font-weight: 700; }
 QWidget#calcPage QLabel#unitsTag { color: @calcDim@; }
 
 /* ---------- Casio LCD ---------- */
 QFrame#lcd { background: @lcdBg@; border: 3px solid @lcdFrame@; border-radius: 4px; }
-QLabel#lcdTitle { font-family: 'JetBrains Mono'; font-size: 9px; font-weight: 700; color: @lcdText@; }
-QLabel#lcdLine  { font-family: 'JetBrains Mono'; font-size: 11px; color: @lcdText@; }
-QLabel#lcdCaption { font-family: 'JetBrains Mono'; font-size: 8px; color: @lcdText@; }
-QLabel#lcdBig   { font-size: 26px; font-weight: 700; color: @lcdText@; }   /* Casio DSEG, set in code with fallbacks */
-QLabel#lcdFoot  { font-family: 'JetBrains Mono'; font-size: 8px; color: @lcdText@; }
+QLabel#lcdTitle { font-size: 9px; font-weight: 700; color: @lcdText@; }
+QLabel#lcdLine  { font-size: 11px; color: @lcdText@; }
+QLabel#lcdCaption { font-size: 8px; color: @lcdText@; }
+QLabel#lcdBig   { font-size: 26px; font-weight: 700; color: @lcdText@; }
+QLabel#lcdFoot  { font-size: 8px; color: @lcdText@; }
 QFrame#lcdDivider { background: @lcdDivider@; border: none; max-height: 1px; min-height: 1px; }
 QLineEdit#lcdInput { background: @lcdBg@; color: @lcdText@; border: 3px solid @lcdFrame@; border-radius: 4px;
-    font-family: 'JetBrains Mono'; font-size: 20px; font-weight: 700; padding: 8px 12px; selection-background-color: @lcdText@; selection-color: @lcdBg@; }
+    font-size: 20px; font-weight: 700; padding: 8px 12px; selection-background-color: @lcdText@; selection-color: @lcdBg@; }
 QLineEdit#lcdInput:focus { border: 3px solid @amber@; padding: 8px 12px; }
 QTextBrowser#lcdScreen, QLabel#lcdScreen { background: @lcdBg@; color: @lcdText@; border: 3px solid @lcdFrame@; border-radius: 4px;
-    font-family: 'JetBrains Mono'; font-size: 12px; font-weight: 700; padding: 8px; }
+    font-size: 12px; font-weight: 700; padding: 8px; }
 QLabel#lcdResult { background: @lcdBg@; color: @lcdText@; border: 3px solid @lcdFrame@; border-radius: 4px;
-    font-family: 'JetBrains Mono'; font-size: 34px; font-weight: 700; padding: 6px 14px; }
-QLabel#lcdBadge { background: @lcdText@; color: @lcdBg@; border-radius: 3px; padding: 2px 8px; font-family: 'JetBrains Mono'; font-size: 11px; font-weight: 700; }
+    font-size: 34px; font-weight: 700; padding: 6px 14px; }
+QLabel#lcdBadge { background: @lcdText@; color: @lcdBg@; border-radius: 3px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
 )CSS";
 
     const std::pair<const char*, QColor> tokens[] = {

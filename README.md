@@ -38,7 +38,7 @@ into the session, into every snapshot's `notesContent`, and into the `.phy` file
 | *Tools:* **Export (Excel/CSV)** | data series and what it contains, every row of the table, workbook/CSV settings, **Print…** (paper or PDF), remembered recent export |
 | *Tools:* **Formula Solver** | 42 formulas in 7 chapters: search, chapter filter, paging, LaTeX, LCD input/answer |
 | *Tools:* **Calculator** | clean expression → result layout with recent history, DEG/RAD, `Ans`, and a focused math keypad (numbers, operators, parentheses, powers, roots, trig and logs); no extra physics-variable browser |
-| *Tools:* **Study Hub** | tabs for ten chapters (summary, rules and chapter constants), shared autosaving Notes, six Optical Setups (PNG export), and searchable/copyable global Constants; the Notes shortcut stays in the sidebar, while Constants and Optical Setups move here |
+| *Tools:* **Study Hub** | tabs for ten chapters (summary, rules and chapter constants), shared autosaving Notes, and six Optical Setups (PNG export); the Notes shortcut stays in the sidebar, and global Constants are no longer a Study Hub tab |
 
 Common to the experiment pages: live update while typing, **Calculate & Simulate** saves a run to the session,
 **Reset parameters**, invalid input never shows `NaN` - a red field, an `E_...` register with the

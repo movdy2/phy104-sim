@@ -2,7 +2,6 @@
 
 #include "AppContext.h"
 #include "Components.h"
-#include "ConstantsPage.h"
 #include "DiagramsPage.h"
 #include "LatexRenderer.h"
 #include "MarkdownWorkspace.h"
@@ -22,10 +21,10 @@
 namespace phy104 {
 
 StudyHubPage::StudyHubPage(std::vector<StudyTopic> topics, AppContext* context,
-                           ConstantsPage* constantsPage, DiagramsPage* opticalSetups, QWidget* parent)
-    : BasePage("Study Hub", "STUDY / Chapters, notes, optical setups and constants", context, parent),
+                           DiagramsPage* opticalSetups, QWidget* parent)
+    : BasePage("Study Hub", "STUDY / Chapters, notes and optical setups", context, parent),
       m_topics(std::move(topics)) {
-    m_sections = new ModeTabs({"Chapters", "Notes", "Optical Setups", "Constants"});
+    m_sections = new ModeTabs({"Chapters", "Notes", "Optical Setups"});
     m_sections->setObjectName("studyHubTabs");
     content()->addWidget(m_sections);
 
@@ -125,9 +124,8 @@ StudyHubPage::StudyHubPage(std::vector<StudyTopic> topics, AppContext* context,
         m_notes->setSavedText("Saved " + m_ctx->lastSavedTime());
     });
 
-    // ---------------------------------------------------------------- full optical setup gallery and searchable global constants table
+    // ---------------------------------------------------------------- full optical setup gallery
     m_sectionStack->addWidget(opticalSetups);
-    m_sectionStack->addWidget(constantsPage);
 
     connect(m_sections, &ModeTabs::currentChanged, m_sectionStack, &QStackedWidget::setCurrentIndex);
     connect(m_list, &QListWidget::currentRowChanged, this, &StudyHubPage::selectTopic);

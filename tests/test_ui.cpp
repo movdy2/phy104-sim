@@ -159,28 +159,31 @@ int main(int argc, char** argv) {
         std::set<std::string> varSymbols;
         for (const auto& v : JsonVariableRepository(data + "/variables.json").loadAll()) varSymbols.insert(v.display);
         std::set<std::string> keyLegends;
-        int keys = 0;
-        for (const auto& page : pages)
-            for (const auto& row : page.rows)
+        int keys = 0, pageControls = 0;
+        bool compactRows = true;
+        for (const auto& page : pages) {
+            for (const auto& row : page.rows) {
+                compactRows = compactRows && row.size() <= 10;
                 for (const auto& key : row) {
-                    if (!key.control.empty()) continue;
+                    if (!key.control.empty()) { ++pageControls; continue; }
                     ++keys;
                     QString err;
                     check(LatexRenderer::validate(QString::fromStdString(key.latex), &err), "key LaTeX renders: " + QString::fromStdString(key.latex) + " " + err);
                     if (!key.shiftLatex.empty()) check(LatexRenderer::validate(QString::fromStdString(key.shiftLatex)), "shift LaTeX renders");
                     if (page.name == "Variables") keyLegends.insert(key.legend);
                 }
-        for (const auto& s : varSymbols) check(keyLegends.count(s) > 0, "variable on the keyboard: " + QString::fromStdString(s));
-        check(varSymbols.size() == 55 && keys > 150, "55 variables and the scientific keys are on the keyboard");
-        bool controls = true;
-        for (const auto& page : pages) {
-            std::set<std::string> c;
-            for (const auto& key : page.rows.back()) if (!key.control.empty()) c.insert(key.control);
-            controls = controls && c.count("@shift") && c.count("@left") && c.count("@right") && c.count("@back") && c.count("@clear");
+            }
         }
-        check(controls, "every page ends with SHIFT ← → ⌫ AC");
+        for (const auto& s : varSymbols) check(keyLegends.count(s) > 0, "variable on the keyboard: " + QString::fromStdString(s));
+        check(varSymbols.size() == 55 && keyLegends.size() == 55 && keys == 119,
+              "the compact scientific keyboard retains all 55 course variables (119 keys total)");
+        check(compactRows && pageControls == 0, "editing controls are shared once instead of repeated on every page");
         const auto groups = JsonKeyboardRepository(data + "/keyboard.json").loadAll();
-        check(!groups.empty() && groups.back().name == "Variables" && groups.back().keys.size() == 55, "classic keyboard has the Variables group");
+        std::set<std::string> groupNames;
+        int globalKeys = 0;
+        for (const auto& group : groups) { groupNames.insert(group.name); globalKeys += int(group.keys.size()); }
+        check(groups.size() == 5 && globalKeys == 47 && !groupNames.count("Variables"),
+              "the shared numeric keyboard keeps only its five compact input groups");
         check(ScientificKeyboard::caretOffset("\\sqrt{}") == 6 && ScientificKeyboard::caretOffset("\\sin()") == 5 && ScientificKeyboard::caretOffset("\\frac{}{}") == 6 &&
               ScientificKeyboard::caretOffset("\\left|\\right|") == 6 && ScientificKeyboard::caretOffset("\\lambda") == 7, "caret goes inside the first placeholder");
     } catch (const std::exception& e) { check(false, e.what()); }

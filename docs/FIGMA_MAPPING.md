@@ -35,8 +35,9 @@ Wave Interference, Formulas Notes & Export, Component Sheet).
 ## Where the app goes beyond or differs from the design
 * **Light theme** (Gruvbox-light mapping) - the design is dark only. Toggle in the status bar.
 * **Tools section** in the sidebar (Notes, Equation Lab, Study Hub, Formula Solver, Calculator, Export, PDF Report):
-  features from the project brief that have no own Figma frame. The Study Hub includes tabs for chapters, shared Notes,
-  Optical Setups and Constants; the Notes sidebar shortcut stays, while the Constants and Optical Setups shortcuts move into it.
+  features from the project brief that have no own Figma frame. The Study Hub includes tabs for chapters, shared Notes
+  and Optical Setups; chapter-specific constants remain beside each chapter's rules. The Notes sidebar shortcut stays,
+  while Optical Setups is accessed through the Hub.
 * The shared page header keeps **Save** separate from one **Export** menu (PDF / Excel / CSV); the export destinations
   hide their duplicate menu. The Draw Space sketchpad was removed at the author's request, and the Notes page is only the
   Markdown workspace (no formula reference, no export panels).

@@ -40,6 +40,7 @@ protected:
 private:
     void insertPending();
     void refreshDisplay();
+    void handleControl(const QString& control, QPushButton* button = nullptr);
     void applyShift();
     void updateCaption();
 
@@ -48,7 +49,8 @@ private:
     ModeTabs* m_tabs;
     QStackedWidget* m_stack;
     QLabel *m_display, *m_caption;
-    QPushButton* m_insert;
+    QPushButton* m_insert = nullptr;
+    QPushButton* m_shiftButton = nullptr;
     QString m_pending;
     int m_caret = -1;
     QList<int> m_tokenLengths;

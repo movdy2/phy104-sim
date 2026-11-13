@@ -472,14 +472,22 @@ bool LatexRenderer::validate(const QString& latex, QString* error) {
 }
 
 // ---------------------------------------------------------------------------- widget
-LatexWidget::LatexWidget(QWidget* parent) : QWidget(parent) {
-    connect(&ThemeManager::instance(), &ThemeManager::themeChanged, this, [this] { update(); });
+LatexWidget::LatexWidget(QWidget* parent) : QWidget(parent), m_baseFont(QWidget::font()) {
+    connect(&ThemeManager::instance(), &ThemeManager::themeChanged, this, [this] {
+        if (m_lcd) setFont(ThemeManager::lcdFont(m_baseFont));
+        update();
+    });
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
 }
 
 void LatexWidget::setLatex(const QString& latex) { m_latex = latex; updateGeometry(); update(); }
 void LatexWidget::setPointSize(qreal points)    { m_points = points; updateGeometry(); update(); }
-void LatexWidget::setLcdStyle(bool lcd)         { m_lcd = lcd; updateGeometry(); update(); }
+void LatexWidget::setLcdStyle(bool lcd) {
+    m_lcd = lcd;
+    setFont(lcd ? ThemeManager::lcdFont(m_baseFont) : m_baseFont);
+    updateGeometry();
+    update();
+}
 void LatexWidget::setInkColor(const QColor& c)  { m_inkOverride = c; update(); }
 
 QColor LatexWidget::ink() const {

@@ -12,18 +12,17 @@ class QVBoxLayout;
 
 namespace phy104 {
 
-class ConstantsPage;
 class DiagramsPage;
 class MarkdownWorkspace;
 class ModeTabs;
 class Panel;
 
-/// Study Hub: chapter notes, the shared lab notes, optical setups and physical constants.
+/// Study Hub: chapters with summaries, rules and constants, plus shared notes and optical setups.
 class StudyHubPage : public BasePage {
     Q_OBJECT
 public:
     explicit StudyHubPage(std::vector<StudyTopic> topics, AppContext* context,
-                          ConstantsPage* constants, DiagramsPage* opticalSetups, QWidget* parent = nullptr);
+                          DiagramsPage* opticalSetups, QWidget* parent = nullptr);
 
     QListWidget* topicList() const { return m_list; }
     QTableWidget* constantTable() const { return m_constants; }              // constants for the selected chapter

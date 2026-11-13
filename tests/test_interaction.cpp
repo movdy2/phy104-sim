@@ -3,7 +3,6 @@
 #include "App.h"
 #include "ui/AppContext.h"
 #include "ui/Components.h"
-#include "ui/ConstantsPage.h"
 #include "ui/DashboardPage.h"
 #include "ui/DiagramsPage.h"
 #include "ui/ExperimentPages.h"
@@ -11,6 +10,7 @@
 #include "ui/EquationLabPage.h"
 #include "ui/ExportPage.h"
 #include "ui/MarkdownHighlighter.h"
+#include "ui/LatexRenderer.h"
 #include "ui/ModelExperimentPages.h"
 #include "ui/ScientificKeyboard.h"
 #include "ui/MarkdownWorkspace.h"
@@ -26,7 +26,6 @@
 #include <QApplication>
 #include <QColor>
 #include <QCheckBox>
-#include <QClipboard>
 #include <QDate>
 #include <QComboBox>
 #include <QDir>
@@ -386,6 +385,42 @@ private slots:
         QVERIFY(!input->text().endsWith("("));
     }
 
+    void casioSegmentFontsCoverEveryLcdSurface() {
+        auto family = [](const QWidget* widget) {
+            const QStringList families = widget->font().families();
+            return families.isEmpty() ? QString() : families.front();
+        };
+        goTo(m_app->calculator);
+        auto* calculatorInput = m_app->calculator->findChild<QLineEdit*>("lcdInput");
+        auto* calculatorResult = m_app->calculator->findChild<QLabel*>("lcdResult");
+        auto* calculatorHistory = m_app->calculator->findChild<QTextBrowser*>("lcdScreen");
+        QVERIFY(calculatorInput && calculatorResult && calculatorHistory);
+        QCOMPARE(family(calculatorInput), QString("DSEG14 Classic"));
+        QCOMPARE(family(calculatorResult), QString("DSEG7 Classic"));
+        QCOMPARE(family(calculatorHistory), QString("DSEG14 Classic"));
+
+        goTo(m_app->solver);
+        auto* solverInput = m_app->solver->findChild<QLineEdit*>("lcdInput");
+        auto* solverScreen = m_app->solver->findChild<QTextBrowser*>("lcdScreen");
+        QVERIFY(solverInput && solverScreen);
+        QCOMPARE(family(solverInput), QString("DSEG14 Classic"));
+        QCOMPARE(family(solverScreen), QString("DSEG14 Classic"));
+        const auto formulaDisplays = m_app->solver->findChildren<LatexWidget*>();
+        QVERIFY(!formulaDisplays.isEmpty());
+        for (const auto* formula : formulaDisplays)
+            QCOMPARE(family(formula), QString("DSEG14 Classic"));
+
+        goTo(m_app->refraction);
+        for (const char* objectName : {"lcdTitle", "lcdLine", "lcdCaption", "lcdFoot"}) {
+            auto* label = m_app->refraction->findChild<QLabel*>(objectName);
+            QVERIFY(label);
+            QCOMPARE(family(label), QString("DSEG14 Classic"));
+        }
+        auto* registerValue = m_app->refraction->findChild<QLabel*>("lcdBig");
+        QVERIFY(registerValue);
+        QCOMPARE(family(registerValue), QString("DSEG7 Classic"));
+    }
+
     // ------------------------------------------------------------------ formula solver, constants
     void formulaSolverSolvesFromTheUi() {
         goTo(m_app->solver);
@@ -397,21 +432,13 @@ private slots:
         const QString all = allLabelTexts(m_app->solver).join("|");
         QVERIFY2(all.contains("Solved"), "Solve showed no success status");
     }
-    void constantsCopyButtonCopiesTheValue() {
-        goTo(m_app->studyHub);
-        m_app->studyHub->selectSection(3);                                      // global constants live in Study Hub
-        auto* table = m_app->constants->findChild<QTableWidget*>();
-        QVERIFY(table);
-        table->selectRow(0);
-        click(findButton(m_app->constants, "Copy value"));
-        QCOMPARE(QApplication::clipboard()->text(), QString("299792458"));
-    }
-
     // ------------------------------------------------------------------ keyboard
     void virtualKeyboardInsertsIntoTheFocusedField() {
         goTo(m_app->solver);
         click(win().keyboardButton());
         QVERIFY(win().keyboard()->isVisible());
+        QCOMPARE(win().keyboard()->findChildren<QPushButton*>().size(), 49);
+        QVERIFY(!findButton(win().keyboard(), "n_a"));
         auto edits = m_app->solver->findChildren<QLineEdit*>("lcdInput");
         click(edits[0]);
         edits[0]->clear();
@@ -931,8 +958,8 @@ private slots:
         QVERIFY2(kb->pending().isEmpty() && lab->source()->toPlainText() == "\\lambda\\sqrt{x}", "AC clears the buffer, not the equation");
 
         click(sciKey(kb, "2"));
-        click(sciKey(kb, "x²"));
-        QCOMPARE(kb->pending(), QString("2^{2}"));
+        click(sciKey(kb, "xʸ"));
+        QCOMPARE(kb->pending(), QString("2^{}"));
         click(findButton(kb, "⌫"));                                                   // removes the last pending token
         QCOMPARE(kb->pending(), QString("2"));
         click(findButton(kb, "⌫"));
@@ -952,7 +979,7 @@ private slots:
         QVERIFY(kb->shiftLatched());
         QVERIFY2(sciKey(kb, "δ") && sciKey(kb, "δ")->text() == "Δ", "SHIFT shows capital legends");
         click(sciKey(kb, "δ"));
-        QCOMPARE(kb->pending(), QString("\\Delta"));
+        QCOMPARE(kb->pending(), QString::fromUtf8("Δ"));
         click(findButton(kb, "SHIFT"));
         click(findButton(kb, "AC"));
 
@@ -997,7 +1024,7 @@ private slots:
         QVERIFY2(findButton(m_app->exportPage, "Print…"), "no Print button on the export screen");
     }
     // ------------------------------------------------------------------ Study Hub (JSON array -> page)
-    void studyHubContainsChaptersNotesSetupsAndConstants() {
+    void studyHubKeepsChapterConstantsAndRemovesGlobalConstantsTab() {
         bool hasHub = false, hasNotes = false, hasConstants = false, hasSetups = false;
         for (auto* b : win().navButtons()) {
             const QString name = b->accessibleName();
@@ -1010,12 +1037,27 @@ private slots:
         QVERIFY2(!hasConstants && !hasSetups, "Constants and Optical Setups should be accessed through Study Hub");
 
         goTo(m_app->studyHub);
+        auto* sectionTabs = m_app->studyHub->findChild<QWidget*>("studyHubTabs");
+        QVERIFY(sectionTabs);
+        const auto tabs = sectionTabs->findChildren<QPushButton*>("modeTab");
+        QCOMPARE(tabs.size(), 3);
+        QCOMPARE(tabs[0]->text(), QString("Chapters"));
+        QCOMPARE(tabs[1]->text(), QString("Notes"));
+        QCOMPARE(tabs[2]->text(), QString("Optical Setups"));
+
         m_app->studyHub->selectSection(0);
         auto* list = m_app->studyHub->topicList();
         QCOMPARE(list->count(), m_app->studyHub->topicCount());
         QVERIFY2(list->count() >= 8, "the Study Hub chapter list is empty");
         QVERIFY(!m_app->studyHub->summaryLabel()->text().isEmpty());
         QVERIFY2(m_app->studyHub->constantTable()->rowCount() > 0, "no constants for the first chapter");
+        bool hasRules = false, hasChapterConstants = false;
+        for (auto* label : m_app->studyHub->findChildren<QLabel*>()) {
+            hasRules |= label->text().startsWith("Rules · ");
+            hasChapterConstants |= label->text() == "Constants";
+        }
+        QVERIFY2(hasRules && hasChapterConstants, "the chapter Rules or Constants panel is missing");
+
         list->setCurrentRow(1);
         QCOMPARE(list->currentRow(), 1);
         QVERIFY2(!m_app->studyHub->summaryLabel()->text().isEmpty(), "the second chapter has no summary on screen");
@@ -1025,9 +1067,8 @@ private slots:
         m_app->studyHub->selectSection(2);
         auto* diagrams = m_app->diagrams->findChild<QListWidget*>("diagramList");
         QVERIFY2(diagrams && diagrams->count() >= 6, "the Optical Setups gallery is missing from Study Hub");
-        m_app->studyHub->selectSection(3);
-        auto* constants = m_app->constants->findChild<QTableWidget*>();
-        QVERIFY2(constants && constants->columnCount() == 4 && constants->rowCount() > 0, "the global constants table is missing from Study Hub");
+        m_app->studyHub->selectSection(3);                                  // removed global Constants tab is ignored
+        QCOMPARE(m_app->studyHub->currentSection(), 2);
         m_app->studyHub->selectSection(0);
     }
 
@@ -1078,6 +1119,11 @@ private slots:
                  findButton(m_app->calculator, "Ans") && findButton(m_app->calculator, "=") &&
                  findButton(m_app->calculator, "AC") && findButton(m_app->calculator, "DEL"),
                  "a required math key is missing");
+        QVERIFY2(!findButton(m_app->calculator, "abs") && !findButton(m_app->calculator, "x²"),
+                 "redundant or rarely used keypad keys were not removed");
+        auto* keypad = m_app->calculator->findChild<CalculatorKeypad*>("calculatorKeypad");
+        QVERIFY(keypad);
+        QCOMPARE(keypad->findChildren<QPushButton*>().size(), 33);
         const QString labels = allLabelTexts(m_app->calculator).join(" ");
         QVERIFY(!labels.contains("SCIENTIFIC KEYS") && !labels.contains("History lines"));
         input->clear();
@@ -1104,6 +1150,24 @@ private slots:
         click(toggle);
         QVERIFY2(!keyboard->isVisibleTo(&win()), "the keyboard did not close");
     }
+    void scientificKeyboardSharesItsControlsAndTrimsDuplicateKeys() {
+        goTo(m_app->notes);
+        auto* keyboard = m_app->notes->findChild<ScientificKeyboard*>();
+        auto* toggle = m_app->notes->findChild<QToolButton*>("notesKeyboard");
+        QVERIFY(keyboard && toggle);
+        QCOMPARE(keyboard->findChildren<QPushButton*>("rkey").size(), 119);
+        QCOMPARE(keyboard->findChildren<QPushButton*>("rkeyCtl").size(), 5);
+
+        click(toggle);
+        click(findButton(keyboard, "SHIFT"));
+        click(findButton(keyboard, QString::fromUtf8("Α")));
+        QCOMPARE(keyboard->pending(), QString::fromUtf8("Α"));
+        click(findButton(keyboard, "AC"));
+        QVERIFY(keyboard->pending().isEmpty());
+        click(findButton(keyboard, "SHIFT"));
+        click(toggle);
+    }
+
     void notesPageIsOnlyTheMarkdownWorkspace() {
         goTo(m_app->notes);
         QVERIFY(m_app->notes->findChild<MarkdownWorkspace*>());
