@@ -698,7 +698,8 @@ private slots:
 
         // the Spectrum tab: one element, three colours
         click(modeTab(m_app->thickLens, "Spectrum"));
-        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->thickLens), QString("+10.0628 cm"), 1500);   // red 656 nm
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->thickLens), QString("0.1510 cm"), 1500);     // red-to-blue focal spread
+        QVERIFY(allLabelTexts(m_app->thickLens).join(" ").contains("+10.0628"));              // red focus at 656 nm
         QVERIFY2(allLabelTexts(m_app->thickLens).contains("Thick element / three colours"), "the spectrum title is missing");
         click(modeTab(m_app->thickLens, "Thick lens"));
         click(findButton(m_app->thickLens, "Reset parameters"));
@@ -730,7 +731,7 @@ private slots:
         goTo(m_app->grating);
         QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->grating), QString("+17.4576°"), 1500);
         click(modeTab(m_app->grating, "Resolution"));
-        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->grating), QString("5 nm"), 1500);            // δλ = 600 / (1 × 120)
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->grating), QString("30 nm"), 1500);           // δλ = 600 / (1 × 20 illuminated lines)
         QVERIFY2(allLabelTexts(m_app->grating).contains("Grating / two lines one Rayleigh step apart"), "resolution title missing");
         click(findButton(m_app->grating, "Reset parameters"));
         QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->grating), QString("+17.4576°"), 1500);
