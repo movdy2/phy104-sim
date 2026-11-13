@@ -14,6 +14,7 @@
 #include <QVBoxLayout>
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 
 namespace phy104 {
 namespace ER = ExperimentReports;
@@ -354,8 +355,8 @@ void RefractionPage::apply(bool record) {
         curve.line = true;
         const double top = crit ? *crit : 90.0;
         for (double a = 0; a <= top + 1e-9; a += 0.5) {
-            const double s = in.n1 * std::sin(a * M_PI / 180.0) / in.n2;
-            if (std::fabs(s) <= 1.0) curve.points << QPointF(a, std::asin(s) * 180.0 / M_PI);
+            const double s = in.n1 * std::sin(a * std::numbers::pi / 180.0) / in.n2;
+            if (std::fabs(s) <= 1.0) curve.points << QPointF(a, std::asin(s) * 180.0 / std::numbers::pi);
         }
         const Theme& t = ThemeManager::instance().theme();
         QList<ChartVLine> v{{in.theta1, QString::number(in.theta1, 'g', 5) + "° input", t.text, false}};
