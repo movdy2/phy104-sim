@@ -2,6 +2,7 @@
 // Repository interfaces (Dependency Inversion). The business layer only knows
 // these; the data layer provides JSON implementations; tests provide fakes.
 #include "Models.h"
+#include "StudyHub.h"
 #include "SessionLog.h"
 #include <vector>
 
@@ -42,6 +43,13 @@ public:
     virtual ~IReferenceRepository() = default;
     virtual std::vector<ReferenceTopic> loadAll() const = 0;
     virtual std::string unitDiscipline() const = 0;
+};
+
+/// The "Study Hub": chapters with a summary, the rules (formula + why it holds) and their constants.
+class IStudyHubRepository {
+public:
+    virtual ~IStudyHubRepository() = default;
+    virtual std::vector<StudyTopic> loadAll() const = 0;
 };
 
 /// Saves/loads the lab session (runs + notes) - the "optics_lab.phy" file.

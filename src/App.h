@@ -12,6 +12,7 @@ class ConstantsPage;
 class DashboardPage;
 class DiagramsPage;
 class EquationLabPage;
+class StudyHubPage;
 class ExportPage;
 class GratingPage;
 class MichelsonPage;
@@ -59,6 +60,7 @@ public:
     MichelsonPage* michelson = nullptr;
     NewtonRingsPage* newton = nullptr;
     EquationLabPage* equationLab = nullptr;
+    StudyHubPage* studyHub = nullptr;
     NotesPage* notes = nullptr;
     ExportPage* exportPage = nullptr;
     ReportPage* reportPage = nullptr;

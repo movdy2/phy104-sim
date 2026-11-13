@@ -142,16 +142,10 @@ MainWindow::MainWindow(AppContext* ctx, const std::vector<KeyboardGroup>& keyboa
     ssl->setSpacing(4);
     auto* cap = new QLabel(QString("LAB SESSION / %1").arg(ctx->log.sessionNumber(), 2, 10, QChar('0')));
     cap->setObjectName("sessionCap");
-    auto* what = new QLabel("Undergraduate physics lab");
-    what->setObjectName("sessionText");
     m_engine = new QLabel("● ENGINE READY");
     m_engine->setObjectName("engineReady");
-    auto* local = new QLabel("Local workspace · autosaved");
-    local->setObjectName("sessionText");
     ssl->addWidget(cap);
-    ssl->addWidget(what);
     ssl->addWidget(m_engine);
-    ssl->addWidget(local);
     sl->addWidget(session);
     root->addWidget(sidebar);
 

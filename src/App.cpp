@@ -18,6 +18,7 @@
 #include "ui/NotesPage.h"
 #include "ui/ReportPage.h"
 #include "ui/SolverPage.h"
+#include "ui/StudyHubPage.h"
 
 namespace phy104 {
 
@@ -31,6 +32,7 @@ App::App(const Paths& paths) {
     JsonKeyboardRepository keyboardRepo(d + "/keyboard.json");
     JsonPresetsRepository presetsRepo(d + "/optics_presets.json");
     JsonReferenceRepository referenceRepo(d + "/reference.json");
+    JsonStudyHubRepository studyHubRepo(d + "/study_hub.json");
 
     // ---- business layer
     m_engine = std::make_shared<FormulaEngine>(std::make_unique<JsonFormulaRepository>(d + "/formulas.json"),
@@ -70,9 +72,11 @@ App::App(const Paths& paths) {
     const int notesIndex = m_window->addPage("Notes", "notebook-pen", notes, 1);             // 11 (tool)
     equationLab = new EquationLabPage(m_context.get(), keyboardRepo.scientific());
     m_window->addPage("Equation Lab", "square-function", equationLab, 1);                    // 12 (tool)
+    studyHub = new StudyHubPage(studyHubRepo.loadAll(), m_context.get());
+    m_window->addPage("Study Hub", "book-open", studyHub, 1);                                 // study material (tool)
     solver = new SolverPage(m_engine, m_manager, m_solver);
     m_window->addPage("Formula Solver", "sigma", solver, 1);
-    calculator = new MathSolverPage;
+    calculator = new MathSolverPage(keyboardRepo.loadAll());
     m_window->addPage("Calculator", "calculator", calculator, 1);
     constants = new ConstantsPage(constantsRepo);
     m_window->addPage("Constants", "ruler", constants, 1);

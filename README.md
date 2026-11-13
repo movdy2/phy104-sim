@@ -36,7 +36,8 @@ into the session, into every snapshot's `notesContent`, and into the `.phy` file
 | *Tools:* **PDF Report** | printable laboratory report: every experiment's headline, diagram and chart, the registers, the notes and the saved runs in one A4 document (Save PDF / Print…) |
 | *Tools:* **Export (Excel/CSV)** | data series and what it contains, every row of the table, workbook/CSV settings, **Print…** (paper or PDF), remembered recent export |
 | *Tools:* **Formula Solver** | 42 formulas in 7 chapters: search, chapter filter, paging, LaTeX, LCD input/answer |
-| *Tools:* **Calculator** | free math mode (functions, `pi`, `e`, `Ans`, DEG/RAD), bounded history |
+| *Tools:* **Calculator** | plain calculator: free expressions (`sin`, `sqrt`, `pi`, `e`, `Ans`, DEG/RAD) plus a **plain-text scientific keypad** (Greek, constants, functions, operators, numbers, variables - no LaTeX), bounded history |
+| *Tools:* **Study Hub** | revision material from `data/study_hub.json`: ten chapters in course order, each with a summary, its rules (formula + why it holds) and the constants of that chapter |
 | *Tools:* **Constants**, **Optical Setups** | constants with search/copy; six SVG diagrams with PNG export |
 
 Common to the experiment pages: live update while typing, **Calculate & Simulate** saves a run to the session,

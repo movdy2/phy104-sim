@@ -5,6 +5,10 @@
 #include "Components.h"
 
 #include <QComboBox>
+#include <QGridLayout>
+#include <QStackedWidget>
+#include <QScrollArea>
+#include <QStringList>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -12,16 +16,16 @@
 #include <QScrollBar>
 #include <QStyle>
 #include <QTextBrowser>
+#include <QFrame>
 #include <QVBoxLayout>
 
 namespace phy104 {
 
-MathSolverPage::MathSolverPage(QWidget* parent) : QWidget(parent), m_calc(5) {
+MathSolverPage::MathSolverPage(std::vector<KeyboardGroup> groups, QWidget* parent) : QWidget(parent), m_calc(5) {
     setObjectName("calcPage");                      // style sheet hook: the segment font is used on this page only
     auto* title = new QLabel("Calculator");
     title->setObjectName("pageTitle");
-    auto* subtitle = new QLabel("Free math mode: type any expression - sin, cos, tan, asin, sqrt, abs, ln, log, "
-                                "pi, e and Ans (the previous answer). Press Enter to calculate.");
+    auto* subtitle = new QLabel("Type an expression or press the keys. Enter calculates, Ans is the last answer.");
     subtitle->setObjectName("muted");
     subtitle->setWordWrap(true);
 
@@ -37,7 +41,7 @@ MathSolverPage::MathSolverPage(QWidget* parent) : QWidget(parent), m_calc(5) {
     m_input = new QLineEdit;
     m_input->setObjectName("lcdInput");
     ThemeManager::polishLcdInput(m_input);
-    m_input->setPlaceholderText("e.g.  1+1+1+2-4/24   or   sqrt(abs(-16))+cos(0)");
+    m_input->setPlaceholderText("e.g.  sqrt(abs(-16)) + cos(0)");
 
     m_result = new QLabel("0");
     m_result->setObjectName("lcdResult");
@@ -73,6 +77,57 @@ MathSolverPage::MathSolverPage(QWidget* parent) : QWidget(parent), m_calc(5) {
     buttons->addWidget(limitLabel);
     buttons->addWidget(m_limit);
 
+    // keyboard.json as plain keys: Greek letters, constants, functions, operators and the physics variables
+    auto* keysPanel = new QFrame;
+    keysPanel->setObjectName("card");
+    auto* keysLayout = new QVBoxLayout(keysPanel);
+    keysLayout->setContentsMargins(10, 8, 10, 8);
+    keysLayout->setSpacing(6);
+    auto* keysTitle = new QLabel("SCIENTIFIC KEYS");
+    keysTitle->setObjectName("caption");
+    keysLayout->addWidget(keysTitle);
+    if (!groups.empty()) {
+        m_keysCombo = new QComboBox;
+        m_keysCombo->setObjectName("keysCombo");
+        m_keysStack = new QStackedWidget;
+        for (const KeyboardGroup& group : groups) {
+            auto* page = new QWidget;
+            auto* grid = new QGridLayout(page);
+            grid->setContentsMargins(0, 0, 0, 0);
+            grid->setSpacing(5);
+            int index = 0;
+            for (const std::string& key : group.keys) {
+                auto* b = new QPushButton(QString::fromStdString(key));
+                b->setObjectName("rkey");
+                b->setFocusPolicy(Qt::NoFocus);
+                b->setCursor(Qt::PointingHandCursor);
+                b->setMinimumHeight(28);
+                const QString text = QString::fromStdString(key);
+                connect(b, &QPushButton::clicked, this, [this, text] { m_input->insert(text); m_input->setFocus(); });
+                grid->addWidget(b, index / 6, index % 6);
+                ++index;
+            }
+            grid->setRowStretch(index / 6 + 1, 1);
+            m_keysCombo->addItem(QString::fromStdString(group.name));
+            m_keysStack->addWidget(page);
+        }
+        connect(m_keysCombo, &QComboBox::currentIndexChanged, m_keysStack, &QStackedWidget::setCurrentIndex);
+        auto* keysScroll = new QScrollArea;                 // the Variables group is long: the keys scroll
+        keysScroll->setWidgetResizable(true);
+        keysScroll->setFrameShape(QFrame::NoFrame);
+        keysScroll->viewport()->setAutoFillBackground(false);
+        keysScroll->setWidget(m_keysStack);
+        keysLayout->addWidget(m_keysCombo);
+        keysLayout->addWidget(keysScroll, 1);
+    } else {
+        keysLayout->addStretch();
+    }
+
+    auto* calculator = new QHBoxLayout;
+    calculator->setSpacing(12);
+    calculator->addWidget(m_keypad, 3);
+    calculator->addWidget(keysPanel, 2);
+
     auto* root = new QVBoxLayout(this);
     root->addWidget(title);
     root->addWidget(subtitle);
@@ -82,7 +137,7 @@ MathSolverPage::MathSolverPage(QWidget* parent) : QWidget(parent), m_calc(5) {
     root->addWidget(m_result);
     root->addWidget(m_status);
     root->addLayout(buttons);
-    root->addWidget(m_keypad, 1);
+    root->addLayout(calculator, 1);
 
     connect(m_input, &QLineEdit::returnPressed, this, &MathSolverPage::calculate);
     connect(m_keypad, &CalculatorKeypad::equals, this, &MathSolverPage::calculate);

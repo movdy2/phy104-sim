@@ -19,4 +19,17 @@ QJsonObject JsonLoader::loadObject(const QString& path) {
     return doc.object();
 }
 
+QJsonArray JsonLoader::loadArray(const QString& path) {
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly))
+        throw std::runtime_error("Cannot open data file: " + path.toStdString());
+
+    QJsonParseError error;
+    const QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &error);
+    if (error.error != QJsonParseError::NoError || !doc.isArray())
+        throw std::runtime_error("Invalid JSON in " + path.toStdString() + " (offset " +
+                                 std::to_string(error.offset) + "): " + error.errorString().toStdString());
+    return doc.array();
+}
+
 } // namespace phy104

@@ -31,6 +31,10 @@
 * **CI**: GitHub Actions build matrix (Linux Qt 6 + ctest, Windows MSVC + Qt 6.7.2, Qt-free `g++` core test).
 * Session file (`.phy`): runs (with their sweep), notes, snapshots (parameters + calculator registers), equations, drawing
   and the recent export.
+* **Study Hub** (v2.7): `data/study_hub.json` is a **JSON array** of ten chapters in course order - summary, rules
+  (formula + why it holds) and the constants of the chapter; the Formula Solver stays a separate page.
+* **The calculator takes plain text**: `keyboard.json` groups as ordinary keys (`sin(`, `π`, `θ`, `√(`, `ln(`, `^`);
+  LaTeX stays in the Equation Lab. The light theme is darker and the dark theme's small text is brighter (v2.7).
 * Tests: core numbers of every Figma frame (plus both modes of Newton, Michelson and thin film), the report HTML
   builder (escaping, options, image keys), data round trips,
   UI (colours, fonts, highlighter), click-through tests of every screen (now including the second tabs of
@@ -44,9 +48,10 @@
 1. Experiment extras: thick lens, spherical aberration, single-slit diffraction envelope, thin-film colours,
    grating resolving power / free spectral range - the formulas already exist in `formulas.json`.
 2. Editing a saved run (the description/result of a run) next to the delete that is already there.
-3. Notes: note templates per chapter, search, export to .md/.pdf (LaTeX formula images in the preview are done).
-4. Undo for field edits and drag-and-drop of data files (the shortcuts - Ctrl+S, Ctrl+Enter, Ctrl+P, Ctrl+1..9,
+3. Study Hub: per-chapter quiz cards and a "send the rule to the calculator" button.
+4. Notes: note templates per chapter, search, export to .md/.pdf (LaTeX formula images in the preview are done).
+5. Undo for field edits and drag-and-drop of data files (the shortcuts - Ctrl+S, Ctrl+Enter, Ctrl+P, Ctrl+1..9,
    Ctrl+Tab, F11 - are done).
-5. Units: unit dropdown per field (nm/µm/mm/cm/m), significant-figures setting, copy-as-LaTeX for every register.
-6. Accessibility and polish: high-contrast theme, font-size setting, window-size tests (1080x700), translations (Arabic UI).
-7. Packaging: Windows installer (windeployqt + NSIS), Linux AppImage (the GitHub Actions build matrix is done).
+6. Units: unit dropdown per field (nm/µm/mm/cm/m), significant-figures setting, copy-as-LaTeX for every register.
+7. Accessibility and polish: high-contrast theme, font-size setting, window-size tests (1080x700), translations (Arabic UI).
+8. Packaging: Windows installer (windeployqt + NSIS), Linux AppImage (the GitHub Actions build matrix is done).
