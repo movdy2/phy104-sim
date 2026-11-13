@@ -99,7 +99,7 @@ int main(int argc, char* argv[]) {
         QObject::connect(&window, &phy104::MainWindow::themeToggled,
                          [&app](bool dark) { phy104::ThemeManager::instance().apply(app, dark); });
 
-        const int shot = app.arguments().indexOf("--screenshots");
+        const qsizetype shot = app.arguments().indexOf("--screenshots");
         if (shot >= 0 && shot + 1 < app.arguments().size()) {
             takeScreenshots(app, application, app.arguments().at(shot + 1));
             return 0;

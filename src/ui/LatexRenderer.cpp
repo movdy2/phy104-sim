@@ -41,7 +41,7 @@ Box makeText(const QString& s, const QFont& base, qreal size, bool italic) {
     b.w = QFontMetricsF(f).horizontalAdvance(s);
     b.a = 0.74 * size;                                  // uniform cap height keeps rows even
     b.d = 0.22 * size;
-    b.paint = [=](QPainter& p, qreal x, qreal base) { p.setFont(f); p.drawText(QPointF(x, base), s); };
+    b.paint = [=](QPainter& p, qreal x, qreal baseline) { p.setFont(f); p.drawText(QPointF(x, baseline), s); };
     return b;
 }
 
@@ -438,7 +438,7 @@ QString LatexRenderer::fromPlainMath(const QString& input) {
     static const char* upperNames[] = {"Gamma", "Delta", "Theta", "Lambda", "Xi", "Pi", "Sigma", "Phi", "Psi", "Omega"};
     QString out;
     for (const QChar ch : s) {
-        const int lo = greekLower.indexOf(ch), up = greekUpper.indexOf(ch);
+        const qsizetype lo = greekLower.indexOf(ch), up = greekUpper.indexOf(ch);
         if (lo >= 0) out += QString("\\") + lowerNames[lo] + " ";
         else if (up >= 0) out += QString("\\") + upperNames[up] + " ";
         else out += ch;

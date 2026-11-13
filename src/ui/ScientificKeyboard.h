@@ -28,7 +28,7 @@ public:
     QString pending() const { return m_pending; }
     bool shiftLatched() const { return m_shift; }
     /// Index inside `latex` where the caret goes after inserting: inside the first {} or (), between \left| and \right|, else the end.
-    static int caretOffset(const QString& latex);
+    static qsizetype caretOffset(const QString& latex);
 
 signals:
     void inserted(const QString& latex);
@@ -52,8 +52,8 @@ private:
     QPushButton* m_insert = nullptr;
     QPushButton* m_shiftButton = nullptr;
     QString m_pending;
-    int m_caret = -1;
-    QList<int> m_tokenLengths;
+    qsizetype m_caret = -1;
+    QList<qsizetype> m_tokenLengths;
     bool m_shift = false;
 };
 

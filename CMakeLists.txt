@@ -8,11 +8,18 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(PHY104_BUILD_GUI   "Build the Qt6 desktop application" ON)
 option(PHY104_BUILD_TESTS "Build unit tests"                  ON)
 
-if(MSVC)
-    add_compile_options(/utf-8 /W4)   # /utf-8: Greek symbols in source files
-else()
-    add_compile_options(-Wall -Wextra)
-endif()
+# Apply warning flags to each target explicitly so the production layers can use the
+# stricter set without imposing new diagnostics on test fixtures.
+function(phy104_enable_warnings target)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /utf-8 /W4)   # /utf-8: Greek symbols in source files
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(${target} PRIVATE -Wall -Wextra)
+        if("${ARGV1}" STREQUAL "STRICT")
+            target_compile_options(${target} PRIVATE -Wshadow -Wold-style-cast -Wconversion)
+        endif()
+    endif()
+endfunction()
 
 # Business layer: pure C++, no Qt -> easy to unit test
 add_subdirectory(src/core)

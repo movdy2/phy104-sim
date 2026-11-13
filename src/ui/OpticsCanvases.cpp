@@ -542,7 +542,11 @@ void WaveCanvas::paintDiagram(QPainter& p, const QRectF& a) {
 namespace {
 QColor mix(const QColor& a, const QColor& b, double t) {
     t = std::clamp(t, 0.0, 1.0);
-    return QColor::fromRgbF(a.redF() + (b.redF() - a.redF()) * t, a.greenF() + (b.greenF() - a.greenF()) * t, a.blueF() + (b.blueF() - a.blueF()) * t);
+    // QColor's floating-point constructor takes floats; narrow explicitly after interpolation.
+    const auto blend = [t](double first, double second) {
+        return static_cast<float>(first + (second - first) * t);
+    };
+    return QColor::fromRgbF(blend(a.redF(), b.redF()), blend(a.greenF(), b.greenF()), blend(a.blueF(), b.blueF()));
 }
 /// A square image whose pixel value is intensity(x, y) in [0,1] blended between the canvas colour and lime.
 QImage fringeImage(int size, const std::function<double(double, double)>& intensity) {

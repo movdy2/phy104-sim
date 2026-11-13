@@ -21,8 +21,8 @@
 
 namespace phy104 {
 
-int ScientificKeyboard::caretOffset(const QString& latex) {
-    int i = latex.indexOf("{}");
+qsizetype ScientificKeyboard::caretOffset(const QString& latex) {
+    qsizetype i = latex.indexOf("{}");
     if (i >= 0) return i + 1;
     i = latex.indexOf("()");
     if (i >= 0) return i + 1;
@@ -237,8 +237,9 @@ void ScientificKeyboard::insertPending() {
     QTextCursor c = m_target->textCursor();
     c.beginEditBlock();
     c.insertText(m_pending);                                       // replaces the selection
-    const int end = c.position();
-    c.setPosition(end - m_pending.size() + (m_caret >= 0 ? m_caret : m_pending.size()));
+    const qsizetype end = c.position();
+    const qsizetype caret = m_caret >= 0 ? m_caret : m_pending.size();
+    c.setPosition(static_cast<int>(end - m_pending.size() + caret));
     c.endEditBlock();
     m_target->setTextCursor(c);
     m_target->setFocus();                                          // focus stays in the source editor

@@ -29,11 +29,17 @@ std::string seriesPrefix(const DataSeries& s) {
 
 std::string toCsv(const DataSeries& series) {
     std::string out;
-    for (std::size_t i = 0; i < series.headers.size(); ++i) out += (i ? "," : "") + csvField(series.headers[i]);
-    out += "\n";
+    for (std::size_t i = 0; i < series.headers.size(); ++i) {
+        if (i) out.push_back(',');
+        out += csvField(series.headers[i]);
+    }
+    out.push_back('\n');
     for (const auto& row : series.rows) {
-        for (std::size_t i = 0; i < row.size(); ++i) out += (i ? "," : "") + (std::isfinite(row[i]) ? full(row[i]) : std::string());
-        out += "\n";
+        for (std::size_t i = 0; i < row.size(); ++i) {
+            if (i) out.push_back(',');
+            if (std::isfinite(row[i])) out += full(row[i]);
+        }
+        out.push_back('\n');
     }
     return out;
 }
@@ -99,7 +105,7 @@ std::string describeWorkbook(const SessionLog& log, const DataSeries& series, co
     const auto sheets = workbookSheets(log, series, opt);
     const auto bytes = buildWorkbook(log, series, opt).size();
     char size[32];
-    std::snprintf(size, sizeof size, "%.1f KB", bytes / 1024.0);
+    std::snprintf(size, sizeof size, "%.1f KB", static_cast<double>(bytes) / 1024.0);
     return std::to_string(sheets.size()) + " sheets · " + std::to_string(series.rows.size()) + " measurements · " + size + " estimated";
 }
 

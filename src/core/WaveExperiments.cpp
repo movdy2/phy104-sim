@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <numbers>
+#include <utility>
 
 namespace phy104::WaveExperiments {
 namespace NF = NumberFormat;
@@ -16,7 +17,11 @@ std::string num(double v) { return NF::general(v, 6); }
 std::string lower(std::string s) { for (char& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c))); return s; }
 std::string sub(int i) {
     static const char* d[] = {"₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"};
-    return i >= 0 && i < 10 ? d[i] : "(" + std::to_string(i) + ")";
+    if (i >= 0 && i < 10) return d[i];
+    std::string result{"("};
+    result += std::to_string(i);
+    result += ')';
+    return result;
 }
 bool isInteger(double v) { return std::fabs(v - std::round(v)) < 1e-9; }
 

@@ -266,13 +266,14 @@ LinearFit linearFit(const std::vector<double>& x, const std::vector<double>& y) 
     LinearFit f;
     const std::size_t n = x.size();
     if (n < 2 || y.size() != n) return f;
+    const double count = static_cast<double>(n);
     double sx = 0, sy = 0, sxx = 0, sxy = 0, syy = 0;
     for (std::size_t i = 0; i < n; ++i) { sx += x[i]; sy += y[i]; sxx += x[i] * x[i]; sxy += x[i] * y[i]; syy += y[i] * y[i]; }
-    const double den = n * sxx - sx * sx;
+    const double den = count * sxx - sx * sx;
     if (std::fabs(den) < 1e-300) return f;
-    f.slope = (n * sxy - sx * sy) / den;
-    f.intercept = (sy - f.slope * sx) / n;
-    const double ssTot = syy - sy * sy / n;
+    f.slope = (count * sxy - sx * sy) / den;
+    f.intercept = (sy - f.slope * sx) / count;
+    const double ssTot = syy - sy * sy / count;
     double ssRes = 0;
     for (std::size_t i = 0; i < n; ++i) { const double e = y[i] - (f.slope * x[i] + f.intercept); ssRes += e * e; }
     f.r2 = ssTot < 1e-300 ? 1.0 : 1.0 - ssRes / ssTot;
