@@ -67,7 +67,7 @@ private:
     QStackedWidget* m_stack;
     QVBoxLayout* m_modules;
     QVBoxLayout* m_tools;
-    QLabel* m_toolsHeader;
+    QLabel *m_modulesHeader, *m_toolsHeader;
     QButtonGroup* m_navGroup;
     struct NavEntry { QPushButton* button; QString icon; int page; };
     std::vector<NavEntry> m_nav;

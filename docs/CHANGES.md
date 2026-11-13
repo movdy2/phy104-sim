@@ -164,3 +164,23 @@ formula/variable, 25 random data sets), Qt UI, five experiments, notes, theme.
 * Tests: the export menu is asserted to be gone from the two export screens, and the stored theme follows
   `ThemeManager::apply()`.
 
+---
+
+# Version 2.6 - Casio LCD digits, cleaner sidebar, printing, notes keyboard
+
+* **LCD readouts in the Casio segment font**: the big value of every LCD register is drawn with `DSEG7 Classic`.
+  `QFont::setFamilies({"DSEG7 Classic", "DSEG14 Classic", "JetBrains Mono"})` gives a per-glyph fallback, so units and
+  Greek letters (`θ`, `°`, `mm`) still render instead of turning into boxes; the text itself is unchanged.
+* **Better icon for Single-Slit Diffraction**: a new Lucide-style `slit` glyph (incoming ray, barrier with a gap,
+  diverging rays) replaces the generic minus.
+* **The sidebar is split in two sections**: `EXPERIMENTS` (dashboard + the ten experiment screens) and `TOOLS`
+  (Notes, Equation Lab, Formula Solver, Calculator, Constants, Optical Setups, Export, PDF Report) - Notes and the
+  Equation Lab moved to the tool side.
+* **Export menu is labelled**: the header button now reads `⤓ Export` instead of being icon-only.
+* **Print… on the Export (Excel/CSV) screen**: prints the table of the selected series (rich-text table at printer
+  resolution), to paper or "Print to PDF"; disabled while there is nothing to print.
+* **The scientific keyboard reaches the Notes page**: ⌨ Keyboard opens the same `ScientificKeyboard` as the Equation
+  Lab (all of `keyboard.json`: Greek / Math operators / Functions / Variables) and puts the caret inside `$…$` first,
+  so a token is typed into the formula, not after it.
+* **Export PNG removed from the Equation Lab** (the header export menu covers PDF/Excel/CSV).
+

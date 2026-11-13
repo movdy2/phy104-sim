@@ -245,6 +245,9 @@ QToolButton#fmtAccent { background: transparent; border: 1px solid @border@; bor
 QToolButton#fmtAccent:checked { background: @amberTint@; border-color: @amber@; color: @amber@; }
 QToolButton#fmtAccent:hover { background: @amber@; color: @bg@; }
 QToolButton#fmt::menu-indicator { image: none; }
+QToolButton#notesKeyboard { background: transparent; border: 1px solid @border@; border-radius: 3px; padding: 4px 10px; color: @text@; font-family: 'Inter'; font-weight: 600; }
+QToolButton#notesKeyboard:hover { background: @amber@; color: @bg@; }
+QToolButton#notesKeyboard:checked { background: @amberTint@; border-color: @amber@; color: @amber@; }
 QTableWidget#previewTable QHeaderView::section { color: @amber@; font-size: 10px; }
 QTextBrowser, QTextEdit { background: transparent; color: @text@; border: none; selection-background-color: @amber@; selection-color: @bg@; }
 QListWidget { background: @card@; color: @text@; border: 1px solid @border@; border-radius: 6px; outline: 0; }
@@ -283,7 +286,7 @@ QFrame#lcd { background: @lcdBg@; border: 3px solid @lcdFrame@; border-radius: 4
 QLabel#lcdTitle { font-family: 'JetBrains Mono'; font-size: 9px; font-weight: 700; color: @lcdText@; }
 QLabel#lcdLine  { font-family: 'JetBrains Mono'; font-size: 11px; color: @lcdText@; }
 QLabel#lcdCaption { font-family: 'JetBrains Mono'; font-size: 8px; color: @lcdText@; }
-QLabel#lcdBig   { font-family: 'JetBrains Mono'; font-size: 26px; font-weight: 700; color: @lcdText@; }
+QLabel#lcdBig   { font-size: 26px; font-weight: 700; color: @lcdText@; }   /* Casio DSEG, set in code with fallbacks */
 QLabel#lcdFoot  { font-family: 'JetBrains Mono'; font-size: 8px; color: @lcdText@; }
 QFrame#lcdDivider { background: @lcdDivider@; border: none; max-height: 1px; min-height: 1px; }
 QLineEdit#lcdInput { background: @lcdBg@; color: @lcdText@; border: 3px solid @lcdFrame@; border-radius: 4px;

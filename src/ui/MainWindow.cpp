@@ -117,9 +117,12 @@ MainWindow::MainWindow(AppContext* ctx, const std::vector<KeyboardGroup>& keyboa
     bl->addWidget(tag);
     sl->addWidget(brand);
 
+    m_modulesHeader = new QLabel("EXPERIMENTS");
+    m_modulesHeader->setObjectName("navSection");
+    sl->addWidget(m_modulesHeader);
     auto* navHolder = new QWidget;
     m_modules = new QVBoxLayout(navHolder);
-    m_modules->setContentsMargins(12, 6, 12, 0);
+    m_modules->setContentsMargins(12, 0, 12, 0);
     m_modules->setSpacing(4);
     sl->addWidget(navHolder);
 

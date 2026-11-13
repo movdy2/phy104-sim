@@ -34,6 +34,7 @@ private slots:
     void refreshPreview();
     void refreshRecent();
     void onFormatChanged();
+    void printTable();                       // Print… : the table of the selected series, on paper or as PDF
     void exportPrimary();
     void exportSecondary();
     void openDestination();
@@ -54,7 +55,7 @@ private:
     QComboBox* m_folder;
     QCheckBox *m_chkParams, *m_chkSteps, *m_chkData, *m_chkNotes;
     NoticeCard* m_ready;
-    QPushButton *m_primary, *m_secondary;
+    QPushButton *m_primary, *m_secondary, *m_print;
     QLabel *m_recentFile, *m_recentMeta, *m_recentWhen;
     QPushButton* m_openFolder;
 };

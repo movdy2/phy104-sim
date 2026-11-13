@@ -41,6 +41,7 @@
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTextBlock>
+#include <QTextCursor>
 #include <QTextBrowser>
 #include <QTextEdit>
 #include <QTextFragment>
@@ -714,6 +715,7 @@ private slots:
             auto* exportButton = page->findChild<QToolButton*>("exportMenu");
             QVERIFY2(exportButton && exportButton->menu() && exportButton->menu()->actions().size() == 3,
                      "missing the export icon with PDF / Excel / CSV");
+            QCOMPARE(exportButton->text(), QString("Export"));                 // the icon is labelled
         }
     }
     void newScreensCalculateAndSendToNotes() {
@@ -875,6 +877,27 @@ private slots:
         goTo(m_app->prisms);
         actions[0]->trigger();                                              // PDF report
         QCOMPARE(win().currentPage(), idx(m_app->reportPage));
+    }
+    void exportPageCanPrintTheTable() {
+        goTo(m_app->exportPage);
+        QVERIFY2(findButton(m_app->exportPage, "Print…"), "no Print button on the export screen");
+    }
+    void notesPageHasTheScientificKeyboard() {
+        goTo(m_app->notes);
+        auto* toggle = m_app->notes->findChild<QToolButton*>("notesKeyboard");
+        QVERIFY2(toggle, "no keyboard toggle on the notes page");
+        auto* keyboard = m_app->notes->findChild<ScientificKeyboard*>();
+        QVERIFY2(keyboard && !keyboard->isVisibleTo(&win()), "the keyboard starts closed");
+        auto* workspace = m_app->notes->findChild<MarkdownWorkspace*>();
+        workspace->editor()->moveCursor(QTextCursor::End);                 // no selection: the snippet only inserts
+        const int before = workspace->markdown().size();
+        click(toggle);
+        QApplication::processEvents();
+        QVERIFY2(keyboard->isVisibleTo(&win()), "the keyboard did not open");
+        // opening the keyboard puts the caret inside a formula:  $…$
+        QCOMPARE(workspace->markdown().size(), before + 2);
+        click(toggle);
+        QVERIFY2(!keyboard->isVisibleTo(&win()), "the keyboard did not close");
     }
     void notesPageIsOnlyTheMarkdownWorkspace() {
         goTo(m_app->notes);
