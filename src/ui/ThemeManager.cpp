@@ -91,18 +91,17 @@ void ThemeManager::apply(QApplication& app, bool dark) {
     emit themeChanged();
 }
 
-QFont ThemeManager::lcdFont(const QFont& base, bool numeric) {
+QFont ThemeManager::lcdFont(const QFont& base) {
     QFont font = base;
-    font.setFamilies(numeric ? QStringList{"DSEG7 Classic", "DSEG14 Classic", "JetBrains Mono"}
-                             : QStringList{"DSEG14 Classic", "JetBrains Mono"});
+    font.setFamilies({"DSEG14 Classic", "JetBrains Mono"});
     return font;
 }
 
-void ThemeManager::polishLcdFont(QWidget* widget, bool numeric) {
+void ThemeManager::polishLcdFont(QWidget* widget) {
     if (!widget) return;
-    widget->setFont(lcdFont(widget->font(), numeric));
-    QObject::connect(&instance(), &ThemeManager::themeChanged, widget, [widget, numeric] {
-        widget->setFont(ThemeManager::lcdFont(widget->font(), numeric));
+    widget->setFont(lcdFont(widget->font()));
+    QObject::connect(&instance(), &ThemeManager::themeChanged, widget, [widget] {
+        widget->setFont(ThemeManager::lcdFont(widget->font()));
     });
 }
 

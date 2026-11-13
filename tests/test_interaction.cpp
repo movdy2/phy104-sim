@@ -18,6 +18,7 @@
 #include "ui/MarkdownWorkspace.h"
 #include "ui/MathSolverPage.h"
 #include "ui/NotesPage.h"
+#include "ui/OpticsCanvases.h"
 #include "ui/ReportPage.h"
 #include "ui/SolverPage.h"
 #include "ui/StudyHubPage.h"
@@ -30,6 +31,7 @@
 #include <QCheckBox>
 #include <QDate>
 #include <QComboBox>
+#include <QImage>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -51,6 +53,7 @@
 #include <QTextEdit>
 #include <QTextFragment>
 #include <QToolButton>
+#include <cstdlib>
 #include <algorithm>
 
 using namespace phy104;
@@ -362,6 +365,65 @@ private slots:
         QVERIFY(findButton(m_app->wave, "Calculate && Simulate")->isEnabled());
     }
 
+    void prismDispersionShowsSevenWavelengthDependentColours() {
+        goTo(m_app->prisms);
+        click(findButton(m_app->prisms, "Reset parameters"));
+        auto* canvas = m_app->prisms->findChild<PrismCanvas*>();
+        QVERIFY(canvas);
+        QCOMPARE(canvas->spectrumPaths().size(), qsizetype(0));
+
+        QComboBox* surrounding = nullptr;
+        for (QComboBox* combo : m_app->prisms->findChildren<QComboBox*>())
+            if (combo->findData(QStringLiteral("air")) >= 0) { surrounding = combo; break; }
+        QVERIFY(surrounding);
+        const int water = surrounding->findData(QStringLiteral("water"));
+        QVERIFY(water >= 0);
+        chooseItem(surrounding, water);                          // test dispersion in both media
+        const QString singleRayResult = bigValue(m_app->prisms);
+        QVERIFY(!singleRayResult.isEmpty());
+
+        click(modeTab(m_app->prisms, "Dispersion"));
+        const auto& paths = canvas->spectrumPaths();
+        QCOMPARE(paths.size(), qsizetype(7));
+        const double wavelengths[] = {700.0, 620.0, 580.0, 540.0, 490.0, 450.0, 400.0};
+        const QColor colours[] = {QColor("#e53935"), QColor("#fb8c00"), QColor("#fdd835"),
+                                   QColor("#43a047"), QColor("#1e88e5"), QColor("#3f51b5"), QColor("#8e24aa")};
+        double previousPrismIndex = 0.0;
+        double previousMediumIndex = 0.0;
+        for (int i = 0; i < 7; ++i) {
+            QCOMPARE(paths[i].wavelengthNm, wavelengths[i]);
+            QCOMPARE(paths[i].color, colours[i]);
+            QVERIFY(paths[i].nPrism > previousPrismIndex);
+            QVERIFY(paths[i].nMedium > previousMediumIndex);
+            previousPrismIndex = paths[i].nPrism;
+            previousMediumIndex = paths[i].nMedium;
+        }
+        QApplication::processEvents();
+        QImage rendered(canvas->size(), QImage::Format_ARGB32_Premultiplied);
+        rendered.fill(Qt::transparent);
+        canvas->render(&rendered);
+        for (const QColor& expected : colours) {
+            bool visible = false;
+            for (int y = 0; y < rendered.height() && !visible; ++y) {
+                for (int x = 0; x < rendered.width(); ++x) {
+                    const QColor actual = rendered.pixelColor(x, y);
+                    if (std::abs(actual.red() - expected.red()) <= 24 &&
+                        std::abs(actual.green() - expected.green()) <= 24 &&
+                        std::abs(actual.blue() - expected.blue()) <= 24) {
+                        visible = true;
+                        break;
+                    }
+                }
+            }
+            QVERIFY2(visible, qPrintable(QString("spectrum colour %1 is not painted").arg(expected.name())));
+        }
+
+        click(modeTab(m_app->prisms, "Single ray"));
+        QCOMPARE(canvas->spectrumPaths().size(), qsizetype(0));
+        QCOMPARE(bigValue(m_app->prisms), singleRayResult);      // dispersion does not alter the single-ray calculation
+        click(findButton(m_app->prisms, "Reset parameters"));
+    }
+
     // ------------------------------------------------------------------ calculator
     void calculatorEnterEqualsAndKeypad() {
         goTo(m_app->calculator);
@@ -398,7 +460,7 @@ private slots:
         auto* calculatorHistory = m_app->calculator->findChild<QTextBrowser*>("lcdScreen");
         QVERIFY(calculatorInput && calculatorResult && calculatorHistory);
         QCOMPARE(family(calculatorInput), QString("DSEG14 Classic"));
-        QCOMPARE(family(calculatorResult), QString("DSEG7 Classic"));
+        QCOMPARE(family(calculatorResult), QString("DSEG14 Classic"));
         QCOMPARE(family(calculatorHistory), QString("DSEG14 Classic"));
 
         goTo(m_app->solver);
@@ -420,7 +482,15 @@ private slots:
         }
         auto* registerValue = m_app->refraction->findChild<QLabel*>("lcdBig");
         QVERIFY(registerValue);
-        QCOMPARE(family(registerValue), QString("DSEG7 Classic"));
+        QCOMPARE(family(registerValue), QString("DSEG14 Classic"));
+
+        auto* scientificKeyboard = m_app->notes->findChild<ScientificKeyboard*>();
+        QVERIFY(scientificKeyboard);
+        for (const char* objectName : {"lcdKeyDisplay", "lcdCaption"}) {
+            auto* label = scientificKeyboard->findChild<QLabel*>(objectName);
+            QVERIFY(label);
+            QCOMPARE(family(label), QString("DSEG14 Classic"));
+        }
     }
 
     // ------------------------------------------------------------------ formula solver, constants

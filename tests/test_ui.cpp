@@ -68,8 +68,8 @@ int main(int argc, char** argv) {
     check(Theme::figmaLight().lcdBg == dark.lcdBg, "LCD is the same olive screen in light mode");
     ThemeManager::loadFonts();
     check(QFontDatabase::families().contains("Inter") && QFontDatabase::families().contains("JetBrains Mono"), "bundled fonts Inter + JetBrains Mono load");
-    check(QFontDatabase::families().contains("DSEG7 Classic") && QFontDatabase::families().contains("DSEG14 Classic"), "Casio-style segment fonts load");
-    for (const char* icon : {"layout-dashboard", "split", "focus", "triangle", "waves", "notebook-pen", "file-spreadsheet", "scan-line", "arrow-up-right", "sigma", "calculator", "ruler", "image", "download", "printer", "slit"})
+    check(QFontDatabase::families().contains("DSEG14 Classic"), "shared Casio-style DSEG14 font loads");
+    for (const char* icon : {"layout-dashboard", "split", "focus", "triangle", "waves", "notebook-pen", "file-spreadsheet", "scan-line", "arrow-up-right", "sigma", "calculator", "ruler", "image", "download", "printer", "slit", "aperture"})
         check(!Icons::pixmap(icon, Qt::white, 18).isNull(), QString("icon exists: ") + icon);
 
     // ---- readable unicode maths -> LaTeX (notes preview, formula reference) ----

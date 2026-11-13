@@ -722,6 +722,9 @@ void PrismsPage::apply(bool record) {
     in.nMedium = indexOf(m_surround, std::max(1.0, in.wavelengthNm));
     m_materialLabel->setText(QString("Prism material · n = %1").arg(in.nPrism, 0, 'f', 3));
     m_surroundLabel->setText(QString("Surrounding medium · n = %1").arg(in.nMedium, 0, 'f', 3));
+    m_diagram->setTitle(in.dispersion ? "Prism ray path · visible spectrum" : "Prism ray path");
+    setPanels(m_diagram, m_chartPanel, m_results,
+              in.dispersion ? "7 COLOURS · 400–700 NM" : "SYMMETRIC PASSAGE", "");
 
     const Report r = ER::prism(in, reportContext());
     m_reg->setRegister(r.registers[0]);
@@ -737,8 +740,22 @@ void PrismsPage::apply(bool record) {
     captureValid();
     QList<PrismPath> extra;
     if (in.dispersion) {
-        const Theme& t = ThemeManager::instance().theme();
-        extra = {{QColor("#fb4934"), indexOf(m_material, 656.3)}, {t.amber, in.nPrism}, {QColor("#d3869b"), indexOf(m_material, 434.0)}};
+        struct SpectrumSample { double wavelengthNm; const char* color; };
+        static constexpr SpectrumSample spectrum[] = {
+            {700.0, "#e53935"}, // red
+            {620.0, "#fb8c00"}, // orange
+            {580.0, "#fdd835"}, // yellow
+            {540.0, "#43a047"}, // green
+            {490.0, "#1e88e5"}, // blue
+            {450.0, "#3f51b5"}, // indigo
+            {400.0, "#8e24aa"}  // violet
+        };
+        extra.reserve(7);
+        for (const SpectrumSample& sample : spectrum) {
+            extra.append({QColor(sample.color), sample.wavelengthNm,
+                          indexOf(m_material, sample.wavelengthNm),
+                          indexOf(m_surround, sample.wavelengthNm)});
+        }
     }
     m_canvas->setInput(in, extra);
 

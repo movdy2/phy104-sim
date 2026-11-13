@@ -1,5 +1,12 @@
 # What changed compared with the first commit
 
+## LCD, prism spectrum and Thick Lens icon polish
+* All Casio LCD surfaces now use the same DSEG14 family, including numeric results, register text, calculator/history,
+  solver fields and the scientific-keyboard display.
+* Prism Dispersion now traces seven visible wavelengths with wavelength-dependent indices in both the prism and
+  surrounding medium; Single ray remains a single selected-wavelength path.
+* Registered the existing aperture SVG so Thick Lens & Aberration loads its icon from Qt resources.
+
 ## Draw Space model and persistence removed
 * Removed the unused `Drawing`/`DrawingHistory` core engine, its build entry and unit tests. Physics diagrams and chart drawing
   remain separate UI functionality.

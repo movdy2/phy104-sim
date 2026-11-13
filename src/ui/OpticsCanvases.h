@@ -61,10 +61,12 @@ private:
     bool m_detailed = false;
 };
 
-/// One ray through the prism; several are drawn in dispersion mode.
+/// One wavelength through the prism; one path per visible spectral colour is drawn in dispersion mode.
 struct PrismPath {
     QColor color;
+    double wavelengthNm = 589.3;
     double nPrism = 1.5;
+    double nMedium = 1.0;
 };
 
 class PrismCanvas : public GridCanvas {
@@ -72,6 +74,8 @@ class PrismCanvas : public GridCanvas {
 public:
     explicit PrismCanvas(QWidget* parent = nullptr);
     void setInput(const PrismInput& in, const QList<PrismPath>& extraPaths = {});
+    /// Current wavelength-resolved paths, empty when Single ray mode is active.
+    const QList<PrismPath>& spectrumPaths() const { return m_extra; }
 protected:
     void paintDiagram(QPainter& p, const QRectF& area) override;
 private:

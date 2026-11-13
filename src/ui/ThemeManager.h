@@ -51,10 +51,10 @@ public:
     /// The theme chosen in the last run (saved by apply(); read by main() before the UI is built).
     static bool storedDarkTheme();
 
-    /// Shared segmented display fonts: DSEG14 for text, DSEG7 for large numeric readouts,
-    /// with readable bundled fallbacks for glyphs the segment faces do not contain.
-    static QFont lcdFont(const QFont& base = QFont(), bool numeric = false);
-    static void polishLcdFont(QWidget* widget, bool numeric = false);
+    /// One shared Casio-style DSEG14 face for every LCD surface, with a readable fallback
+    /// for glyphs the segmented font does not contain.
+    static QFont lcdFont(const QFont& base = QFont());
+    static void polishLcdFont(QWidget* widget);
 
     /// Call on every Casio-LCD input field (segmented font + readable placeholder colour).
     static void polishLcdInput(QLineEdit* edit);
