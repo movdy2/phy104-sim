@@ -5,6 +5,8 @@ add_library(phy104_core STATIC
     FormulaEngine.cpp
     PhysicsCalculator.cpp
     WaveExperiments.cpp
+    ThickLens.cpp
+    Spectrum.cpp
     FormulaManager.cpp
     MathCalculator.cpp
     LatexFormatter.cpp

@@ -211,3 +211,35 @@ formula/variable, 25 random data sets), Qt UI, five experiments, notes, theme.
 * Tests: `studyHubShowsTheChaptersOfTheJson` (sidebar entry, list order, summary + constants switch with the
   selection) and `calculatorHasPlainTextScientificKeys` (the `sin(` key inserts plain text, never `$…$`), plus the
   data test now checks every chapter of `study_hub.json` (id/title/chapter, summary, at least one explained rule).
+
+---
+
+# Version 2.8 - Experiment extras: thick lens, film colours, slit envelope, grating resolution
+
+* **Thick Lens & Aberration** (new screen, `experiments` section): a real glass element instead of a principal-plane
+  idealisation - two signed radii, a centre thickness `t` and a clear aperture `D`. It computes the paraxial power
+  `P = (n−1)(1/R₁ − 1/R₂) + (n−1)²t/(nR₁R₂)`, both **principal planes** (`V₁H₁`, `V₂H₂`), the back and front focal
+  lengths, principal-plane imaging (`dᵢ`, `m`, real / virtual) and the **third-order spherical aberration** of the
+  aperture (`ΔSA ∝ D²`, marginal vs paraxial focus, `f/#`). The diagram draws the real glass shape with `V₁ V₂ H₁ H₂ F′`
+  and both ray crossings; the chart is `dᵢ(dₒ)` measured from `H₂`.
+  * the **type dropdown** (biconvex / biconcave / plano-convex / plano-concave / meniscus) only sets the signs;
+  * the **Spectrum tab** is the same element in red / green / blue through Cauchy's law, with the focal spread and the
+    Abbe number `Vd` - the reason a single lens fringes in colour;
+  * the physics lives in Qt-free `ThickLens.{h,cpp}` (`power`, `h1/h2`, `BFL/FFL`, `ΔSA`, `imageCurve`, `cauchyIndex`).
+* **Thin film - Colours tab**: the whole visible band at once. `R(λ) = sin²(2nt/λ)` is integrated against the CIE 1931
+  observer (new Qt-free `Spectrum.{h,cpp}`: wavelength → colour, reflectance → colour), so the swatch is the colour a
+  film of that thickness actually has. A **visibility** factor washes the hue out as many orders overlap, which is why
+  soap films are coloured only where they are thin. The tab adds `Δm = 2nt(1/400 − 1/700)` and the dominant wavelength.
+* **Single slit - Envelope tab**: two slits of finite width `a` and separation `d > a` - `cos²` fringes under the
+  `sinc²` envelope, the number of bright fringes inside the envelope, and the **missing orders** where `d/a` is an
+  integer (the fringe that lands on the first slit minimum).
+* **Grating - Resolution tab**: `R = mN` (N = the illuminated lines `M`), the Rayleigh limit `δλ = λ/R`, the
+  **free spectral range** `λ/m` and the order-overlap limit. The chart shows a single line and a pair one `δλ` apart.
+* The new tabs join the existing **second tabs** on the same `ModelPage`: every screen keeps one tab strip, so
+  `Colours` / `Envelope` / `Resolution` sit next to `Transmission` / `Geometry` / `Orders`.
+* New `aperture` sidebar icon (Lucide), `#colourSwatch` style; the thick lens joined the **PDF report** sources.
+* Tests: `ThickLens` power/principal planes/thin-lens limit (`t = 0` reduces to the thin lens), `ΔSA ∝ h²` and its sign,
+  the invalid-element guard, the thick-lens report and its sweep, the Cauchy/Abbe readout, the film colour
+  (dominant hue, `R(λ)` of the swatch, grey for thick films), the slit envelope (`d/a = 4` loses the 4th fringe),
+  `multiSlitFactor` limits, and `R = mN` / `δλ` / the free spectral range, plus three interaction tests that click the
+  new tabs and check the registers, the swatch colour and the panel titles.

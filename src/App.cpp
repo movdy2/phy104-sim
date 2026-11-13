@@ -19,6 +19,7 @@
 #include "ui/ReportPage.h"
 #include "ui/SolverPage.h"
 #include "ui/StudyHubPage.h"
+#include "ui/ThickLensPage.h"
 
 namespace phy104 {
 
@@ -68,6 +69,8 @@ App::App(const Paths& paths) {
     m_window->addPage("Michelson Interferometry", "git-merge", michelson);                  // 9
     newton = new NewtonRingsPage(m_context.get());
     m_window->addPage("Newton's Rings", "circle-dot", newton);                              // 10
+    thickLens = new ThickLensPage(m_context.get());
+    m_window->addPage("Thick Lens & Aberration", "aperture", thickLens);                    // 11
     notes = new NotesPage(m_context.get(), keyboardRepo.scientific());
     const int notesIndex = m_window->addPage("Notes", "notebook-pen", notes, 1);             // 11 (tool)
     equationLab = new EquationLabPage(m_context.get(), keyboardRepo.scientific());
@@ -86,7 +89,7 @@ App::App(const Paths& paths) {
     const int exportIndex = m_window->addPage("Export (Excel/CSV)", "file-spreadsheet", exportPage, 1);   // tools entry, as in Figma
     reportPage = new ReportPage(m_context.get());
     const int reportIndex = m_window->addPage("PDF Report", "printer", reportPage, 1);
-    reportPage->setSources({refraction, lenses, prisms, wave, polarization, singleSlit, grating, thinFilm, michelson, newton});
+    reportPage->setSources({refraction, lenses, prisms, wave, polarization, singleSlit, grating, thinFilm, michelson, newton, thickLens});
     dashboard->setNotesPage(notesIndex);
     dashboard->setExportPage(exportIndex);
 

@@ -1,6 +1,7 @@
 #include "ExperimentReports.h"
 #include "NumberFormat.h"
 #include "PhysicsCalculator.h"
+#include "ThickLens.h"
 
 #include <algorithm>
 #include <cctype>
@@ -10,6 +11,7 @@
 namespace phy104::ExperimentReports {
 namespace NF = NumberFormat;
 namespace PC = PhysicsCalculator;
+namespace TL = ThickLens;
 namespace {
 
 constexpr double kDeg = std::numbers::pi / 180.0;
@@ -505,6 +507,131 @@ DataSeries doubleSlitSweep(const SlitInput& in) {
     for (int k = -10; k <= 10; ++k) {
         const double y = k * 1e-3;
         s.rows.push_back({double(k), d > 0 ? PC::relativeIntensity(y, lam, L, d) : kNaN});
+    }
+    return s;
+}
+
+// ------------------------------------------------------------------------------ thick lens
+namespace {
+
+Notice info(const std::string& body) { return {"Interpretation", body, false}; }
+Notice limit(const std::string& body) { return {"Model limits", body, false}; }
+
+/// Cauchy pairs of the Schott glasses the app names (A + B/λ², λ in µm). Only the shape of the curve matters
+/// here: the visible spread between red and blue is what the "Spectrum" tab shows.
+struct GlassCurve { const char* name; double a, b; };
+GlassCurve glassFor(double n) {
+    if (n < 1.45) return {"acrylic", 1.4750, 0.0140};
+    if (n < 1.62) return {"crown glass", 1.5046, 0.0042};
+    if (n < 1.75) return {"flint glass", 1.6030, 0.0100};
+    return {"heavy flint", 1.7150, 0.0150};
+}
+
+} // namespace
+
+Report thickLens(const ThickLensInput& in, const ReportContext& ctx) {
+    ThickLensInput ti;                                          // the physics lives in ThickLens.cpp
+    ti.n = in.n; ti.nMedium = in.nMedium; ti.r1 = in.r1; ti.r2 = in.r2;
+    ti.thickness = in.thickness; ti.diameter = in.diameter; ti.objectDistance = in.objectDistance;
+    const TL::Result a = TL::analyse(ti);
+    if (!a.valid)
+        return pausedReport("E_INPUT_RANGE", {{"t", a.error, "t"}},
+                            {"n = " + num(in.n) + "   R₁ = " + num(in.r1) + " cm", "R₂ = " + num(in.r2) + " cm   t = " + num(in.thickness) + " cm",
+                             "ACTION: " + a.error},
+                            {"Calculation paused / element not usable", a.error + "\n\nDiagram, chart and retained results show %RUN%, not the current inputs."}, ctx);
+
+    Report rep;
+    const GlassCurve glass = glassFor(in.n);
+    const std::string fText = NF::signedFixed(a.focalLength, 4) + " cm";
+
+    if (in.spectrum) {                                          // ---- third tab: the same lens in three colours
+        struct Line { const char* name; double nm; };
+        const Line lines[] = {{"Red F", 656.3}, {"Green d", 587.6}, {"Blue C", 486.1}};
+        double lo = 1e9, hi = -1e9;
+        std::vector<std::string> rows;
+        std::string headline;
+        for (const Line& line : lines) {
+            ThickLensInput s = ti;
+            s.n = TL::cauchyIndex(glass.a, glass.b, line.nm);
+            const TL::Result r = TL::analyse(s);
+            if (!r.valid) continue;
+            lo = std::min(lo, r.focalLength); hi = std::max(hi, r.focalLength);
+            rows.push_back(std::string(line.name) + " " + NF::fixed(line.nm, 1) + " nm: n = " + NF::fixed(s.n, 5) +
+                           "  f = " + NF::signedFixed(r.focalLength, 4) + " cm");
+            if (headline.empty()) headline = "f(" + NF::fixed(line.nm, 1) + " nm) = " + NF::signedFixed(r.focalLength, 4) + " cm";
+        }
+        const double spread = hi - lo;
+        LcdRegister r1;
+        r1.title = "CAUCHY / " + std::string(glass.name);
+        r1.mode = "OK";
+        r1.lines = {"n(λ) = A + B/λ²", "A = " + NF::fixed(glass.a, 4) + "   B = " + NF::fixed(glass.b, 4)};
+        r1.lines.insert(r1.lines.end(), rows.begin(), rows.end());
+        r1.resultLabel = "FOCAL SPREAD f(red) − f(blue)";
+        r1.resultValue = NF::fixed(std::fabs(spread), 4) + " cm";
+        LcdRegister r2;
+        r2.title = "ABBE NUMBER / DISPERSION";
+        const double nD = TL::cauchyIndex(glass.a, glass.b, 587.6);
+        const double nF = TL::cauchyIndex(glass.a, glass.b, 486.1), nC = TL::cauchyIndex(glass.a, glass.b, 656.3);
+        const double abbe = std::fabs(nF - nC) > 1e-12 ? (nD - 1.0) / (nF - nC) : 0.0;
+        r2.lines = {"V_d = (n_d − 1) / (n_F − n_C)", "n_d = " + NF::fixed(nD, 5) + "   n_F = " + NF::fixed(nF, 5), "n_C = " + NF::fixed(nC, 5),
+                    "small V = strong dispersion"};
+        r2.resultLabel = "ABBE NUMBER Vd";
+        r2.resultValue = NF::fixed(abbe, 2);
+        rep.registers = {r1, r2};
+        rep.notices = {info("Blue light sees a larger index, so it is bent more: the blue focus sits closer to the lens and the image edge is fringed. The spread here is " +
+                                      NF::fixed(std::fabs(spread), 4) + " cm for f ≈ " + NF::fixed(std::fabs(a.focalLength), 3) + " cm — real crown-glass lenses are far better corrected than that."),
+                       limit("Cauchy's two-term law is a fit over the visible range. Achromats pair a crown and a flint element; this screen models one element.")};
+        rep.headline = headline.empty() ? "f not defined" : headline;
+        rep.retained = retainedRegister({"n = " + num(in.n) + " · R₁ = " + num(in.r1) + " · R₂ = " + num(in.r2), "t = " + num(in.thickness) + " cm"},
+                                        "RETAINED FOCAL SPREAD", NF::fixed(std::fabs(spread), 4) + " cm", {"Vd = " + NF::fixed(abbe, 2)});
+        rep.parameters = {{"n", num(in.n)}, {"R₁", num(in.r1) + " cm"}, {"R₂", num(in.r2) + " cm"}, {"t", num(in.thickness) + " cm"}, {"mode", "spectrum"}};
+        return rep;
+    }
+
+    LcdRegister r1;
+    r1.title = "THICK-LENS POWER / SI";
+    r1.lines = {"P = (n−1)(1/R₁ − 1/R₂) + (n−1)² t /(n R₁R₂)",
+                "P = " + NF::fixed(a.power, 6) + " cm⁻¹", "f = 1/P = " + fText,
+                "ELEMENT: " + a.element, "BFL = " + NF::signedFixed(a.backFocal, 4) + " cm   FFL = " + NF::signedFixed(a.frontFocal, 4) + " cm"};
+    r1.resultLabel = "THICK-LENS FOCAL LENGTH · f";
+    r1.resultValue = fText;
+    LcdRegister r2;
+    r2.title = "PRINCIPAL PLANES / cm";
+    r2.lines = {"V₁H₁ = " + NF::signedFixed(a.h1, 4) + "   V₂H₂ = " + NF::signedFixed(a.h2, 4),
+                "dₒ from H₁ = " + NF::signedFixed(a.objectFromH1, 4),
+                a.atInfinity ? std::string("dᵢ = ∞ (object in the focal plane)") : "dᵢ from H₂ = " + NF::signedFixed(a.imageFromH2, 4) + " cm",
+                a.atInfinity ? std::string("m = undefined") : "m = −dᵢ/dₒ = " + NF::signedFixed(a.magnification, 4),
+                std::string("IMAGE: ") + (a.real ? "REAL" : "VIRTUAL") + (a.atInfinity ? "" : std::string(a.upright ? " · UPRIGHT" : " · INVERTED"))};
+    r2.resultLabel = "MAGNIFICATION · m";
+    r2.resultValue = a.atInfinity ? std::string("—") : NF::signedFixed(a.magnification, 4);
+    rep.registers = {r1, r2};
+
+    const std::string saSign = a.longitudinalSa < 0 ? "marginal rays cross " + NF::fixed(std::fabs(a.longitudinalSa), 4) + " cm in front of the paraxial focus"
+                                                    : "marginal rays cross " + NF::fixed(a.longitudinalSa, 4) + " cm behind the paraxial focus";
+    rep.notices = {info("The principal planes are imaginary surfaces inside the glass, " + NF::signedFixed(a.h1, 3) +
+                                  " cm / " + NF::signedFixed(a.h2, 3) + " cm from the vertices: all distances are measured from them, which is why the thick lens does not obey the thin-lens equation from the vertices. Spherical aberration (third order, D = " +
+                                  num(in.diameter) + " cm): " + a.saClass + " — " + saSign + "."),
+                   limit("Paraxial power and third-order aberration only: no coma, astigmatism or field curvature. The aberration assumes the stop at the lens and an object at infinity; the aperture is " + num(in.diameter) + " cm.")};
+    rep.headline = a.atInfinity ? "dᵢ → ∞" : "dᵢ = " + NF::signedFixed(a.imageFromH2, 4) + " cm";
+    rep.footnote = "H₁: front principal plane · H₂: rear · BFL " + NF::signedFixed(a.backFocal, 3) + " cm · f/# " + NF::fixed(a.fNumber, 2);
+    rep.statusText = a.converging ? (a.saClass == "NEGLIGIBLE" ? "Well-corrected aperture" : "Converging element · " + a.saClass) : "Diverging element · virtual focus";
+    rep.retained = retainedRegister({"n = " + num(in.n) + " · R₁ = " + num(in.r1) + " cm · R₂ = " + num(in.r2) + " cm", "t = " + num(in.thickness) + " cm · D = " + num(in.diameter) + " cm"},
+                                    "RETAINED THICK-LENS FOCAL LENGTH", fText, {"ΔSA = " + NF::signedFixed(a.longitudinalSa, 4) + " cm · " + a.saClass});
+    rep.parameters = {{"Element", a.element}, {"n", num(in.n)}, {"R₁", num(in.r1) + " cm"}, {"R₂", num(in.r2) + " cm"},
+                      {"t", num(in.thickness) + " cm"}, {"D", num(in.diameter) + " cm"}, {"dₒ", num(in.objectDistance) + " cm"}};
+    return rep;
+}
+
+DataSeries thickLensSweep(const ThickLensInput& in) {
+    ThickLensInput ti;
+    ti.n = in.n; ti.nMedium = in.nMedium; ti.r1 = in.r1; ti.r2 = in.r2;
+    ti.thickness = in.thickness; ti.diameter = in.diameter; ti.objectDistance = in.objectDistance;
+    DataSeries s{"thick_lens_sweep", "Thick-lens sweep",
+                 "n = " + num(in.n) + " · R₁ = " + num(in.r1) + " cm · R₂ = " + num(in.r2) + " cm · t = " + num(in.thickness) + " cm",
+                 "dᵢ measured from the rear principal plane H₂", {"dₒ (cm)", "dᵢ (cm)", "m"}, {}};
+    for (const auto& [dObj, dImg] : TL::imageCurve(ti, 12)) {
+        const TL::Result r = TL::analyse([&] { ThickLensInput c = ti; c.objectDistance = dObj; return c; }());
+        s.rows.push_back({dObj, dImg, r.valid ? r.magnification : kNaN});
     }
     return s;
 }

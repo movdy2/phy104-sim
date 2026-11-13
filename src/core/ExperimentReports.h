@@ -73,6 +73,12 @@ struct PrismInput {
     double nPrism = 1.5, nMedium = 1.0, apex = 60.0, incidence = 48.5904, wavelengthNm = 589.3;
     bool dispersion = false;
 };
+/// Thick lens: a real glass element with two radii, a centre thickness and a finite aperture.
+/// `spectrum` is the third tab: the same lens for red / green / blue (Fraunhofer lines through Cauchy's law).
+struct ThickLensInput {
+    double n = 1.5, nMedium = 1.0, r1 = 10.0, r2 = -10.0, thickness = 2.0, diameter = 5.0, objectDistance = 30.0;
+    bool spectrum = false;              // chromatic focal shift instead of the aberration readout
+};
 struct SlitInput {
     double wavelengthNm = 532.0, separationMm = 0.25, screenM = 1.5;
     int order = 2;
@@ -90,6 +96,8 @@ Report refraction(const RefractionInput& in, const ReportContext& ctx = {});    
 Report imaging(const ImagingInput& in, const ReportContext& ctx = {});
 Report prism(const PrismInput& in, const ReportContext& ctx = {});
 Report doubleSlit(const SlitInput& in, const ReportContext& ctx = {});
+/// Thick lens: paraxial power, principal planes, imaging and the third-order spherical aberration.
+Report thickLens(const ThickLensInput& in, const ReportContext& ctx = {});
 
 /// The comparison angle used for case B when the user drives case A.
 double defaultTirAngle(double n1, double n2);
@@ -99,6 +107,7 @@ DataSeries tirSweep(const RefractionInput& in);             // θ₁ 0..90°, θ
 DataSeries imagingSweep(const ImagingInput& in);            // dₒ, dᵢ, m
 DataSeries prismSweep(const PrismInput& in);                // i₁ 35..65°, δ
 DataSeries doubleSlitSweep(const SlitInput& in);            // y (mm), I/I₀
+DataSeries thickLensSweep(const ThickLensInput& in);        // dₒ, dᵢ, m (principal planes)
 
 struct LinearFit { double slope = 0, intercept = 0, r2 = 0; bool ok = false; };
 LinearFit linearFit(const std::vector<double>& x, const std::vector<double>& y);

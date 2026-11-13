@@ -30,7 +30,8 @@ into the session, into every snapshot's `notesContent`, and into the `.phy` file
 | **Lenses & Mirrors** | thin lens and spherical mirror (same equations), principal rays, image properties |
 | **Prisms** | ray path, minimum deviation, deviation curve, dispersion mode (red / λ / violet rays) |
 | **Wave Interference** | Young's double slit: wavefronts, fringes, intensity profile, 6 light-source presets |
-| **Polarization**, **Single slit**, **Grating**, **Thin film**, **Michelson**, **Newton's rings** | the six screens of the second Figma batch (Save + export icon, Send to Notes); **both tabs of every screen work** (thin-film transmission, Michelson fringe count, grating orders, slit geometry, Malus/Brewster) and Newton's viewing-mode dropdown switches to the transmitted rings |
+| **Polarization**, **Single slit**, **Grating**, **Thin film**, **Michelson**, **Newton's rings** | the six screens of the second Figma batch (Save + export icon, Send to Notes); **every tab of every screen works** (thin-film transmission **and its colour swatch**, Michelson fringe count, grating orders **and resolving power**, slit geometry **and the two-slit envelope**, Malus/Brewster) and Newton's viewing-mode dropdown switches to the transmitted rings |
+| **Thick Lens & Aberration** | a real glass element: signed `R₁ R₂`, centre thickness, aperture → paraxial power, **principal planes**, BFL/FFL, imaging from `H₂`, **third-order spherical aberration** (`ΔSA ∝ D²`) and a **Spectrum** tab with the Cauchy focal spread and Abbe number |
 | **Notes** | the clean Markdown study workspace of the design: editor + snippet toolbar + live LaTeX preview, autosaved; **⌨ Keyboard** opens the scientific keyboard (from `keyboard.json`) and types LaTeX straight into the note |
 | **Export icon** (every page header) | one download button with **PDF report / Excel (.xlsx) / CSV (.csv)**: it opens the matching screen with the format already selected |
 | *Tools:* **PDF Report** | printable laboratory report: every experiment's headline, diagram and chart, the registers, the notes and the saved runs in one A4 document (Save PDF / Print…) |
@@ -57,7 +58,7 @@ ctest --test-dir build              # core + real-data round trips + UI/LaTeX/SV
 Needs Qt 6 **Widgets and Svg** (Ubuntu: `qt6-base-dev qt6-svg-dev`). Fonts (Inter, JetBrains Mono) and icons
 (Lucide) are bundled in `assets/` - nothing to install. Windows: add `-DCMAKE_PREFIX_PATH=C:/Qt/6.x.x/msvc2019_64`.
 Core only (no Qt): `-DPHY104_BUILD_GUI=OFF`.
-CI (`.github/workflows/build.yml`) builds Linux (Qt 6 + ctest), Windows (MSVC + Qt 6.7.2) and a Qt-free `g++` core
+CI (`.github/workflows/build.yml`) builds Linux (Qt 6 + ctest), Windows (MSVC + Qt 6.8.3) and a Qt-free `g++` core
 test on every push and pull request - the badge above shows the last run.
 
 ### Keyboard shortcuts
