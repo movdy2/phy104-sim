@@ -71,7 +71,8 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install --quiet --disable-pip-version-check "aqtinstall==3.3.*" py7zr
-          python -m aqt install-qt windows desktop 6.8.3 win64_msvc2022_64 -m qtsvg --outputdir C:/Qt 2>&1 |
+          # no -m qtsvg: QtSvg lives inside qtbase since Qt 6
+          python -m aqt install-qt windows desktop 6.8.3 win64_msvc2022_64 --outputdir C:/Qt 2>&1 |
             Tee-Object -FilePath qtinstall.log
           if ($LASTEXITCODE -ne 0) {
             Get-Content qtinstall.log -Tail 15 | ForEach-Object { Write-Host "::error title=aqt::$_" }
