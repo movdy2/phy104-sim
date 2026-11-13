@@ -652,7 +652,13 @@ int main() {
         sec.diagramKey = reportImageKey("diagram", sec.title);
         sec.chartKey = reportImageKey("chart", sec.title);
         content.sections = {sec};
-        content.runs = {RunRecord{1, "Prisms", "A = 60°", "δ = 38.5°", true}};
+        RunRecord sample;
+        sample.id = 1;
+        sample.experiment = "Prisms";
+        sample.description = "A = 60°";
+        sample.result = "δ = 38.5°";
+        sample.valid = true;
+        content.runs = {sample};
 
         ReportOptions o;
         o.generated = "13 November 2026 · 02:15";

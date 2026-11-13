@@ -3,6 +3,8 @@
 #include "Components.h"
 #include "MarkdownWorkspace.h"
 
+#include <QVBoxLayout>
+
 namespace phy104 {
 namespace {
 const char* const kStarterNotes =

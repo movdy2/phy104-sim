@@ -9,7 +9,13 @@ RunRecord& SessionLog::addRun(const std::string& experiment, const std::string& 
                               const std::string& result, bool valid) {
     int next = 1;
     for (const auto& r : m_runs) next = std::max(next, r.id + 1);
-    m_runs.push_back({next, experiment, description, result, valid});
+    RunRecord run;                       // field by field: RunRecord gained `series`, so an aggregate
+    run.id = next;                       // initialiser would trip -Wmissing-field-initializers
+    run.experiment = experiment;
+    run.description = description;
+    run.result = result;
+    run.valid = valid;
+    m_runs.push_back(std::move(run));
     return m_runs.back();
 }
 
