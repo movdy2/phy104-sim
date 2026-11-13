@@ -31,9 +31,12 @@ struct NewtonInput    { double lambdaNm = 600, radiusM = 1.0, order = 4, n = 1.0
 struct MichelsonInput { double lambdaNm = 632.8, displacementUm = 0.75, n = 1.0, visibility = 1.0; bool fringes = false, piezo = false; };
 /// `transmission` picks the second mode tab: reflected (false) or transmitted (true) light.
 struct ThinFilmInput  { double lambdaNm = 600, n = 1.5, thicknessNm = 100; bool transmission = false; };
-struct GratingInput   { double linesPerCm = 5000, lambdaNm = 600, order = 1, slits = 20, incidenceDeg = 0; };
-struct SingleSlitInput{ double widthMm = 0.1, lambdaNm = 500, screenM = 1.0; };
-struct PolarizationInput { double incidentIntensity = 100, angleDeg = 60, n1 = 1.0, n2 = 1.5; bool unpolarized = true; };
+/// `orderList` is the second tab: every propagating order with its angle instead of the intensity fan.
+struct GratingInput   { double linesPerCm = 5000, lambdaNm = 600, order = 1, slits = 20, incidenceDeg = 0; bool orderList = false; };
+/// `geometry` is the second tab: where the minima land on the screen instead of the intensity envelope.
+struct SingleSlitInput{ double widthMm = 0.1, lambdaNm = 500, screenM = 1.0; bool geometry = false; };
+/// `brewster` is the second tab: the interface at θB with the Fresnel reflectances instead of Malus' law.
+struct PolarizationInput { double incidentIntensity = 100, angleDeg = 60, n1 = 1.0, n2 = 1.5; bool unpolarized = true; bool brewster = false; };
 
 namespace WaveExperiments {
 

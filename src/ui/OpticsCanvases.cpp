@@ -699,6 +699,8 @@ void GratingCanvas::paintDiagram(QPainter& p, const QRectF& a) {
     const Theme& t = th();
     const double d = 0.01 / std::max(1e-9, m_in.linesPerCm), lam = m_in.lambdaNm * 1e-9;
     text(p, QPointF(14, a.top() + 18), "NORMAL INCIDENCE · d = " + num(d * 1e6, 4) + " µm", t.amber, 10);
+    if (m_in.orderList)                                                        // second tab: every peak is the subject
+        text(p, QPointF(a.right() - 14, a.top() + 18), "ORDERS VIEW · d/λ = " + num(d / lam, 4), t.amber, 10, Qt::AlignRight);
     const QPointF g(a.left() + a.width() * 0.30, a.top() + a.height() * 0.40);
     const double sx = a.right() - 60, len = sx - g.x();
     for (int k = -1; k <= 1; ++k) ray(p, QPointF(a.left() + 24, g.y() + k * 20), QPointF(g.x() - 6, g.y() + k * 20), t.sage, 1.4, -1);
@@ -709,7 +711,7 @@ void GratingCanvas::paintDiagram(QPainter& p, const QRectF& a) {
         const double s = m * lam / d + std::sin(m_in.incidenceDeg * M_PI / 180);
         const double th2 = std::asin(std::clamp(s, -1.0, 1.0));
         const QPointF end(g.x() + len * std::cos(th2) * 0.92, g.y() - len * std::sin(th2) * 0.92);
-        const bool selected = m == static_cast<int>(std::lround(m_in.order));
+        const bool selected = m == static_cast<int>(std::lround(m_in.order)) || m_in.orderList;
         p.setPen(QPen(selected ? t.amber : t.sage, selected ? 2.2 : 1.3));
         p.drawLine(g, end);
         text(p, end + QPointF(6, 0), (m > 0 ? "+" : "") + QString::number(m), selected ? t.amber : t.muted, 10);
@@ -723,7 +725,7 @@ void GratingCanvas::paintDiagram(QPainter& p, const QRectF& a) {
         const double th2 = std::asin(std::clamp(m * lam / d + std::sin(m_in.incidenceDeg * M_PI / 180), -1.0, 1.0)) * 180 / M_PI;
         const double x = bx + bw / 2 + th2 / 90.0 * bw / 2;
         const bool selected = m == static_cast<int>(std::lround(m_in.order));
-        p.setBrush(selected ? t.amber : t.sage); p.drawRect(QRectF(x - 2, by - 12, 4, 26));
+        p.setBrush(selected || m_in.orderList ? t.amber : t.sage); p.drawRect(QRectF(x - 2, by - 12, 4, 26));
         text(p, QPointF(x, by + 28), QString::number(m), t.muted, 9, Qt::AlignHCenter);
     }
     if (!orders.empty()) {
@@ -760,12 +762,59 @@ void SingleSlitCanvas::paintDiagram(QPainter& p, const QRectF& a) {
         profile << QPointF(sx + 8 + I * 70, g.y() - (a.height() - 100) / 2 * (k / 100.0));
     }
     p.setPen(QPen(t.text, 1.4)); p.setBrush(Qt::NoBrush); p.drawPolyline(profile);
-    text(p, QPointF(14, a.bottom() - 30), "w = 2L tan θ₁ = " + num(2 * m_in.screenM * std::tan(theta) * 1e3, 5) + " mm", t.muted, 10);
-    text(p, QPointF(14, a.bottom() - 14), "Minima: a sin θ = mλ", t.muted, 10);
+    if (m_in.geometry) {                                                     // second tab: where each minimum lands
+        for (int k = 3; k >= 1; --k) {
+            const double yl = std::min((sx - g.x()) * std::tan(std::asin(std::min(1.0, k * lam / aa))), (a.height() - 90) / 2.0);
+            p.setPen(QPen(t.dim, 1.2, Qt::DashLine));
+            p.drawLine(g, QPointF(sx, g.y() - yl));
+            p.drawLine(g, QPointF(sx, g.y() + yl));
+            p.drawLine(QPointF(sx - 5, g.y() - yl), QPointF(sx + 5, g.y() - yl));    // tick on the screen
+            p.drawLine(QPointF(sx - 5, g.y() + yl), QPointF(sx + 5, g.y() + yl));
+        }
+        text(p, QPointF(14, a.bottom() - 30),
+             "y₁ = ±" + num(m_in.screenM * std::tan(std::asin(std::min(1.0, lam / aa))) * 1e3, 4) + " mm · y₂ = ±"
+                 + num(m_in.screenM * std::tan(std::asin(std::min(1.0, 2 * lam / aa))) * 1e3, 4) + " mm", t.muted, 10);
+        text(p, QPointF(14, a.bottom() - 14),
+             "y₃ = ±" + num(m_in.screenM * std::tan(std::asin(std::min(1.0, 3 * lam / aa))) * 1e3, 4)
+                 + " mm · w = " + num(2 * m_in.screenM * std::tan(theta) * 1e3, 5) + " mm (central lobe)", t.muted, 10);
+    } else {
+        text(p, QPointF(14, a.bottom() - 30), "w = 2L tan θ₁ = " + num(2 * m_in.screenM * std::tan(theta) * 1e3, 5) + " mm", t.muted, 10);
+        text(p, QPointF(14, a.bottom() - 14), "Minima: a sin θ = mλ", t.muted, 10);
+    }
 }
 
 void PolarizationCanvas::paintDiagram(QPainter& p, const QRectF& a) {
     const Theme& t = th();
+    if (m_in.brewster) {
+        // Second tab: one interface at θB — incident, reflected (s only) and refracted ray.
+        const double thB = std::atan(m_in.n2 / m_in.n1), deg = thB * 180 / M_PI;
+        const double s2 = (m_in.n1 / m_in.n2) * std::sin(thB);
+        const double ct = std::sqrt(std::max(0.0, 1 - s2 * s2)), c = std::cos(thB);
+        const double as = (m_in.n1 * c - m_in.n2 * ct) / (m_in.n1 * c + m_in.n2 * ct);
+        const double rsB = as * as;
+        text(p, QPointF(14, a.top() + 18), "BREWSTER · REFLECTED BEAM IS s-POLARIZED", t.amber, 10);
+        const double y0 = a.top() + a.height() * 0.42;
+        const QPointF o(a.center().x(), y0);
+        const double L = std::min(a.height() * 0.30, 110.0);
+        QColor glass = t.blue; glass.setAlpha(45);
+        p.setPen(Qt::NoPen); p.setBrush(glass);
+        p.drawRect(QRectF(a.left() + 20, y0, a.width() - 40, a.bottom() - y0 - 76));
+        p.setPen(QPen(t.sage, 1.8)); p.drawLine(QPointF(a.left() + 20, y0), QPointF(a.right() - 20, y0));
+        text(p, QPointF(a.left() + 26, y0 - 8), "n₁ = " + num(m_in.n1, 4) + "  (air side)", t.muted, 10);
+        text(p, QPointF(a.left() + 26, y0 + 18), "n₂ = " + num(m_in.n2, 4) + "  (glass side)", t.muted, 10);
+        p.setPen(QPen(t.dim, 1, Qt::DashLine)); p.drawLine(o + QPointF(0, -L - 12), o + QPointF(0, L));
+        ray(p, o + QPointF(-std::sin(thB) * L, -std::cos(thB) * L), o, t.amber, 1.8);            // incident at θB
+        ray(p, o, o + QPointF(std::sin(thB) * L, -std::cos(thB) * L), t.amber, 1.6);             // reflected: s only
+        ray(p, o, o + QPointF(std::cos(thB) * L, std::sin(thB) * L), t.amber, 1.4);              // refracted at 90° − θB
+        text(p, o + QPointF(-L * 0.70, -L * 0.30), "θB = " + num(deg, 4) + "°", t.text, 10, Qt::AlignRight);
+        text(p, o + QPointF(L * 0.26, -L * 0.62), "reflected · s only", t.amber, 9);
+        text(p, o + QPointF(L * 0.26, L * 0.55), "refracted · " + num(90 - deg, 4) + "°", t.muted, 9);
+        text(p, QPointF(14, a.bottom() - 58), "tan θB = n₂ / n₁ = " + num(m_in.n2 / m_in.n1, 5), t.muted, 10);
+        text(p, QPointF(14, a.bottom() - 42), "R_p = 0.0000   ·   R_s = " + num(rsB, 4), t.text, 10);
+        text(p, QPointF(14, a.bottom() - 26), "reflected and refracted rays are perpendicular", t.muted, 10);
+        text(p, QPointF(14, a.bottom() - 10), "unpolarized beam: " + num((rsB / 2) * 100, 3) + "% reflected", t.muted, 10);
+        return;
+    }
     const double i0 = m_in.unpolarized ? m_in.incidentIntensity / 2 : m_in.incidentIntensity;
     const double iOut = i0 * std::pow(std::cos(m_in.angleDeg * M_PI / 180), 2);
     const double half = a.top() + a.height() * 0.50;

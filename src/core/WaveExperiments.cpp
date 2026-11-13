@@ -339,6 +339,47 @@ ModelReport grating(const GratingInput& in, const ReportContext& ctx) {
 
     ModelReport out;
     Report& rep = out.report;
+    if (in.orderList) {
+        // Second tab: the order table — every propagating order with the angle it lands at.
+        const int capacity = static_cast<int>(std::floor(d / lam + 1e-9));
+        auto angleOf = [&](int k) { return std::asin(std::clamp(k * lam / d + std::sin(in.incidenceDeg * kDeg), -1.0, 1.0)) / kDeg; };
+        std::vector<std::string> table{"m = 0 at " + NF::fixed(angleOf(0), 2) + "°"};
+        for (int k = 1; k <= std::min(capacity, 3); ++k)
+            table.push_back("±" + std::to_string(k) + " at ±" + NF::fixed(angleOf(k), 2) + "°");
+        table.push_back(capacity > 3 ? "… up to ±" + std::to_string(capacity) + " at ±" + NF::fixed(angleOf(capacity), 2) + "°"
+                                     : "no real angle beyond ±" + std::to_string(std::max(0, capacity)));
+        LcdRegister a;
+        a.title = "ORDER TABLE";
+        a.lines = table;
+        a.resultLabel = "TOTAL ALLOWED PEAKS";
+        a.resultValue = std::to_string(orders.size()) + " orders";
+        LcdRegister b;
+        b.title = "ANGULAR SEPARATION";
+        b.lines = {"Δθ(±1) = 2θ₁ = " + NF::fixed(2 * angleOf(1), 2) + "°",
+                   "θ₂ − θ₁ = " + NF::fixed(angleOf(2) - angleOf(1), 2) + "°",
+                   "the angular step widens with |m|", "d/λ = " + fx(d / lam)};
+        b.resultLabel = "ORDER CAPACITY · d/λ";
+        b.resultValue = fx(d / lam);
+        rep.registers = {a, b};
+        rep.notices = {interpretation("Every order sits where d sin θₘ = mλ: the step in sin θ is the constant λ/d, so the angles widen as |m| grows — θ₂ − θ₁ = " + NF::fixed(angleOf(2) - angleOf(1), 2) + "° against θ₁ = " + NF::fixed(angleOf(1), 2) + "°. d/λ = " + fx(d / lam) + " fixes how many orders can propagate at all."),
+                       guard(guardText)};
+        rep.headline = std::to_string(orders.size()) + " orders inside ±" + NF::fixed(capacity > 0 ? angleOf(capacity) : 0.0, 2) + "°";
+        rep.retained = retained({"N = " + num(in.linesPerCm) + " lines/cm · λ = " + NF::fixed(in.lambdaNm, 1) + " nm",
+                                 "M = " + num(in.slits) + " · θᵢ = " + num(in.incidenceDeg) + "°"}, "RETAINED ORDER COUNT", a.resultValue);
+        rep.parameters = {{"N", num(in.linesPerCm) + " lines/cm"}, {"λ", num(in.lambdaNm) + " nm"}, {"m", std::to_string(m)},
+                          {"M", num(in.slits)}, {"θᵢ", num(in.incidenceDeg) + " °"}, {"mode", "orders"}};
+
+        ChartData& c = out.chart;
+        c.xLabel = "θ (degrees)"; c.yLabel = "I / Imax";
+        c.xMin = -90; c.xMax = 90; c.yMin = 0; c.yMax = 1; c.xTicks = 4; c.yTicks = 2; c.xDecimals = 0; c.yDecimals = 1;
+        for (int k = 0; k <= 1800; ++k) {
+            const double th = -90 + k * 0.1;
+            c.curve.push_back({th, gratingIntensity(th, in.linesPerCm, in.lambdaNm, in.slits, in.incidenceDeg)});
+        }
+        for (int mm : orders) c.marker.push_back({angleOf(mm), 1.0});
+        c.legend = std::to_string(orders.size()) + " principal maxima · every peak marked ●";
+        return out;
+    }
     LcdRegister a;
     a.title = "DENSITY + SPACING / SI";
     a.lines = {"d = 0.01 / N", " = 0.01 / " + num(in.linesPerCm) + " m", " = " + NF::scientific(d, 4) + " m",
@@ -360,7 +401,8 @@ ModelReport grating(const GratingInput& in, const ReportContext& ctx) {
     rep.notices = {interpretation("The zero order is undeviated. Order angles: " + angles + "; the next order has no real angle."), guard(guardText)};
     rep.headline = "θ" + std::string(m > 0 ? "₊" : "") + sub(std::abs(m)) + " = " + a.resultValue;
     rep.retained = retained({"N = " + num(in.linesPerCm) + " lines/cm · λ = " + NF::fixed(in.lambdaNm, 1) + " nm", "m = " + std::to_string(m) + " · M = " + num(in.slits)}, "RETAINED ORDER ANGLE", a.resultValue);
-    rep.parameters = {{"N", num(in.linesPerCm) + " lines/cm"}, {"λ", num(in.lambdaNm) + " nm"}, {"m", std::to_string(m)}, {"M", num(in.slits)}, {"θᵢ", num(in.incidenceDeg) + " °"}};
+    rep.parameters = {{"N", num(in.linesPerCm) + " lines/cm"}, {"λ", num(in.lambdaNm) + " nm"}, {"m", std::to_string(m)}, {"M", num(in.slits)},
+                      {"θᵢ", num(in.incidenceDeg) + " °"}, {"mode", "transmission"}};
 
     ChartData& c = out.chart;
     c.xLabel = "θ (degrees)"; c.yLabel = "I / Imax";
@@ -398,6 +440,37 @@ ModelReport singleSlit(const SingleSlitInput& in, const ReportContext& ctx) {
 
     ModelReport out;
     Report& rep = out.report;
+    if (in.geometry) {
+        // Second tab: the screen itself — where each minimum lands, not the intensity envelope.
+        auto yAt = [&](int k) { return in.screenM * std::tan(std::asin(std::min(1.0, k * lam / a))); };
+        const double y1 = yAt(1), y2 = yAt(2), y3 = yAt(3);
+        LcdRegister r1;
+        r1.title = "MINIMA ON THE SCREEN";
+        r1.lines = {"yₘ = L tan θₘ,  sin θₘ = mλ/a",
+                    "y₁ = ±" + fx(y1 * 1e3) + " mm", "y₂ = ±" + fx(y2 * 1e3) + " mm", "y₃ = ±" + fx(y3 * 1e3) + " mm"};
+        r1.resultLabel = "SCREEN POSITION · y₁";
+        r1.resultValue = fx(y1 * 1e3) + " mm";
+        LcdRegister r2;
+        r2.title = "CENTRAL LOBE / SIDE LOBE";
+        r2.lines = {"w = 2L tan θ₁ = " + fx(w * 1e3) + " mm", "w = 2 y₁", "the first side maximum sits at 1.43 θ₁"};
+        r2.resultLabel = "FIRST SIDE-MAXIMUM POSITION";
+        r2.resultValue = fx(1.43 * y1 * 1e3) + " mm";
+        rep.registers = {r1, r2};
+        rep.notices = {interpretation("Dark fringes are almost evenly spaced on the screen: y₁ = " + fx(y1 * 1e3) + " mm, y₂ − y₁ = " + fx((y2 - y1) * 1e3) + " mm. The central lobe is twice as wide as a side lobe, and the side maxima sit at 1.43 θ₁, 2.46 θ₁, …"),
+                       guard(guardText)};
+        rep.headline = "y₁ = ±" + fx(y1 * 1e3) + " mm";
+        rep.retained = retained({"a = " + NF::fixed(in.widthMm, 4) + " mm · λ = " + NF::fixed(in.lambdaNm, 1) + " nm",
+                                 "L = " + NF::fixed(in.screenM, 4) + " m"}, "RETAINED FIRST MINIMUM POSITION", r1.resultValue);
+        rep.parameters = {{"a", num(in.widthMm) + " mm"}, {"λ", num(in.lambdaNm) + " nm"}, {"L", num(in.screenM) + " m"}, {"mode", "geometry"}};
+
+        ChartData& c = out.chart;
+        c.xLabel = "m (order)"; c.yLabel = "yₘ (mm)";
+        c.xMin = 0; c.xMax = 5; c.yMin = 0; c.yMax = yAt(5) * 1e3; c.xTicks = 5; c.yTicks = 2; c.xDecimals = 0; c.yDecimals = 1;
+        for (int k = 0; k <= 5; ++k) c.curve.push_back({double(k), k == 0 ? 0.0 : yAt(k) * 1e3});
+        c.marker = {{1.0, y1 * 1e3}};
+        c.legend = "yₘ vs order · yₘ ≈ m y₁   ● first minimum";
+        return out;
+    }
     LcdRegister r1;
     r1.title = "FIRST MINIMUM / DEG";
     r1.lines = {"a sin θ₁ = λ", "sin θ₁ = " + NF::scientificCompact(lam) + " / " + NF::scientificCompact(a), "θ₁ = asin(" + NF::general(s1, 6) + ")"};
@@ -412,7 +485,7 @@ ModelReport singleSlit(const SingleSlitInput& in, const ReportContext& ctx) {
     rep.notices = {interpretation("The central lobe spans the first minima at ±" + fx(w * 1e3 / 2) + " mm. Side lobes diminish; the first side maximum is only about 4.7% of I₀."), guard(guardText)};
     rep.headline = "θ₁ = " + fx(theta) + "°";
     rep.retained = retained({"a = " + NF::fixed(in.widthMm, 4) + " mm · λ = " + NF::fixed(in.lambdaNm, 1) + " nm", "L = " + NF::fixed(in.screenM, 4) + " m"}, "RETAINED FIRST DARK ANGLE", r1.resultValue);
-    rep.parameters = {{"a", num(in.widthMm) + " mm"}, {"λ", num(in.lambdaNm) + " nm"}, {"L", num(in.screenM) + " m"}};
+    rep.parameters = {{"a", num(in.widthMm) + " mm"}, {"λ", num(in.lambdaNm) + " nm"}, {"L", num(in.screenM) + " m"}, {"mode", "intensity"}};
 
     ChartData& c = out.chart;
     c.xLabel = "θ (degrees)"; c.yLabel = "I / I₀";
@@ -447,6 +520,58 @@ ModelReport polarization(const PolarizationInput& in, const ReportContext& ctx) 
 
     ModelReport out;
     Report& rep = out.report;
+    if (in.brewster) {
+        // Second tab: the interface at Brewster, with Fresnel reflectances instead of Malus' law.
+        auto fresnel = [&](double th, double& rs, double& rp) {           // unpolarized light, n₁ → n₂
+            const double s2 = (in.n1 / in.n2) * std::sin(th);
+            const double ct = std::sqrt(std::max(0.0, 1 - s2 * s2));
+            const double c = std::cos(th);
+            const double as = (in.n1 * c - in.n2 * ct) / (in.n1 * c + in.n2 * ct);
+            const double ap = (in.n2 * c - in.n1 * ct) / (in.n2 * c + in.n1 * ct);
+            rs = as * as;
+            rp = ap * ap;
+        };
+        const double thB = std::atan(in.n2 / in.n1);
+        const double thR = std::numbers::pi / 2 - thB;
+        double rsB = 0, rpB = 0;
+        fresnel(thB, rsB, rpB);
+        const double r0 = std::pow((in.n1 - in.n2) / (in.n1 + in.n2), 2);
+        LcdRegister a;
+        a.title = std::string("BREWSTER / ") + medium(in.n1) + " → " + medium(in.n2);
+        a.lines = {"tan θB = n₂ / n₁ = " + NF::fixed(in.n2, 4) + " / " + NF::fixed(in.n1, 4),
+                   "θB = atan(" + NF::fixed(in.n2 / in.n1, 6) + ") = " + fx(brewster) + "°",
+                   "θr = 90° − θB = " + fx(thR / kDeg) + "°",
+                   "reflected and refracted rays are perpendicular"};
+        a.resultLabel = "INCIDENCE FROM NORMAL";
+        a.resultValue = fx(brewster) + "°";
+        LcdRegister b;
+        b.title = "FRESNEL AT θB";
+        b.lines = {"R_p = " + fx(rpB) + "   (p-polarized, no reflection)",
+                   "R_s = " + fx(rsB) + "   (s-polarized)",
+                   "R_unpolarized = (R_s + R_p)/2 = " + fx((rsB + rpB) / 2),
+                   "at normal incidence R = " + fx(r0)};
+        b.resultLabel = "s-POLARIZED REFLECTANCE · Rs";
+        b.resultValue = fx(rsB);
+        rep.registers = {a, b};
+        rep.notices = {interpretation("At θB the reflected beam is purely s-polarized: R_p falls to " + fx(rpB) + " while R_s stays at " + fx(rsB) + ", so " + NF::general((rsB + rpB) / 2 * 100, 3) + "% of an unpolarized beam is reflected. The refracted ray leaves at 90° − θB = " + fx(thR / kDeg) + "°."),
+                       guard(guardText)};
+        rep.headline = "θB = " + fx(brewster) + "° · R_p = " + fx(rpB);
+        rep.retained = retained({"n₁ = " + num(in.n1) + " · n₂ = " + num(in.n2), "Iᵢₙ = " + NF::fixed(in.incidentIntensity, 2) + " W/m²"},
+                                "RETAINED BREWSTER ANGLE", a.resultValue);
+        rep.parameters = {{"n₁", num(in.n1)}, {"n₂", num(in.n2)}, {"Iᵢₙ", num(in.incidentIntensity) + " W/m²"}, {"mode", "brewster"}};
+
+        ChartData& c = out.chart;
+        c.xLabel = "θ (degrees)"; c.yLabel = "R_p";
+        c.xMin = 0; c.xMax = 90; c.yMin = 0; c.yMax = 1; c.xTicks = 3; c.yTicks = 2; c.xDecimals = 0; c.yDecimals = 1;
+        for (int k = 0; k <= 180; ++k) {
+            double rs = 0, rp = 0;
+            fresnel(k * 0.5 * kDeg, rs, rp);
+            c.curve.push_back({k * 0.5, rp});
+        }
+        c.marker = {{brewster, rpB}};
+        c.legend = "R_p(θ) reaches 0 at θB = " + fx(brewster) + "°   ● Brewster";
+        return out;
+    }
     LcdRegister a;
     a.title = "MALUS / DEG";
     a.lines = {in.unpolarized ? "I₀ = Iᵢₙ / 2 = " + num(i0) + " W/m²" : "I₀ = Iᵢₙ = " + num(i0) + " W/m²", "I = I₀ cos²θ", "  = " + num(i0) + " × cos²(" + num(in.angleDeg) + "°)", "  = " + num(i0) + " × " + fx(c2)};
@@ -462,7 +587,8 @@ ModelReport polarization(const PolarizationInput& in, const ReportContext& ctx) 
     rep.notices = {interpretation("The analyzer passes " + NF::general(passed, 4) + "% of I₀, or " + NF::general(ofOriginal, 4) + "% of the original beam. At θB the reflected beam is purely s-polarized for an ideal dielectric."), guard(guardText)};
     rep.headline = "I = " + fx(out2) + " W/m²";
     rep.retained = retained({"Iᵢₙ = " + NF::fixed(in.incidentIntensity, 2) + " W/m² · θ = " + NF::fixed(in.angleDeg, 2) + "°"}, "RETAINED ANALYZER OUTPUT", a.resultValue);
-    rep.parameters = {{"Iᵢₙ", num(in.incidentIntensity) + " W/m²"}, {"θ", num(in.angleDeg) + " °"}, {"n₁", num(in.n1)}, {"n₂", num(in.n2)}, {"Beam", in.unpolarized ? "Unpolarized" : "Polarized"}};
+    rep.parameters = {{"Iᵢₙ", num(in.incidentIntensity) + " W/m²"}, {"θ", num(in.angleDeg) + " °"}, {"n₁", num(in.n1)}, {"n₂", num(in.n2)},
+                      {"Beam", in.unpolarized ? "Unpolarized" : "Polarized"}, {"mode", "malus"}};
 
     ChartData& c = out.chart;
     c.xLabel = "θ (degrees)"; c.yLabel = "I (W/m²)";

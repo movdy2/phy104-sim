@@ -600,6 +600,26 @@ int main() {
         ThinFilmInput tb; tb.transmission = true; tb.thicknessNm = 200;                                     // 2nt = λ: bright
         CHECK(near(std::stod(WE::thinFilm(tb).report.registers[0].resultValue), 1.0, 1e-9));
         CHECK(near(WE::thinFilm(tb).chart.marker[0].second, 1.0, 1e-9));
+        // --- second mode tabs: grating orders, single-slit geometry, Brewster reflectance
+        GratingInput gl; gl.orderList = true;
+        auto glr = WE::grating(gl);
+        CHECK(glr.report.registers[0].title == "ORDER TABLE" && glr.report.registers[0].resultValue == "7 orders");
+        CHECK(has(glr.report.registers[0], "±2 at ±36.87°") && glr.report.registers[1].resultValue == "3.3333");
+        CHECK(glr.chart.marker.size() == 7 && glr.report.headline == "7 orders inside ±64.16°");
+        CHECK(g.report.parameters.back().second == "transmission");
+        SingleSlitInput sg; sg.geometry = true;
+        auto sgr = WE::singleSlit(sg);
+        CHECK(sgr.report.registers[0].title == "MINIMA ON THE SCREEN" && sgr.report.registers[0].resultValue == "5.0001 mm");
+        CHECK(has(sgr.report.registers[0], "y₂ = ±10.0005 mm") && sgr.report.registers[1].resultValue == "7.1501 mm");
+        CHECK(near(sgr.chart.marker[0].second, 5.0001, 1e-4) && sgr.chart.curve.size() == 6);
+        CHECK(s.report.parameters.back().second == "intensity");
+        PolarizationInput pb; pb.brewster = true;
+        auto pbr = WE::polarization(pb);
+        CHECK(pbr.report.registers[0].resultValue == "56.3099°" && pbr.report.registers[1].resultValue == "0.1479");
+        CHECK(has(pbr.report.registers[1], "R_p = 0.0000   (p-polarized, no reflection)"));
+        CHECK(near(pbr.chart.marker[0].second, 0.0, 1e-12) && near(pbr.chart.marker[0].first, 56.3099, 1e-3));
+        CHECK(near(pbr.chart.curve.front().second, 0.04, 1e-9) && near(pbr.chart.curve.back().second, 1.0, 1e-6));   // normal incidence → grazing
+        CHECK(p.report.parameters.back().second == "malus");
         // every screen: the paused report keeps the last valid result
         ReportContext ctx{&nr, "RUN 007"};
         NewtonInput zero; zero.radiusM = 0;
