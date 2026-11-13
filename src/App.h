@@ -11,6 +11,7 @@ class AppContext;
 class ConstantsPage;
 class DashboardPage;
 class DiagramsPage;
+class DrawSpacePage;
 class EquationLabPage;
 class ExportPage;
 class GratingPage;
@@ -60,6 +61,7 @@ public:
     EquationLabPage* equationLab = nullptr;
     NotesExportPage* notes = nullptr;
     ExportPage* exportPage = nullptr;
+    DrawSpacePage* drawSpace = nullptr;
     SolverPage* solver = nullptr;
     MathSolverPage* calculator = nullptr;
     ConstantsPage* constants = nullptr;

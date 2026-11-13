@@ -81,6 +81,9 @@ formula/variable, 25 random data sets), Qt UI, five experiments, notes, theme.
   page shows a 7-row sample), the workbook/CSV settings on the right, and a **recent export** card that remembers the last
   file in the `.phy` session (session format version 4; version 3 files still load). The Notes page keeps its quick export
   and both write the same record. Dashboard "Export data" and the Export header of the six new screens open it.
+* **Draw Space** page: whiteboard for optics sketches (pen, line, ray, rectangle/ellipse, lens, mirror, prism, interface,
+  axis, normal, text and LaTeX labels), select/move, Delete, undo/redo, 8 px grid snap, six colours, three widths, PNG (2x)
+  and SVG export. The sketch autosaves into the `.phy` session and is restored on start (`Drawing` engine unchanged).
 * Fixed: formulas typed half-way (e.g. \frac{1}) crashed the LaTeX renderer.
 * Fixed: the notes preview showed no formulas. Qt's Markdown importer silently drops an image with an empty alt text
   (`![](…)`), so every generated formula image is now `![formula](latex://N)`; an image the student writes without alt

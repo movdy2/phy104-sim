@@ -9,6 +9,7 @@
 #include "ui/ExperimentPages.h"
 #include "ui/MainWindow.h"
 #include "ui/EquationLabPage.h"
+#include "ui/DrawSpacePage.h"
 #include "ui/ExportPage.h"
 #include "ui/MarkdownHighlighter.h"
 #include "ui/ModelExperimentPages.h"
@@ -79,6 +80,13 @@ QStringList allLabelTexts(QWidget* root) {
     QStringList out;
     for (auto* l : root->findChildren<QLabel*>()) if (l->isVisibleTo(root->window())) out << l->text();
     return out;
+}
+
+/// Press, move in four steps, release: what a mouse drag of a sketch shape does.
+void dragOnCanvas(DrawingCanvas* canvas, QPoint from, QPoint to) {
+    QTest::mousePress(canvas, Qt::LeftButton, Qt::NoModifier, from);
+    for (int i = 1; i <= 4; ++i) QTest::mouseMove(canvas, from + (to - from) * i / 4);
+    QTest::mouseRelease(canvas, Qt::LeftButton, Qt::NoModifier, to);
 }
 
 QString bigValue(QWidget* page, int index = 0) {
@@ -735,6 +743,90 @@ private slots:
         QStringList texts;
         for (auto* l : second.exportPage->findChildren<QLabel*>()) texts << l->text();
         QVERIFY2(texts.contains(QFileInfo(path).fileName()), "the recent-export card forgot the file");
+    }
+
+    // ------------------------------------------------------------------ Draw Space
+    DrawSpacePage* drawSpace() { goTo(m_app->drawSpace); return m_app->drawSpace; }
+    void drawSpaceDrawsShapesAndUndoes() {
+        auto* page = drawSpace();
+        page->canvas()->clear();
+        QCOMPARE(static_cast<int>(page->canvas()->drawing().shapes.size()), 0);
+
+        page->setTool(DrawingCanvas::Pen);
+        dragOnCanvas(page->canvas(), QPoint(40, 40), QPoint(160, 120));
+        QCOMPARE(static_cast<int>(page->canvas()->drawing().shapes.size()), 1);
+        QCOMPARE(page->canvas()->drawing().shapes[0].type, ShapeType::Pen);
+        QVERIFY(page->canvas()->drawing().shapes[0].points.size() > 2);          // a real stroke, not a dot
+
+        page->setTool(DrawingCanvas::Lens);
+        dragOnCanvas(page->canvas(), QPoint(224, 56), QPoint(224, 200));
+        QCOMPARE(static_cast<int>(page->canvas()->drawing().shapes.size()), 2);
+        QCOMPARE(page->canvas()->drawing().shapes[1].type, ShapeType::Lens);
+
+        click(findButton(page, "Undo"));
+        QCOMPARE(static_cast<int>(page->canvas()->drawing().shapes.size()), 1);
+        click(findButton(page, "Redo"));
+        QCOMPARE(static_cast<int>(page->canvas()->drawing().shapes.size()), 2);
+
+        auto* edit = page->findChild<QLineEdit*>();                              // the label field
+        QVERIFY(edit);
+        edit->setText("\\theta_c");
+        page->setTool(DrawingCanvas::Equation);
+        QTest::mouseClick(page->canvas(), Qt::LeftButton, Qt::NoModifier, QPoint(200, 240));
+        QCOMPARE(static_cast<int>(page->canvas()->drawing().shapes.size()), 3);
+        QCOMPARE(page->canvas()->drawing().shapes[2].type, ShapeType::Equation);
+        QCOMPARE(QString::fromStdString(page->canvas()->drawing().shapes[2].text), QString("\\theta_c"));
+
+        click(findButton(page, "Clear sketch"));
+        QCOMPARE(static_cast<int>(page->canvas()->drawing().shapes.size()), 0);
+        click(findButton(page, "Undo"));                                           // the clear is undoable
+        QCOMPARE(static_cast<int>(page->canvas()->drawing().shapes.size()), 3);
+    }
+    void drawSpaceSelectsAndMovesAShape() {
+        auto* page = drawSpace();
+        page->canvas()->setSnapEnabled(false);                                     // exact pixels for the comparison
+        page->canvas()->clear();
+        page->setTool(DrawingCanvas::Rect);
+        dragOnCanvas(page->canvas(), QPoint(80, 80), QPoint(160, 160));
+        QCOMPARE(static_cast<int>(page->canvas()->drawing().shapes.size()), 1);
+
+        page->setTool(DrawingCanvas::Select);
+        dragOnCanvas(page->canvas(), QPoint(120, 80), QPoint(140, 100));           // grab the top edge and move it
+        const Rect box = DrawingGeometry::bounds(page->canvas()->drawing().shapes[0]);
+        QCOMPARE(box.left, 100.0);
+        QCOMPARE(box.top, 100.0);
+
+        QTest::keyClick(page->canvas(), Qt::Key_Delete);                           // Delete removes the selection
+        QCOMPARE(static_cast<int>(page->canvas()->drawing().shapes.size()), 0);
+        click(findButton(page, "Undo"));
+        QCOMPARE(static_cast<int>(page->canvas()->drawing().shapes.size()), 1);
+        page->canvas()->setSnapEnabled(true);
+    }
+    void drawSpaceSavesTheSketchInTheSession() {
+        auto* page = drawSpace();
+        page->canvas()->clear();
+        page->setTool(DrawingCanvas::Line);
+        dragOnCanvas(page->canvas(), QPoint(64, 64), QPoint(192, 64));
+        QCOMPARE(static_cast<int>(m_app->context().log.drawing().shapes.size()), 1);   // autosaved
+        QVERIFY(QFile::exists(m_tmp.path() + "/session.phy"));
+
+        App second(App::Paths{DATA_DIR, m_tmp.path() + "/session.phy"});
+        QCOMPARE(static_cast<int>(second.context().log.drawing().shapes.size()), 1);
+        QCOMPARE(static_cast<int>(second.drawSpace->canvas()->drawing().shapes.size()), 1);
+        QCOMPARE(second.drawSpace->canvas()->drawing().shapes[0].type, ShapeType::Line);
+    }
+    void drawSpaceExportsPngAndSvg() {
+        auto* page = drawSpace();
+        if (page->canvas()->drawing().shapes.empty()) {
+            page->setTool(DrawingCanvas::Ray);
+            dragOnCanvas(page->canvas(), QPoint(64, 160), QPoint(240, 160));
+        }
+        const QString dir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/PHY104";
+        QDir(dir).removeRecursively();
+        QVERIFY(page->exportPngTo(dir + "/sketch.png"));
+        QVERIFY(QFileInfo(dir + "/sketch.png").size() > 0);
+        QVERIFY(page->exportSvgTo(dir + "/sketch.svg"));
+        QVERIFY(QFileInfo(dir + "/sketch.svg").size() > 100);
     }
 };
 

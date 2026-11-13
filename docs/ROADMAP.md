@@ -10,24 +10,25 @@
 * Formula Solver (42 formulas, search, chapters, paging, LaTeX), constants, SVG optical setups.
 * **Export (Excel/CSV)** page: every data series with its description, the full table (no 7-row sample), workbook/CSV
   settings, and a "recent export" card remembered in the `.phy` session.
+* **Draw Space** (sketchpad): pen, line, ray, rectangle/ellipse, lens, mirror, prism, interface, axis, normal, text and
+  LaTeX labels; select/move, Delete, undo/redo, grid snap, six colours, three widths, PNG (2x) and SVG export; the sketch
+  autosaves into the `.phy` session.
 * **Markdown Study Workspace** (Notes & Formula Jotter): Gruvbox highlighter (H1-H4, formulas, bullets), snippet toolbar,
   problem template, Edit/Split/Preview, autosave into `Snapshot.notesContent` and the `.phy` file.
 * Session file (`.phy`): runs, notes, snapshots (parameters + calculator registers), equations and drawing storage.
 * Tests: core numbers of every Figma frame, data round trips, UI (colours, fonts, highlighter), **30 click-through tests**.
 
 ## Built in the core, UI still missing
-* **Draw Space** - whiteboard for optics sketches (pen, line, ray, lens, mirror, prism, interface, text/LaTeX labels,
-  select/move, undo/redo, PNG/SVG export). `Drawing` (shapes, hit-testing, undo/redo) and its persistence are done and tested.
-* Equation Lab is built (`EquationLabPage`): LaTeX or plain text, live typeset preview, solve for any variable.
+* Nothing right now: `EquationLabPage` (LaTeX lab) and `DrawSpacePage` (sketchpad) are both built on top of their
+  tested engines (`EquationText`/`EquationSolver`, `Drawing`/`DrawingHistory`).
 
 ## Should add next (priority order)
-1. Draw Space page (above) - it makes the app a full write-and-draw workspace.
-2. Print / PDF report: notes + registers + diagrams + chart images in one document.
-3. Experiment extras: thick lens, spherical aberration, single-slit diffraction envelope, thin-film colours,
+1. Print / PDF report: notes + registers + diagrams + chart images in one document.
+2. Experiment extras: thick lens, spherical aberration, single-slit diffraction envelope, thin-film colours,
    second tabs (thin film, Michelson) - the formulas already exist in `formulas.json`.
-4. Compare runs: overlay two saved runs on one chart; edit/delete saved runs from the dashboard.
-5. Notes: note templates per chapter, search, export to .md/.pdf (LaTeX formula images in the preview are done).
-6. Keyboard shortcuts (Ctrl+Enter calculate, Ctrl+S save, Ctrl+1..9 pages), undo for field edits, drag-and-drop of data files.
-7. Units: unit dropdown per field (nm/µm/mm/cm/m), significant-figures setting, copy-as-LaTeX for every register.
-8. Accessibility and polish: high-contrast theme, font-size setting, window-size tests (1080x700), translations (Arabic UI).
-9. Packaging: Windows installer (windeployqt + NSIS), Linux AppImage, GitHub Actions build matrix.
+3. Compare runs: overlay two saved runs on one chart; edit/delete saved runs from the dashboard.
+4. Notes: note templates per chapter, search, export to .md/.pdf (LaTeX formula images in the preview are done).
+5. Keyboard shortcuts (Ctrl+Enter calculate, Ctrl+S save, Ctrl+1..9 pages), undo for field edits, drag-and-drop of data files.
+6. Units: unit dropdown per field (nm/µm/mm/cm/m), significant-figures setting, copy-as-LaTeX for every register.
+7. Accessibility and polish: high-contrast theme, font-size setting, window-size tests (1080x700), translations (Arabic UI).
+8. Packaging: Windows installer (windeployqt + NSIS), Linux AppImage, GitHub Actions build matrix.

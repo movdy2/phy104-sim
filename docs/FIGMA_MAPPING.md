@@ -34,8 +34,8 @@ Wave Interference, Formulas Notes & Export, Component Sheet).
 
 ## Where the app goes beyond or differs from the design
 * **Light theme** (Gruvbox-light mapping) - the design is dark only. Toggle in the status bar.
-* **Tools section** in the sidebar (Formula Solver, Calculator, Constants, Optical Setups): features from the
-  project brief that have no Figma frame. They use the same tokens.
+* **Tools section** in the sidebar (Draw Space, Formula Solver, Calculator, Constants, Optical Setups,
+  Export): features from the project brief that have no own Figma frame. They use the same tokens.
 * **Error red** is the design's `#fb4934` (earlier brief: `#cc241d`); physics notices use the design's amber card.
 * **Real functionality behind the frames**: Calculate & Simulate saves runs, the session autosaves and restores,
   export writes real files. The "21 saved calculations" in the frame is demo data; a fresh session starts at 00.

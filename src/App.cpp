@@ -10,6 +10,7 @@
 #include "ui/DashboardPage.h"
 #include "ui/DiagramsPage.h"
 #include "ui/EquationLabPage.h"
+#include "ui/DrawSpacePage.h"
 #include "ui/ExportPage.h"
 #include "ui/ExperimentPages.h"
 #include "ui/ModelExperimentPages.h"
@@ -69,6 +70,8 @@ App::App(const Paths& paths) {
     const int notesIndex = m_window->addPage("Notes", "notebook-pen", notes);                // 11
     equationLab = new EquationLabPage(m_context.get(), keyboardRepo.scientific());
     m_window->addPage("Equation Lab", "square-function", equationLab);                      // 12
+    drawSpace = new DrawSpacePage(m_context.get());
+    m_window->addPage("Draw Space", "pen-tool", drawSpace, 1);
     solver = new SolverPage(m_engine, m_manager, m_solver);
     m_window->addPage("Formula Solver", "sigma", solver, 1);
     calculator = new MathSolverPage;
