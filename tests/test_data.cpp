@@ -65,13 +65,48 @@ int main() {
         {
             const QString path = QDir::tempPath() + "/phy104_study_hub_notes_test.json";
             QFile::remove(path);
-            QMap<QString, QString> notes{{"refraction", "Snell's law notes"}, {"prisms", "δ = i₁ + i₂ − A"}};
+            QMap<QString, StudyHubNote> notes{
+                {"refraction", {"Snell's law notes", "Angles are measured from the normal."}},
+                {"prisms", {"δ = i₁ + i₂ − A", "Minimum deviation gives the refractive index."}}
+            };
             QString error;
             auto expectNotes = [&](bool ok, const std::string& what) {
                 if (!ok) { ++failures; std::cerr << "FAIL: " << what << "\n"; }
             };
-            expectNotes(saveStudyHubNotes(path, notes, &error) && error.isEmpty(), "Study Hub notes JSON saves atomically");
-            expectNotes(loadStudyHubNotes(path) == notes, "Study Hub chapter notes round-trip through JSON");
+            expectNotes(saveStudyHubNotes(path, notes, &error) && error.isEmpty(), "Study Hub notes and summaries save atomically");
+            QMap<QString, StudyHubNote> loaded;
+            expectNotes(loadStudyHubNotes(path, loaded, &error) && loaded == notes,
+                        "Study Hub note and summary round-trip through JSON");
+
+            // Existing version-1 files stored only a string for each chapter; keep those notes intact.
+            const QJsonObject legacyRoot{{"format", "phy104-study-hub-notes"}, {"version", 1},
+                                         {"notes", QJsonObject{{"refraction", "legacy note"}}}};
+            QFile legacy(path);
+            expectNotes(legacy.open(QIODevice::WriteOnly | QIODevice::Truncate), "legacy Study Hub notes file opens");
+            if (legacy.isOpen()) {
+                legacy.write(QJsonDocument(legacyRoot).toJson());
+                legacy.close();
+                QMap<QString, StudyHubNote> migrated;
+                expectNotes(loadStudyHubNotes(path, migrated, &error) &&
+                            migrated.value("refraction").text == "legacy note" && migrated.value("refraction").summary.empty(),
+                            "version-1 Study Hub notes load with an empty summary");
+            }
+
+            const QByteArray damagedJson("{not valid JSON");
+            QFile damaged(path);
+            expectNotes(damaged.open(QIODevice::WriteOnly | QIODevice::Truncate), "damaged notes fixture opens");
+            if (damaged.isOpen()) {
+                damaged.write(damagedJson);
+                damaged.close();
+                QMap<QString, StudyHubNote> preserved{{"keep", {"retain", "existing in-memory data"}}};
+                const auto beforeLoad = preserved;
+                expectNotes(!loadStudyHubNotes(path, preserved, &error) && preserved == beforeLoad && !error.isEmpty(),
+                            "malformed notes JSON is reported without changing loaded notes");
+                expectNotes(!saveStudyHubNotes(path, notes, &error), "saving refuses to overwrite malformed notes JSON");
+                const bool intact = damaged.open(QIODevice::ReadOnly) && damaged.readAll() == damagedJson;
+                damaged.close();
+                expectNotes(intact, "malformed notes JSON remains intact after a rejected save");
+            }
             QFile::remove(path);
         }
 

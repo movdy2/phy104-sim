@@ -6,9 +6,11 @@
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
-#include <QSaveFile>
 #include <QJsonObject>
+#include <QJsonParseError>
+#include <QSaveFile>
 #include <cmath>
+#include <utility>
 
 namespace phy104 {
 namespace {
@@ -136,24 +138,86 @@ std::vector<StudyTopic> JsonStudyHubRepository::loadAll() const {
     return topics;
 }
 
-QMap<QString, QString> loadStudyHubNotes(const QString& path) {
-    QMap<QString, QString> notes;
+bool loadStudyHubNotes(const QString& path, QMap<QString, StudyHubNote>& notes, QString* error) {
+    const QFileInfo info(path);
+    if (!info.exists()) {
+        notes.clear();
+        if (error) error->clear();
+        return true;
+    }
+
     QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) return notes;
-    const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-    if (!doc.isObject()) return notes;
+    if (!file.open(QIODevice::ReadOnly)) {
+        if (error) *error = file.errorString();
+        return false;
+    }
+    QJsonParseError parseError;
+    const QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &parseError);
+    if (parseError.error != QJsonParseError::NoError) {
+        if (error) *error = "Could not parse Study Hub notes JSON: " + parseError.errorString();
+        return false;
+    }
+    if (!doc.isObject()) {
+        if (error) *error = "Study Hub notes file must contain a JSON object.";
+        return false;
+    }
     const QJsonObject root = doc.object();
-    if (root.value("format").toString() != "phy104-study-hub-notes") return notes;
+    if (root.value("format").toString() != "phy104-study-hub-notes") {
+        if (error) *error = "Study Hub notes file has an unknown format.";
+        return false;
+    }
+    const QJsonValue versionValue = root.value("version");
+    if (!versionValue.isUndefined() && !versionValue.isDouble()) {
+        if (error) *error = "Study Hub notes version must be a number.";
+        return false;
+    }
+    const double versionNumber = versionValue.isUndefined() ? 1.0 : versionValue.toDouble();
+    if (versionNumber != 1.0 && versionNumber != 2.0) {
+        if (error) *error = "Unsupported Study Hub notes version: " + QString::number(versionNumber);
+        return false;
+    }
+    const int version = static_cast<int>(versionNumber);
+    if (!root.value("notes").isObject()) {
+        if (error) *error = "Study Hub notes file is missing its notes object.";
+        return false;
+    }
+
+    QMap<QString, StudyHubNote> loaded;
     const QJsonObject stored = root.value("notes").toObject();
-    for (auto it = stored.begin(); it != stored.end(); ++it)
-        if (it.value().isString()) notes.insert(it.key(), it.value().toString());
-    return notes;
+    for (auto it = stored.begin(); it != stored.end(); ++it) {
+        StudyHubNote note;
+        if (version == 1 && it.value().isString()) {  // version 1: a chapter stored only its note text
+            note.text = it.value().toString().toStdString();
+        } else if (version == 2 && it.value().isObject()) { // version 2: note text and summary are separate
+            const QJsonObject entry = it.value().toObject();
+            if ((entry.contains("text") && !entry.value("text").isString()) ||
+                (entry.contains("summary") && !entry.value("summary").isString())) {
+                if (error) *error = "A Study Hub note has an invalid text or summary field.";
+                return false;
+            }
+            note.text = entry.value("text").toString().toStdString();
+            note.summary = entry.value("summary").toString().toStdString();
+        } else {
+            if (error) *error = "A Study Hub note entry does not match its declared version.";
+            return false;
+        }
+        if (!note.text.empty() || !note.summary.empty()) loaded.insert(it.key(), std::move(note));
+    }
+    notes = std::move(loaded);
+    if (error) error->clear();
+    return true;
 }
 
-bool saveStudyHubNotes(const QString& path, const QMap<QString, QString>& notes, QString* error) {
+bool saveStudyHubNotes(const QString& path, const QMap<QString, StudyHubNote>& notes, QString* error) {
+    QMap<QString, StudyHubNote> previous;
+    if (!loadStudyHubNotes(path, previous, error)) return false;
     QJsonObject stored;
-    for (auto it = notes.begin(); it != notes.end(); ++it) stored.insert(it.key(), it.value());
-    const QJsonObject root{{"format", "phy104-study-hub-notes"}, {"version", 1}, {"notes", stored}};
+    for (auto it = notes.begin(); it != notes.end(); ++it) {
+        const StudyHubNote& note = it.value();
+        stored.insert(it.key(), QJsonObject{{"text", QString::fromStdString(note.text)},
+                                            {"summary", QString::fromStdString(note.summary)}});
+    }
+    const QJsonObject root{{"format", "phy104-study-hub-notes"}, {"version", 2}, {"notes", stored}};
     const QByteArray bytes = QJsonDocument(root).toJson(QJsonDocument::Indented);
     QDir().mkpath(QFileInfo(path).absolutePath());
     QSaveFile file(path);

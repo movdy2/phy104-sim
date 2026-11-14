@@ -10,19 +10,87 @@
 #include <QComboBox>
 #include <QFileInfo>
 #include <QFrame>
+#include <QHash>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
 #include <QListWidget>
 #include <QPlainTextEdit>
+#include <QPushButton>
+#include <QRegularExpression>
 #include <QScrollArea>
+#include <QSet>
+#include <QSplitter>
+#include <QStringList>
 #include <QStackedWidget>
 #include <QTableWidget>
 #include <QTimer>
+#include <QVector>
 #include <QVBoxLayout>
+#include <algorithm>
+#include <cmath>
 #include <utility>
 
 namespace phy104 {
+namespace {
+
+/// Build a compact local, extractive draft from the most informative sentences in a note.
+QString extractNoteSummary(const QString& source) {
+    const QStringList sentences = source.split(QRegularExpression(QStringLiteral("(?<=[.!?])\\s+|\\n+")), Qt::SkipEmptyParts);
+    if (sentences.isEmpty()) return {};
+
+    static const QSet<QString> stopWords = {
+        "a", "about", "also", "an", "and", "are", "as", "at", "be", "because", "but", "by", "can",
+        "does", "for", "from", "had", "has", "have", "in", "into", "is", "it", "its", "more", "most",
+        "not", "of", "on", "or", "our", "only", "so", "that", "the", "their", "then", "there", "these",
+        "this", "those", "to", "use", "used", "using", "was", "were", "when", "which", "while", "with",
+        "you", "your"
+    };
+    static const QRegularExpression wordPattern(QStringLiteral("[\\p{L}\\p{N}]{3,}"));
+    QHash<QString, int> frequency;
+    for (const QString& sentence : sentences) {
+        auto words = wordPattern.globalMatch(sentence.toLower());
+        while (words.hasNext()) {
+            const QString word = words.next().captured();
+            if (!stopWords.contains(word)) ++frequency[word];
+        }
+    }
+
+    struct ScoredSentence { qsizetype index; double score; };
+    QVector<ScoredSentence> ranked;
+    ranked.reserve(sentences.size());
+    for (qsizetype i = 0; i < sentences.size(); ++i) {
+        int contentWords = 0;
+        double score = 0.0;
+        auto words = wordPattern.globalMatch(sentences.at(i).toLower());
+        while (words.hasNext()) {
+            const QString word = words.next().captured();
+            const int count = frequency.value(word);
+            if (count > 0) {
+                ++contentWords;
+                score += 1.0 + std::log(static_cast<double>(count));
+            }
+        }
+        if (contentWords > 0) score /= std::sqrt(static_cast<double>(contentWords));
+        if (i == 0) score *= 1.05;                 // slight preference for an opening definition
+        ranked.push_back({i, score});
+    }
+    std::stable_sort(ranked.begin(), ranked.end(), [](const ScoredSentence& a, const ScoredSentence& b) {
+        return a.score > b.score;
+    });
+
+    const qsizetype sentenceCount = sentences.size();
+    const qsizetype wanted = std::min<qsizetype>(3, std::max<qsizetype>(1,
+        static_cast<qsizetype>(std::ceil(static_cast<double>(sentenceCount) * 0.28))));
+    QSet<qsizetype> selected;
+    for (qsizetype i = 0; i < wanted && i < ranked.size(); ++i) selected.insert(ranked[i].index);
+    QStringList summary;
+    for (qsizetype i = 0; i < sentenceCount; ++i)
+        if (selected.contains(i)) summary.push_back(sentences.at(i).trimmed());
+    return summary.join(" ");
+}
+
+} // namespace
 
 StudyHubPage::StudyHubPage(std::vector<StudyTopic> topics, AppContext* context,
                            DiagramsPage* opticalSetups, QString notesFilePath, QWidget* parent)
@@ -109,8 +177,8 @@ StudyHubPage::StudyHubPage(std::vector<StudyTopic> topics, AppContext* context,
     columns->addWidget(constantsColumn);
     m_sectionStack->addWidget(chaptersPage);
 
-    // ---------------------------------------------------------------- chapter notes: plain text persisted in a separate JSON file
-    auto* notesPanel = new Panel("Chapter notes", "JSON · AUTOSAVED");
+    // ---------------------------------------------------------------- per-chapter notes and editable summaries in a separate JSON file
+    auto* notesPanel = new Panel("Chapter notes", "JSON · NOTES + SUMMARIES · AUTOSAVED");
     m_noteChapter = new QComboBox;
     m_noteChapter->setObjectName("studyHubNoteChapter");
     for (const StudyTopic& topic : m_topics)
@@ -119,16 +187,44 @@ StudyHubPage::StudyHubPage(std::vector<StudyTopic> topics, AppContext* context,
     m_notesEditor->setObjectName("studyHubNoteEditor");
     m_notesEditor->setPlaceholderText("Write plain-text notes for the selected chapter…");
     m_notesEditor->setLineWrapMode(QPlainTextEdit::WidgetWidth);
+    m_noteSummaryEditor = new QPlainTextEdit;
+    m_noteSummaryEditor->setObjectName("studyHubNoteSummaryEditor");
+    m_noteSummaryEditor->setPlaceholderText("Write a short recap, or generate an extractive draft from your notes…");
+    m_noteSummaryEditor->setLineWrapMode(QPlainTextEdit::WidgetWidth);
+    m_summarizeNoteButton = new QPushButton("Generate summary");
+    m_summarizeNoteButton->setObjectName("studyHubSummarizeNote");
+    m_summarizeNoteButton->setToolTip("Create an editable extractive draft from your notes on this device; no network service is used.");
+    m_summarizeNoteButton->setEnabled(false);
+
+    auto* noteEditors = new QSplitter(Qt::Horizontal);
+    noteEditors->setObjectName("studyHubNoteSplit");
+    noteEditors->addWidget(labeled("Notes", m_notesEditor));
+    auto* summaryColumn = new QWidget;
+    auto* summaryLayout = new QVBoxLayout(summaryColumn);
+    summaryLayout->setContentsMargins(0, 0, 0, 0);
+    summaryLayout->setSpacing(8);
+    summaryLayout->addWidget(labeled("Summary", m_noteSummaryEditor), 1);
+    summaryLayout->addWidget(m_summarizeNoteButton, 0, Qt::AlignRight);
+    noteEditors->addWidget(summaryColumn);
+    noteEditors->setStretchFactor(0, 2);
+    noteEditors->setStretchFactor(1, 1);
+
     m_noteStatus = new QLabel;
     m_noteStatus->setObjectName("caption");
     m_noteStatus->setWordWrap(true);
     notesPanel->body()->setContentsMargins(12, 0, 12, 10);
     notesPanel->body()->addWidget(labeled("Chapter", m_noteChapter));
-    notesPanel->body()->addWidget(m_notesEditor, 1);
+    notesPanel->body()->addWidget(noteEditors, 1);
     notesPanel->body()->addWidget(m_noteStatus);
     m_sectionStack->addWidget(notesPanel);
 
-    m_studyNotes = loadStudyHubNotes(m_notesFilePath);
+    if (!loadStudyHubNotes(m_notesFilePath, m_studyNotes, &m_notesLoadError)) {
+        m_notesLoadFailed = true;
+        m_noteChapter->setEnabled(false);
+        m_notesEditor->setReadOnly(true);
+        m_noteSummaryEditor->setReadOnly(true);
+        m_summarizeNoteButton->setEnabled(false);
+    }
     m_noteSaveTimer = new QTimer(this);
     m_noteSaveTimer->setSingleShot(true);
     m_noteSaveTimer->setInterval(650);
@@ -137,12 +233,22 @@ StudyHubPage::StudyHubPage(std::vector<StudyTopic> topics, AppContext* context,
         flushStudyNotes();
         loadCurrentNote();
     });
-    connect(m_notesEditor, &QPlainTextEdit::textChanged, this, [this] {
-        if (m_loadingNote) return;
-        m_noteStatus->setText("Unsaved · writing to " + QFileInfo(m_notesFilePath).fileName());
+    const auto queueStudyNoteSave = [this] {
+        if (m_loadingNote || m_notesLoadFailed) return;
+        m_noteStatus->setText("Unsaved · notes and summary will be saved to " + QFileInfo(m_notesFilePath).fileName());
         m_noteSaveTimer->start();
+    };
+    connect(m_notesEditor, &QPlainTextEdit::textChanged, this, queueStudyNoteSave);
+    connect(m_noteSummaryEditor, &QPlainTextEdit::textChanged, this, queueStudyNoteSave);
+    connect(m_notesEditor, &QPlainTextEdit::textChanged, this, [this] {
+        m_summarizeNoteButton->setEnabled(!m_notesLoadFailed && !m_notesEditor->toPlainText().trimmed().isEmpty());
+    });
+    connect(m_summarizeNoteButton, &QPushButton::clicked, this, [this] {
+        m_noteSummaryEditor->setPlainText(extractNoteSummary(m_notesEditor->toPlainText()));
     });
     loadCurrentNote();
+    if (m_notesLoadFailed)
+        m_noteStatus->setText("Notes are read-only; the JSON file could not be loaded and was left unchanged. " + m_notesLoadError);
 
     // ---------------------------------------------------------------- full optical setup gallery
     m_sectionStack->addWidget(opticalSetups);
@@ -161,32 +267,33 @@ QString StudyHubPage::noteKey(const StudyTopic& topic) const {
 }
 
 void StudyHubPage::loadCurrentNote() {
-    if (!m_notesEditor) return;
+    if (!m_notesEditor || !m_noteSummaryEditor) return;
     const QString key = m_noteChapter ? m_noteChapter->currentData().toString() : QString();
+    const StudyHubNote note = m_studyNotes.value(key);
     m_loadingNote = true;
-    m_notesEditor->setPlainText(m_studyNotes.value(key));
+    m_notesEditor->setPlainText(QString::fromStdString(note.text));
+    m_noteSummaryEditor->setPlainText(QString::fromStdString(note.summary));
     m_loadedNoteKey = key;
     m_loadingNote = false;
     if (key.isEmpty()) m_noteStatus->setText("Select a chapter to write its notes.");
     else if (m_notesDirty) m_noteStatus->setText("Unsaved chapter changes · JSON save pending for " + QFileInfo(m_notesFilePath).fileName());
-    else m_noteStatus->setText("Plain text · autosaves to " + QFileInfo(m_notesFilePath).fileName());
+    else m_noteStatus->setText("Notes and summaries · autosave to " + QFileInfo(m_notesFilePath).fileName());
 }
 
 void StudyHubPage::saveCurrentNote() {
-    if (!m_notesEditor || m_loadedNoteKey.isEmpty()) return;
-    const QString text = m_notesEditor->toPlainText();
-    const bool unchanged = text.isEmpty() ? !m_studyNotes.contains(m_loadedNoteKey)
-                                          : m_studyNotes.value(m_loadedNoteKey) == text;
-    if (!unchanged) {
-        if (text.isEmpty()) m_studyNotes.remove(m_loadedNoteKey);
-        else m_studyNotes.insert(m_loadedNoteKey, text);
+    if (m_notesLoadFailed || !m_notesEditor || !m_noteSummaryEditor || m_loadedNoteKey.isEmpty()) return;
+    const StudyHubNote note{m_notesEditor->toPlainText().toStdString(), m_noteSummaryEditor->toPlainText().toStdString()};
+    if (note.text.empty() && note.summary.empty()) {
+        if (m_studyNotes.remove(m_loadedNoteKey) > 0) m_notesDirty = true;
+    } else if (!m_studyNotes.contains(m_loadedNoteKey) || m_studyNotes.value(m_loadedNoteKey) != note) {
+        m_studyNotes.insert(m_loadedNoteKey, note);
         m_notesDirty = true;
     }
     if (!m_notesDirty) return;
     QString error;
     if (saveStudyHubNotes(m_notesFilePath, m_studyNotes, &error)) {
         m_notesDirty = false;
-        m_noteStatus->setText("Saved JSON · " + QFileInfo(m_notesFilePath).fileName());
+        m_noteStatus->setText("Saved notes + summary to JSON · " + QFileInfo(m_notesFilePath).fileName());
     } else {
         m_noteStatus->setText("Could not save JSON notes: " + error);
         emit m_ctx->message("Could not save Study Hub notes: " + error);

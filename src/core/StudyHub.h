@@ -26,4 +26,11 @@ struct StudyTopic {
     std::vector<StudyConstant> constants;
 };
 
+/// User-authored Study Hub notes; the summary is kept separately from the full note text.
+struct StudyHubNote {
+    std::string text;
+    std::string summary;
+    bool operator==(const StudyHubNote&) const = default;
+};
+
 } // namespace phy104

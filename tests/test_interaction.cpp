@@ -1174,13 +1174,20 @@ private slots:
     void studyHubNotesArePerChapterJsonAndSeparateFromMarkdownNotes() {
         const QString sessionNotes = QString::fromStdString(m_app->context().log.notes());
         auto* hubNotes = m_app->studyHub->notesEditor();
+        auto* hubSummary = m_app->studyHub->noteSummaryEditor();
+        auto* summarizeButton = m_app->studyHub->summarizeNoteButton();
         auto* chapter = m_app->studyHub->findChild<QComboBox*>("studyHubNoteChapter");
         auto* sidebarNotes = m_app->notes->findChild<MarkdownWorkspace*>();
-        QVERIFY(hubNotes && chapter && sidebarNotes);
+        QVERIFY(hubNotes && hubSummary && summarizeButton && chapter && sidebarNotes);
         const QString sidebarText = sidebarNotes->markdown();
 
         const QString firstKey = chapter->currentData().toString();
-        hubNotes->setPlainText("Refraction chapter notes");
+        const QString originalNote = "Snell's law relates angles to refractive indices. Angles are measured from the normal. A higher refractive index bends light toward the normal.";
+        hubNotes->setPlainText(originalNote);
+        summarizeButton->click();                     // creates a local extractive draft; the user can edit it
+        QVERIFY(!hubSummary->toPlainText().isEmpty());
+        const QString firstSummary = "Snell's law links angles and refractive indices.";
+        hubSummary->setPlainText(firstSummary);
         m_app->studyHub->flushStudyNotes();
         QVERIFY(QFile::exists(m_app->studyHub->notesFilePath()));
         QCOMPARE(QString::fromStdString(m_app->context().log.notes()), sessionNotes);
@@ -1190,22 +1197,32 @@ private slots:
         QVERIFY(file.open(QIODevice::ReadOnly));
         const QJsonObject root = QJsonDocument::fromJson(file.readAll()).object();
         QCOMPARE(root.value("format").toString(), QString("phy104-study-hub-notes"));
-        QCOMPARE(root.value("notes").toObject().value(firstKey).toString(), QString("Refraction chapter notes"));
+        QCOMPARE(root.value("version").toInt(), 2);
+        const QJsonObject firstRecord = root.value("notes").toObject().value(firstKey).toObject();
+        QCOMPARE(firstRecord.value("text").toString(), originalNote);
+        QCOMPARE(firstRecord.value("summary").toString(), firstSummary);
         file.close();
 
         QVERIFY(chapter->count() > 1);
         chapter->setCurrentIndex(1);
         QCOMPARE(hubNotes->toPlainText(), QString());       // switching chapters must not copy the prior editor text
+        QCOMPARE(hubSummary->toPlainText(), QString());
+        QVERIFY(!summarizeButton->isEnabled());             // a blank note cannot produce a draft
         const QString secondKey = chapter->currentData().toString();
         hubNotes->setPlainText("Second chapter notes");
+        QVERIFY(summarizeButton->isEnabled());
+        hubSummary->setPlainText("A separate recap for chapter two.");
         m_app->studyHub->flushStudyNotes();
         QVERIFY(file.open(QIODevice::ReadOnly));
         const QJsonObject bothNotes = QJsonDocument::fromJson(file.readAll()).object().value("notes").toObject();
-        QCOMPARE(bothNotes.value(firstKey).toString(), QString("Refraction chapter notes"));
-        QCOMPARE(bothNotes.value(secondKey).toString(), QString("Second chapter notes"));
+        QCOMPARE(bothNotes.value(firstKey).toObject().value("text").toString(), originalNote);
+        QCOMPARE(bothNotes.value(firstKey).toObject().value("summary").toString(), firstSummary);
+        QCOMPARE(bothNotes.value(secondKey).toObject().value("text").toString(), QString("Second chapter notes"));
+        QCOMPARE(bothNotes.value(secondKey).toObject().value("summary").toString(), QString("A separate recap for chapter two."));
         file.close();
         chapter->setCurrentIndex(0);
-        QCOMPARE(hubNotes->toPlainText(), QString("Refraction chapter notes"));
+        QCOMPARE(hubNotes->toPlainText(), originalNote);
+        QCOMPARE(hubSummary->toPlainText(), firstSummary);
 
         QFile::remove(m_app->studyHub->notesFilePath());      // keep this isolated test from affecting later cases
     }
