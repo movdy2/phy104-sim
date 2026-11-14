@@ -264,7 +264,10 @@ bool ReportPage::renderTo(QPrinter& printer) {
     // Use a 96-dpi logical page so the HTML's pixel-sized diagrams remain readable; PDF text stays vector.
     printer.setResolution(96);
     printer.setFullPage(true);
-    const QRectF page = printer.pageLayout().paintRect(QPageLayout::DevicePixel);
+    const QRectF pagePoints = printer.pageLayout().paintRect(QPageLayout::Point);
+    const qreal pixelsPerPoint = static_cast<qreal>(printer.resolution()) / 72.0;
+    const QRectF page(pagePoints.left() * pixelsPerPoint, pagePoints.top() * pixelsPerPoint,
+                      pagePoints.width() * pixelsPerPoint, pagePoints.height() * pixelsPerPoint);
     constexpr qreal headerHeight = 30.0;
     constexpr qreal footerHeight = 26.0;
     const qreal bodyHeight = page.height() - headerHeight - footerHeight;
