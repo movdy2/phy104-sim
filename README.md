@@ -71,7 +71,7 @@ test on pull requests and configured branch pushes; the Linux job also publishes
 | `F11` | full screen (the window starts maximised) |
 
 Developer option: `PHY104OpticalAssistant --screenshots <folder>` drives the UI (saves runs, exports a workbook,
-triggers error states) and writes a PNG of every page in both themes.
+triggers error states) and writes a PNG of every page in both themes plus `dashboard_updated_header.png`.
 
 ## Layers
 
