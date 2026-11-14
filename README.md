@@ -57,7 +57,7 @@ Needs Qt 6 **Widgets and Svg** (Ubuntu: `qt6-base-dev qt6-svg-dev`). Fonts (Inte
 (Lucide) are bundled in `assets/` - nothing to install. Windows: add `-DCMAKE_PREFIX_PATH=C:/Qt/6.x.x/msvc2019_64`.
 Core only (no Qt): `-DPHY104_BUILD_GUI=OFF`.
 CI (`.github/workflows/build.yml`) builds Linux (Qt 6 + ctest), Windows (MSVC + Qt 6.8.3) and a Qt-free `g++` core
-test on pull requests and configured branch pushes; the Linux job also publishes its UI screenshots as an artifact.
+test on pull requests and configured branch pushes; the Linux job also publishes UI screenshots as an artifact. A manual run can optionally commit the refreshed screenshot set to the selected branch.
 
 ### Keyboard shortcuts
 

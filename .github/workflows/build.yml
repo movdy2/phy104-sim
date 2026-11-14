@@ -5,6 +5,12 @@ on:
     branches: [new-v2.1, main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      publish_screenshots:
+        description: Commit the captured screenshots to the selected branch
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -15,6 +21,8 @@ jobs:
   linux:
     name: Linux · Qt 6 · ctest
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -67,6 +75,31 @@ jobs:
           name: ui-screenshots
           path: build/screenshots/*.png
           if-no-files-found: error
+
+      - name: Publish refreshed screenshots
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_screenshots
+        run: |
+          cp build/screenshots/dashboard_updated_header.png docs/screenshots/
+          cp build/screenshots/00_dark.png docs/screenshots/dashboard.png
+          cp build/screenshots/01_dark.png docs/screenshots/refraction_tir.png
+          cp build/screenshots/02_dark.png docs/screenshots/lenses_mirrors.png
+          cp build/screenshots/03_dark.png docs/screenshots/prisms.png
+          cp build/screenshots/04_dark.png docs/screenshots/wave_interference.png
+          cp build/screenshots/state_calculator.png docs/screenshots/calculator_keypad.png
+          cp build/screenshots/state_mirror.png docs/screenshots/convex_mirror.png
+          cp build/screenshots/00_light.png docs/screenshots/light_theme.png
+          cp build/screenshots/12_dark.png docs/screenshots/notes_workspace.png
+          cp build/screenshots/state_paused.png docs/screenshots/paused_invalid_input.png
+          cp build/screenshots/state_tir.png docs/screenshots/tir_mode.png
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots
+          if git diff --cached --quiet; then
+            echo "Screenshots are already current."
+            exit 0
+          fi
+          git commit -m "Refresh UI screenshots"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
       # a failing test shows up in the PR page, not only in the (large) job log
       - name: Annotate failing tests
