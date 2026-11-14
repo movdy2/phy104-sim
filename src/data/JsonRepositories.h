@@ -1,8 +1,8 @@
 #pragma once
+// JSON implementations of the repository interfaces declared in core/Repositories.h
 #include "Repositories.h"
+#include <QMap>
 #include <QString>
-#include <vector>
-#include <utility>
 
 namespace phy104 {
 
@@ -55,10 +55,28 @@ private:
     QString m_path;
 };
 
-class JsonSummaryRepository : public ISummaryRepository {
+/// data/study_hub.json - a JSON array of chapters (order = course order, no map: the names are the titles).
+class JsonStudyHubRepository : public IStudyHubRepository {
 public:
-    explicit JsonSummaryRepository(QString path) : m_path(std::move(path)) {}
-    std::vector<NoteEntry> loadAll() const override;
+    explicit JsonStudyHubRepository(QString path) : m_path(std::move(path)) {}
+    std::vector<StudyTopic> loadAll() const override;
+private:
+    QString m_path;
+};
+
+/// Separate user-writable JSON file: chapter key -> full note text and its optional summary.
+/// Returns false for malformed/unsupported files without modifying `notes`, so user data is not silently discarded.
+bool loadStudyHubNotes(const QString& path, QMap<QString, StudyHubNote>& notes, QString* error = nullptr);
+/// Refuses to overwrite an existing malformed/unsupported notes file.
+bool saveStudyHubNotes(const QString& path, const QMap<QString, StudyHubNote>& notes, QString* error = nullptr);
+
+/// The ".phy" session file: JSON with the saved runs and the session notes.
+class JsonSessionStore : public ISessionStore {
+public:
+    explicit JsonSessionStore(QString path) : m_path(std::move(path)) {}
+    bool save(const SessionLog& log) const override;
+    bool load(SessionLog& log) const override;
+    const QString& path() const { return m_path; }
 private:
     QString m_path;
 };
@@ -67,15 +85,7 @@ class JsonKeyboardRepository : public IKeyboardRepository {
 public:
     explicit JsonKeyboardRepository(QString path) : m_path(std::move(path)) {}
     std::vector<KeyboardGroup> loadAll() const override;
-private:
-    QString m_path;
-};
-
-class JsonSessionStore : public ISessionStore {
-public:
-    explicit JsonSessionStore(QString path) : m_path(std::move(path)) {}
-    bool save(const SessionLog& log) const override;
-    bool load(SessionLog& log) const override;
+    std::vector<ScientificPage> scientific() const override;
 private:
     QString m_path;
 };

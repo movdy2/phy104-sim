@@ -34,10 +34,14 @@
       "n": 1.333,
       "cauchyA": 1.324188526,
       "cauchyB": 0.00306
+    },
+    {
+      "id": "diamond",
+      "name": "Diamond",
+      "n": 2.417,
+      "cauchyA": 2.362288236,
+      "cauchyB": 0.019
     }
-
-
-    
   ],
   "sources": [
     {

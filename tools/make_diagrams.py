@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-
-# this full made by ai 
 """Generates the optical-setup diagrams in assets/diagrams/*.svg.
 
 All geometry is computed here (Snell's law, thin-lens equation, mirror equation, prism

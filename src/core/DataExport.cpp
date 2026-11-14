@@ -3,53 +3,53 @@
 #include <cmath>
 #include <cstdio>
 
-using std::string;
-using std::vector;
-
 namespace phy104::DataExport {
 namespace {
 
-string full(double v) {
+std::string full(double v) {
     char buffer[40];
     std::snprintf(buffer, sizeof buffer, "%.10g", v);
     return buffer;
 }
 
-string csvField(const string& s) {
-    if (s.find_first_of(",\"\n") == string::npos) return s;
-    string out = "\"";
-    for (char c : s) {
-        if (c == '"') out += '"';
-        out += c;
-    }
+std::string csvField(const std::string& s) {
+    if (s.find_first_of(",\"\n") == std::string::npos) return s;
+    std::string out = "\"";
+    for (char c : s) { if (c == '"') out += '"'; out += c; }
     return out + "\"";
 }
 
-string seriesPrefix(const DataSeries& s) {
+std::string seriesPrefix(const DataSeries& s) {
     const auto cut = s.id.find('_');
-    string base = cut == string::npos ? s.id : s.id.substr(0, cut);
+    std::string base = cut == std::string::npos ? s.id : s.id.substr(0, cut);
     return base.empty() ? "series" : base;
 }
 
 } // namespace
 
-string toCsv(const DataSeries& series) {
-    string out;
+std::string toCsv(const DataSeries& series) {
+    std::string out;
+    if (!series.name.empty()) out += "# PHY104 series: " + series.name + "\n";
+    if (!series.description.empty()) out += "# Description: " + series.description + "\n";
+    if (!series.note.empty()) out += "# Note: " + series.note + "\n";
+    for (const auto& [name, value] : series.analysis) out += "# " + name + ": " + value + "\n";
     for (std::size_t i = 0; i < series.headers.size(); ++i) {
-        out += (i ? "," : "") + csvField(series.headers[i]);
+        if (i) out.push_back(',');
+        out += csvField(series.headers[i]);
     }
-    out += "\n";
+    out.push_back('\n');
     for (const auto& row : series.rows) {
         for (std::size_t i = 0; i < row.size(); ++i) {
-            out += (i ? "," : "") + (std::isfinite(row[i]) ? full(row[i]) : string());
+            if (i) out.push_back(',');
+            if (std::isfinite(row[i])) out += full(row[i]);
         }
-        out += "\n";
+        out.push_back('\n');
     }
     return out;
 }
 
-vector<XlsxSheet> workbookSheets(const SessionLog& log, const DataSeries& series, const ExportOptions& opt) {
-    vector<XlsxSheet> sheets;
+std::vector<XlsxSheet> workbookSheets(const SessionLog& log, const DataSeries& series, const ExportOptions& opt) {
+    std::vector<XlsxSheet> sheets;
 
     if (opt.parameters) {
         XlsxSheet s{"Parameters", {}};
@@ -77,44 +77,50 @@ vector<XlsxSheet> workbookSheets(const SessionLog& log, const DataSeries& series
     }
     if (opt.measurements) {
         XlsxSheet s{"Measurements", {}};
-        vector<XlsxCell> header;
+        std::vector<XlsxCell> header;
         for (const auto& h : series.headers) header.emplace_back(h, true);
         s.rows.push_back(header);
         for (const auto& row : series.rows) {
-            vector<XlsxCell> cells;
+            std::vector<XlsxCell> cells;
             for (double v : row) cells.emplace_back(v);
             s.rows.push_back(cells);
         }
         sheets.push_back(std::move(s));
     }
+    if (opt.measurements && !series.analysis.empty()) {
+        XlsxSheet s{"Analysis", {}};
+        s.rows.push_back({XlsxCell("Quantity", true), XlsxCell("Value / method", true)});
+        for (const auto& [name, value] : series.analysis)
+            s.rows.push_back({XlsxCell(name), XlsxCell(value)});
+        sheets.push_back(std::move(s));
+    }
     if (opt.notes) {
         XlsxSheet s{"Notes", {}};
         s.rows.push_back({XlsxCell("Session notes", true)});
-        string line;
+        std::string line;
         for (char c : log.notes() + "\n") {
-            if (c == '\n') { s.rows.push_back({XlsxCell(line)}); line.clear(); }
-            else line += c;
+            if (c == '\n') { s.rows.push_back({XlsxCell(line)}); line.clear(); } else line += c;
         }
         sheets.push_back(std::move(s));
     }
     return sheets;
 }
 
-vector<std::uint8_t> buildWorkbook(const SessionLog& log, const DataSeries& series, const ExportOptions& opt) {
+std::vector<std::uint8_t> buildWorkbook(const SessionLog& log, const DataSeries& series, const ExportOptions& opt) {
     auto sheets = workbookSheets(log, series, opt);
     if (sheets.empty()) sheets.push_back({"Empty", {{XlsxCell("Nothing selected")}}});
     return XlsxWriter::build(sheets);
 }
 
-string describeWorkbook(const SessionLog& log, const DataSeries& series, const ExportOptions& opt) {
+std::string describeWorkbook(const SessionLog& log, const DataSeries& series, const ExportOptions& opt) {
     const auto sheets = workbookSheets(log, series, opt);
     const auto bytes = buildWorkbook(log, series, opt).size();
     char size[32];
-    std::snprintf(size, sizeof size, "%.1f KB", bytes / 1024.0);
+    std::snprintf(size, sizeof size, "%.1f KB", static_cast<double>(bytes) / 1024.0);
     return std::to_string(sheets.size()) + " sheets · " + std::to_string(series.rows.size()) + " measurements · " + size + " estimated";
 }
 
-string suggestedFileName(const DataSeries& series, const string& extension) {
+std::string suggestedFileName(const DataSeries& series, const std::string& extension) {
     return "PHY104_" + seriesPrefix(series) + extension;
 }
 

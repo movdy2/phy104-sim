@@ -10,36 +10,30 @@
 #include <numbers>
 #include <sstream>
 
-using std::string;
-using std::vector;
-using std::map;
-using std::size_t;
-
 namespace phy104 {
 namespace {
 
 constexpr double kDegToRad = std::numbers::pi / 180.0;
 
-string trim(const string& s) {
+std::string trim(const std::string& s) {
     const auto b = s.find_first_not_of(" \t");
-    if (b == string::npos) return "";
+    if (b == std::string::npos) return "";
     return s.substr(b, s.find_last_not_of(" \t") - b + 1);
 }
+bool isBlank(const std::string& s) { return s.find_first_not_of(" \t") == std::string::npos; }
 
-bool isBlank(const string& s) { return s.find_first_not_of(" \t") == string::npos; }
-
-bool contains(const vector<string>& v, const string& x) {
+bool contains(const std::vector<std::string>& v, const std::string& x) {
     return std::find(v.begin(), v.end(), x) != v.end();
 }
 
-void replaceAll(string& text, const string& from, const string& to) {
-    for (size_t pos = 0; (pos = text.find(from, pos)) != string::npos; pos += to.size())
+void replaceAll(std::string& text, const std::string& from, const std::string& to) {
+    for (std::size_t pos = 0; (pos = text.find(from, pos)) != std::string::npos; pos += to.size())
         text.replace(pos, from.size(), to);
 }
 
 } // namespace
 
-SolverEngine::SolverEngine(vector<PhysicsConstant> constants) {
+SolverEngine::SolverEngine(std::vector<PhysicsConstant> constants) {
     for (const auto& c : constants) {
         m_constants[c.id] = c.value;
         const bool ascii = std::all_of(c.symbol.begin(), c.symbol.end(),
@@ -52,29 +46,30 @@ SolverEngine::SolverEngine(vector<PhysicsConstant> constants) {
               [](const auto& a, const auto& b) { return a.first.size() > b.first.size(); });
 }
 
-string SolverEngine::formatNumber(double value) {
+std::string SolverEngine::formatNumber(double value) {
     std::ostringstream out;
     out << std::setprecision(6) << value;
     return out.str();
 }
 
-string SolverEngine::substitute(const string& text, const map<string, string>& replacements) {
-    string out;
-    size_t i = 0;
+std::string SolverEngine::substitute(const std::string& text,
+                                     const std::map<std::string, std::string>& replacements) {
+    std::string out;
+    std::size_t i = 0;
     while (i < text.size()) {
         const unsigned char c = static_cast<unsigned char>(text[i]);
         if (std::isalpha(c) || c == '_') {
-            size_t j = i;
+            std::size_t j = i;
             while (j < text.size() && (std::isalnum(static_cast<unsigned char>(text[j])) || text[j] == '_')) ++j;
-            const string name = text.substr(i, j - i);
-            size_t k = j;
+            const std::string name = text.substr(i, j - i);
+            std::size_t k = j;
             while (k < text.size() && text[k] == ' ') ++k;
             const bool isFunction = k < text.size() && text[k] == '(';
             const auto it = replacements.find(name);
             out += (!isFunction && it != replacements.end()) ? it->second : name;
             i = j;
         } else if (std::isdigit(c) || c == '.') {              // copy numbers untouched (3e8)
-            size_t j = i;
+            std::size_t j = i;
             while (j < text.size() && (std::isalnum(static_cast<unsigned char>(text[j])) || text[j] == '.')) ++j;
             out += text.substr(i, j - i);
             i = j;
@@ -85,15 +80,16 @@ string SolverEngine::substitute(const string& text, const map<string, string>& r
     return out;
 }
 
-string SolverEngine::prepareInput(const string& text, const string& unit) const {
-    string t = text;
+std::string SolverEngine::prepareInput(const std::string& text, const std::string& unit) const {
+    std::string t = text;
     // "°" in a degree field is only decoration; elsewhere it means "× π/180".
     replaceAll(t, "°", unit == "deg" ? "" : "*(pi/180)");
     for (const auto& [symbol, id] : m_aliases) replaceAll(t, symbol, id);
     return t;
 }
 
-SolveResult SolverEngine::solve(const Formula& formula, const map<string, string>& inputs) const {
+SolveResult SolverEngine::solve(const Formula& formula,
+                                const std::map<std::string, std::string>& inputs) const {
     SolveResult result;
     result.formulaText = formula.equation;
 
@@ -104,15 +100,15 @@ SolveResult SolverEngine::solve(const Formula& formula, const map<string, string
 
     // 1) split "lhs = rhs"
     const auto eq = formula.equation.find('=');
-    if (eq == string::npos || formula.equation.find('=', eq + 1) != string::npos) {
+    if (eq == std::string::npos || formula.equation.find('=', eq + 1) != std::string::npos) {
         result.error = "Formula '" + formula.id + "' must contain exactly one '='.";
         return result;
     }
-    const string lhs = trim(formula.equation.substr(0, eq));
-    const string rhs = trim(formula.equation.substr(eq + 1));
+    const std::string lhs = trim(formula.equation.substr(0, eq));
+    const std::string rhs = trim(formula.equation.substr(eq + 1));
 
     // 2) find the single unknown
-    vector<const Variable*> unknowns;
+    std::vector<const Variable*> unknowns;
     for (const auto& var : formula.variables) {
         const auto it = inputs.find(var.id);
         if (it == inputs.end() || isBlank(it->second)) unknowns.push_back(&var);
@@ -124,19 +120,19 @@ SolveResult SolverEngine::solve(const Formula& formula, const map<string, string
         return result;
     }
     const Variable& unknown = *unknowns.front();
-    const string unknownUnit = unitOf(unknown);
+    const std::string unknownUnit = unitOf(unknown);
     result.unknownId = unknown.id;
     result.unknownDisplay = unknown.display;
     result.unit = unknownUnit;
 
     // 3) parse known values (user units) and convert to internal units (radians)
     VariableMap internal = m_constants;           // so equations may also use c, epsilon0 ... directly
-    map<string, string> shown;     // text used in the "Substitute" step
+    std::map<std::string, std::string> shown;     // text used in the "Substitute" step
     std::ostringstream knownText;
     bool usesDegrees = unknownUnit == "deg";
     for (const auto& var : formula.variables) {
         if (&var == &unknown) continue;
-        const string unit = unitOf(var);
+        const std::string unit = unitOf(var);
         double userValue = 0.0;
         try {
             userValue = ExpressionEvaluator::evaluate(prepareInput(inputs.at(var.id), unit), m_constants);
@@ -147,7 +143,7 @@ SolveResult SolverEngine::solve(const Formula& formula, const map<string, string
         internal[var.id] = (unit == "deg") ? userValue * kDegToRad : userValue;
         usesDegrees = usesDegrees || unit == "deg";
 
-        string text = formatNumber(userValue);
+        std::string text = formatNumber(userValue);
         if (unit == "deg") text += "°";
         shown[var.id] = (userValue < 0) ? "(" + text + ")" : text;
         knownText << var.display << " = " << formatNumber(userValue);
@@ -159,10 +155,10 @@ SolveResult SolverEngine::solve(const Formula& formula, const map<string, string
     const auto rhsIds = ExpressionEvaluator::identifiers(rhs);
     const auto lhsIds = ExpressionEvaluator::identifiers(lhs);
     double internalValue = 0.0;
-    vector<double> internalOthers;
-    string method;
+    std::vector<double> internalOthers;
+    std::string method;
 
-    auto evalSide = [&](const string& expr) -> bool {
+    auto evalSide = [&](const std::string& expr) -> bool {
         try {
             internalValue = ExpressionEvaluator::evaluate(expr, internal);
         } catch (const std::exception& e) {
@@ -213,13 +209,13 @@ SolveResult SolverEngine::solve(const Formula& formula, const map<string, string
     }
 
     // 6) steps
-    const string unitText = unknownUnit.empty() ? "" : " " + unknownUnit;
+    const std::string unitText = unknownUnit.empty() ? "" : " " + unknownUnit;
     result.ok = true;
     result.steps.push_back("Formula: " + formula.equation);
     result.steps.push_back("Known values:\n" + knownText.str() +
                            (usesDegrees ? "(Angles are entered in degrees; the calculation converts them to radians.)" : ""));
     if (method == "direct") {
-        const string expr = (lhs == unknown.id) ? rhs : lhs;
+        const std::string expr = (lhs == unknown.id) ? rhs : lhs;
         result.steps.push_back("Solve for " + unknown.display + ": " + unknown.id + " = " + expr);
         result.steps.push_back("Substitute: " + unknown.id + " = " + substitute(expr, shown));
     } else {
@@ -242,7 +238,7 @@ SolveResult SolverEngine::solve(const Formula& formula, const map<string, string
                                                 result.value, unknownUnit);
     result.steps.push_back("Answer: " + unknown.display + " = " + formatNumber(result.value) + unitText);
     if (!result.otherSolutions.empty()) {
-        string others;
+        std::string others;
         for (double o : result.otherSolutions) others += (others.empty() ? "" : ", ") + formatNumber(o);
         result.steps.push_back("Other mathematical solutions in the search range: " + others + unitText);
     }

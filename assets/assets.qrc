@@ -13,6 +13,8 @@
         <file alias="Inter-SemiBold.otf">fonts/Inter-SemiBold.otf</file>
         <file alias="JetBrainsMono-Regular.ttf">fonts/JetBrainsMono-Regular.ttf</file>
         <file alias="JetBrainsMono-Bold.ttf">fonts/JetBrainsMono-Bold.ttf</file>
+        <file alias="DSEG7Classic-Bold.ttf">fonts/DSEG7Classic-Bold.ttf</file>
+        <file alias="DSEG14Classic-Bold.ttf">fonts/DSEG14Classic-Bold.ttf</file>
     </qresource>
     <qresource prefix="/icons">
         <file alias="arrow-up-right.svg">icons/arrow-up-right.svg</file>
@@ -35,6 +37,10 @@
         <file alias="list.svg">icons/list.svg</file>
         <file alias="moon.svg">icons/moon.svg</file>
         <file alias="notebook-pen.svg">icons/notebook-pen.svg</file>
+        <file alias="pen-tool.svg">icons/pen-tool.svg</file>
+        <file alias="printer.svg">icons/printer.svg</file>
+        <file alias="download.svg">icons/download.svg</file>
+        <file alias="slit.svg">icons/slit.svg</file>
         <file alias="ruler.svg">icons/ruler.svg</file>
         <file alias="scan-line.svg">icons/scan-line.svg</file>
         <file alias="sigma.svg">icons/sigma.svg</file>
@@ -42,5 +48,13 @@
         <file alias="sun.svg">icons/sun.svg</file>
         <file alias="triangle.svg">icons/triangle.svg</file>
         <file alias="waves.svg">icons/waves.svg</file>
+        <file alias="align-justify.svg">icons/align-justify.svg</file>
+        <file alias="aperture.svg">icons/aperture.svg</file>
+        <file alias="circle-dot.svg">icons/circle-dot.svg</file>
+        <file alias="contrast.svg">icons/contrast.svg</file>
+        <file alias="git-merge.svg">icons/git-merge.svg</file>
+        <file alias="layers.svg">icons/layers.svg</file>
+        <file alias="minus.svg">icons/minus.svg</file>
+        <file alias="square-function.svg">icons/square-function.svg</file>
     </qresource>
 </RCC>

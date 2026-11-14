@@ -5,28 +5,26 @@
 
 namespace phy104 {
 
-/// المجال الفيزيائي للبحث عن الجذر (يحدد أين نبحث).
+/// Which values are physically sensible for the unknown (decides where we search).
 enum class SearchDomain {
-    General,   // أي رقم حقيقي؛ نفضل الإجابات الموجبة
-    Angle,     // زاوية بالراديان في [0, pi]؛ نفضل [0, pi/2]
-    Phase      // طور بالراديان في [0, 4pi]
+    General,   // any real number; positive answers preferred
+    Angle,     // radians in [0, pi]; answers in [0, pi/2] preferred
+    Phase      // radians in [0, 4 pi]
 };
 
-/// نتيجة البحث عن الجذر.
 struct RootResult {
-    bool ok = false;                  // هل تم إيجاد حل؟
-    std::string error;                // رسالة الخطأ (إذا لم يوجد حل)
-    double value = 0.0;               // الحل المختار (بنفس وحدات `known`)
-    std::vector<double> others;       // حلول أخرى موجودة في نطاق البحث
+    bool ok = false;
+    std::string error;
+    double value = 0.0;               // the chosen solution (in the same units used for `known`)
+    std::vector<double> others;       // other solutions found in the search range
 };
 
-/// محلل معادلات عددي (Numeric Root Finder):
-/// يحل  lhs = rhs  لمتغير واحد مجهول:
+/// Solves  lhs = rhs  for ONE unknown variable by numeric root finding:
 ///   g(x) = lhs(x) - rhs(x)
-///   1. يمسح شبكة من قيم x ويبحث عن تغيرات في إشارة g
-///   2. يحسن كل تغير إشارة باستخدام التقسيم الثنائي (Bisection)
-///   3. يرفض "الجذور" التي هي في الحقيقة أقطاب (مثل 1/x قرب 0)
-/// هذا هو السبب في أننا لا نحتاج إلى كتابة معادلات معاد ترتيبها يدوياً.
+///   1. scan a grid of x values and look for sign changes of g
+///   2. refine every sign change with bisection
+///   3. reject "roots" that are really poles (like 1/x near 0)
+/// This is why no hand-written rearranged formulas are needed.
 class EquationSolver {
 public:
     static RootResult solve(const std::string& lhs, const std::string& rhs,

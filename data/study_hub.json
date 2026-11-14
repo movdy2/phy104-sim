@@ -1,0 +1,249 @@
+[
+  {
+    "id": "refraction",
+    "title": "Refraction & total internal reflection",
+    "chapter": "1 · Geometrical optics",
+    "summary": "Light bends when it crosses a surface between two media because its speed changes. The ratio of the speeds is the refractive index. When light tries to leave a dense medium at a large angle it can no longer leave: the whole beam is reflected back inside.",
+    "rules": [
+      {
+        "formula": "n = c / v",
+        "explain": "The refractive index is the vacuum speed of light divided by the speed inside the material, so n is never below 1."
+      },
+      {
+        "formula": "n₁ sin θ₁ = n₂ sin θ₂",
+        "explain": "Snell's law: the product n·sin θ stays the same on both sides of the surface, so a bigger n means a smaller angle."
+      },
+      {
+        "formula": "sin θ_{c} = n₂ / n₁",
+        "explain": "The critical angle exists only when n₁ > n₂; beyond it sin θ₂ would exceed 1, so no refracted ray exists and the ray is totally reflected."
+      }
+    ],
+    "constants": [
+      { "name": "c (vacuum)", "value": "2.998e8 m/s" },
+      { "name": "n air", "value": "1.000" },
+      { "name": "n water", "value": "1.333" },
+      { "name": "n crown glass", "value": "1.520" }
+    ]
+  },
+  {
+    "id": "lenses",
+    "title": "Thin lenses & spherical mirrors",
+    "chapter": "2 · Imaging",
+    "summary": "A thin lens or a mirror turns every ray leaving one point into rays that meet again at the image point. The same equation describes both, only the sign of the focal length changes. The magnification tells you how large and how inverted the image is.",
+    "rules": [
+      {
+        "formula": "1/f = 1/do + 1/di",
+        "explain": "The thin-lens equation: inverse focal length is the sum of the inverses of object and image distance. A positive di means a real image on the far side."
+      },
+      {
+        "formula": "m = − di / do",
+        "explain": "Magnification is the image distance divided by the object distance; the minus sign means a real image is inverted."
+      },
+      {
+        "formula": "P = 1 / f",
+        "explain": "The power of a lens in dioptres is just the inverse of its focal length in metres; powers of lenses in contact add up."
+      }
+    ],
+    "constants": [
+      { "name": "f (converging lens)", "value": "+ (positive)" },
+      { "name": "f (diverging lens)", "value": "− (negative)" },
+      { "name": "small-angle limit", "value": "θ < 10°" }
+    ]
+  },
+  {
+    "id": "prism",
+    "title": "Prisms & dispersion",
+    "chapter": "3 · Dispersion",
+    "summary": "A prism deviates a ray twice, once at each face. The deviation is smallest when the ray passes symmetrically through the prism, and because n depends on wavelength each colour leaves at a slightly different angle.",
+    "rules": [
+      {
+        "formula": "δ = θ₁ + θ₂ − A",
+        "explain": "The total deviation is the sum of the two refractions minus the apex angle: the geometry of the two faces removes exactly A."
+      },
+      {
+        "formula": "n = sin((A + δ_{min}) / 2) / sin(A / 2)",
+        "explain": "At minimum deviation the ray crosses the prism parallel to its base, so the two angles inside are equal and n follows from A and δmin alone."
+      },
+      {
+        "formula": "ω = (n_{F} − n_{C}) ÷ (n_{D} − 1)",
+        "explain": "The dispersive power compares how strongly the prism splits blue and red light with its average bending."
+      }
+    ],
+    "constants": [
+      { "name": "A (typical)", "value": "60°" },
+      { "name": "n flint glass", "value": "1.620" },
+      { "name": "δmin (equilateral)", "value": "≈ 38°" }
+    ]
+  },
+  {
+    "id": "young",
+    "title": "Young's double slit",
+    "chapter": "4 · Interference",
+    "summary": "Two coherent slits act as two sources. Where the paths differ by a whole number of wavelengths the waves arrive in step and add up; where they differ by a half wavelength they cancel. The result is a pattern of equally spaced bright and dark bands.",
+    "rules": [
+      {
+        "formula": "d sin θ = m λ",
+        "explain": "A bright fringe appears when the path difference is a whole number m of wavelengths, so the two waves arrive in phase."
+      },
+      {
+        "formula": "Δy = λ L / d",
+        "explain": "For small angles the fringe spacing grows with wavelength and screen distance, and shrinks when the slits are moved apart."
+      },
+      {
+        "formula": "I = 4 I₀ cos²(φ/2)",
+        "explain": "The intensity of two equal waves depends only on their phase difference: it oscillates between 4I₀ and zero."
+      }
+    ],
+    "constants": [
+      { "name": "λ He-Ne", "value": "632.8 nm" },
+      { "name": "λ Na D", "value": "589.3 nm" },
+      { "name": "λ green", "value": "532 nm" }
+    ]
+  },
+  {
+    "id": "single_slit",
+    "title": "Single slit & diffraction",
+    "chapter": "5 · Diffraction",
+    "summary": "Light passing through one narrow slit does not simply form a shadow: each point of the slit radiates, and these wavelets cancel at certain angles. A wide bright band appears in the middle, with much fainter bands on each side.",
+    "rules": [
+      {
+        "formula": "a sin θ = m λ   (m = ±1, ±2, ...)",
+        "explain": "The dark minima appear at these angles; m = 0 is not a minimum, it is the centre of the bright band."
+      },
+      {
+        "formula": "sin θ ≈ λ / a",
+        "explain": "The central band spreads wider for longer wavelengths and for a narrower slit; it is twice as wide as the side bands."
+      },
+      {
+        "formula": "I = I₀ sinc²(β),  β = π a sin θ / λ",
+        "explain": "The intensity envelope follows a sinc²: a strong centre flanked by rapidly weakening side maxima."
+      }
+    ],
+    "constants": [
+      { "name": "slit width (demo)", "value": "0.10 mm" },
+      { "name": "first dark (a = 0.1 mm, 632.8 nm)", "value": "0.363°" }
+    ]
+  },
+  {
+    "id": "grating",
+    "title": "Diffraction grating",
+    "chapter": "6 · Gratings",
+    "summary": "A grating is many parallel slits; the maxima stay in the same directions as for two slits but become very sharp, and the more lines there are the sharper they get. It is the standard tool for measuring wavelengths.",
+    "rules": [
+      {
+        "formula": "d sin θ = m λ",
+        "explain": "The principal maxima come from the same path-difference condition as the double slit, with d the distance between neighbouring lines."
+      },
+      {
+        "formula": "R = m N",
+        "explain": "Resolving power grows with the order and with the number of illuminated lines, so long gratings separate nearby wavelengths."
+      },
+      {
+        "formula": "FSR = λ / m",
+        "explain": "Free spectral range: the wavelength gap between one order and the next, so overlapping orders are avoided inside it."
+      }
+    ],
+    "constants": [
+      { "name": "lines (demo grating)", "value": "600 /mm" },
+      { "name": "d", "value": "1.667 µm" },
+      { "name": "orders (632.8 nm)", "value": "±7 visible" }
+    ]
+  },
+  {
+    "id": "polarization",
+    "title": "Polarization",
+    "chapter": "7 · Polarized light",
+    "summary": "Light is a transverse wave, so its electric field can point in a preferred direction. A polarizer passes only one component, and the transmitted intensity follows the angle between the polarizer and the incoming polarization.",
+    "rules": [
+      {
+        "formula": "I = I₀ cos² θ",
+        "explain": "Malus' law: an analyser at angle θ passes the projection of the field, and the intensity goes as the square of that projection."
+      },
+      {
+        "formula": "tan θ_{B} = n₂ / n₁",
+        "explain": "At Brewster's angle the reflected ray is fully polarized perpendicular to the plane of incidence, because the refracted and reflected rays are at 90°."
+      },
+      {
+        "formula": "I = I₀ / 2",
+        "explain": "Unpolarized light through a single ideal polarizer always loses half of its intensity, whatever the angle."
+      }
+    ],
+    "constants": [
+      { "name": "θB air → glass", "value": "56.31°" },
+      { "name": "θB air → water", "value": "53.12°" }
+    ]
+  },
+  {
+    "id": "thin_film",
+    "title": "Thin films & Newton's rings",
+    "chapter": "8 · Interference in films",
+    "summary": "Light reflected from the top and the bottom of a thin film can interfere. Whether the film looks bright or dark depends on its thickness in wavelengths, on the angle, and on whether each reflection flips the phase.",
+    "rules": [
+      {
+        "formula": "2 n t cos θ = (m + 1/2) λ   (bright)",
+        "explain": "Constructive interference in a film with one phase-flipping surface; the extra half wavelength comes from that flip."
+      },
+      {
+        "formula": "2 n t cos θ = m λ   (dark)",
+        "explain": "Destructive interference in the same film; both reflections behave the same way, so no extra half wavelength appears."
+      },
+      {
+        "formula": "r² = m λ R",
+        "explain": "Newton's rings: the radius of the m-th dark ring grows with the square root of the order, the wavelength and the lens radius."
+      }
+    ],
+    "constants": [
+      { "name": "n soap film", "value": "1.33" },
+      { "name": "n MgF₂ coating", "value": "1.38" },
+      { "name": "n oil", "value": "1.47" }
+    ]
+  },
+  {
+    "id": "michelson",
+    "title": "Michelson interferometer",
+    "chapter": "9 · Interferometry",
+    "summary": "A beam splitter sends light along two arms and recombines it, so the output depends on the path difference between the arms. Moving one mirror by half a wavelength shifts the pattern by one full fringe.",
+    "rules": [
+      {
+        "formula": "2 Δd = m λ",
+        "explain": "The light travels the changed arm twice, so every half wavelength of mirror movement is one fringe (2Δd = λ)."
+      },
+      {
+        "formula": "Δd = λ / 2",
+        "explain": "The resolution of the instrument: the smallest mirror step that produces a measurable change of one fringe."
+      },
+      {
+        "formula": "L = m λ / 2",
+        "explain": "Counting m fringes while moving a mirror gives the displacement, and that is how the wavelength is measured."
+      }
+    ],
+    "constants": [
+      { "name": "λ He-Ne", "value": "632.8 nm" },
+      { "name": "one fringe (He-Ne)", "value": "316.4 nm" }
+    ]
+  },
+  {
+    "id": "photometry",
+    "title": "Photometry & the inverse-square law",
+    "chapter": "10 · Light sources",
+    "summary": "A point source spreads its power over a sphere, so the power per unit area falls with the square of the distance. Real lamps are not point sources, which is why the law only holds far from them.",
+    "rules": [
+      {
+        "formula": "E = I / d²",
+        "explain": "Illuminance is the luminous intensity divided by the squared distance: doubling the distance gives a quarter of the light."
+      },
+      {
+        "formula": "Φ = I · Ω",
+        "explain": "Luminous flux is intensity times the solid angle it is radiated into; a full sphere is 4π steradians."
+      },
+      {
+        "formula": "E₁ d₁² = E₂ d₂²",
+        "explain": "The inverse-square law used as a comparison: the product of illuminance and squared distance stays constant."
+      }
+    ],
+    "constants": [
+      { "name": "full sphere", "value": "4π sr" },
+      { "name": "lambertian cos θ", "value": "I(θ) = I₀ cos θ" }
+    ]
+  }
+]

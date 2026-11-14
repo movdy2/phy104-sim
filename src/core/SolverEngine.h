@@ -4,7 +4,6 @@
 #include <map>
 #include <string>
 #include <vector>
-#include <utility>
 
 namespace phy104 {
 
@@ -18,15 +17,15 @@ struct SolveResult {
     std::string unit;
     std::vector<double> otherSolutions;// extra solutions in the search range (same unit)
     std::vector<std::string> steps;    // readable solution steps
-    std::string hint;                  // physics warning or explanation
-    std::string answerLatex;           // "\\theta_{b}=19.4712^{\\circ}"
+    std::string answerLatex;           // "\\theta_{b}=19.4712^{\\circ}" for the UI
     std::string checkSummary;          // "left side = 0.5, right side = 0.5"
     bool physical = false;             // true: no/undefined solution (a physics warning), false: bad input
+    std::string hint;                  // formula-specific explanation, e.g. total internal reflection
 };
 
 /// Solves a Formula for its single unknown:
-/// * unknown alone on one side -> direct substitution
-/// * otherwise -> numeric root finding (EquationSolver)
+///   * unknown alone on one side  ->  direct substitution
+///   * otherwise                  ->  numeric root finding (EquationSolver)
 /// Angles typed in degrees are converted to radians internally and back.
 class SolverEngine {
 public:
@@ -45,8 +44,8 @@ public:
 private:
     std::string prepareInput(const std::string& text, const std::string& unit) const;
 
-    VariableMap m_constants; // id -> value
-    std::vector<std::pair<std::string, std::string>> m_aliases; // "ε₀" -> "epsilon0"
+    VariableMap m_constants;                                       // id -> value
+    std::vector<std::pair<std::string, std::string>> m_aliases;    // "ε₀" -> "epsilon0"
 };
 
 } // namespace phy104
