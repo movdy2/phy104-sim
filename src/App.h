@@ -64,7 +64,7 @@ public:
     StudyHubPage* studyHub = nullptr;
     NotesPage* notes = nullptr;
     ExportPage* exportPage = nullptr;
-    ReportPage* reportPage = nullptr;
+    ReportPage* reportPage = nullptr; // embedded in ExportPage; no separate sidebar entry
     SolverPage* solver = nullptr;
     MathSolverPage* calculator = nullptr;
     DiagramsPage* diagrams = nullptr;

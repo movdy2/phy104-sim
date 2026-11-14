@@ -1,8 +1,8 @@
 #pragma once
-#include "Drawing.h"
 #include "ExperimentReports.h"
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace phy104 {
@@ -70,11 +70,7 @@ public:
     const std::vector<std::string>& equations() const { return m_equations; }
     void setEquations(std::vector<std::string> list) { m_equations = std::move(list); }
 
-    /// Draw Space: the sketch of the session.
-    const Drawing& drawing() const { return m_drawing; }
-    void setDrawing(Drawing d) { m_drawing = std::move(d); }
-
-    /// Export page: the file written last (empty path = nothing exported yet).
+    /// Latest export across all formats (empty path = nothing exported yet).
     const ExportRecord& lastExport() const { return m_lastExport; }
     bool hasExport() const { return !m_lastExport.path.empty(); }
     void setLastExport(ExportRecord record) { m_lastExport = std::move(record); }
@@ -90,7 +86,6 @@ private:
     std::map<std::string, Snapshot> m_snapshots;
     std::string m_notes;
     std::vector<std::string> m_equations;
-    Drawing m_drawing;
     ExportRecord m_lastExport;
     int m_sessionNumber = 7;
 };

@@ -1,6 +1,7 @@
 #include "MainWindow.h"
 #include "AppContext.h"
 #include "BasePage.h"
+#include "ExportPage.h"
 #include "Icons.h"
 #include "ThemeManager.h"
 #include "VirtualKeyboard.h"
@@ -225,7 +226,7 @@ void MainWindow::installShortcuts() {
     add(QKeySequence(QKeySequence::Save), [this] {                                           // Ctrl+S: write the .phy session
         if (m_ctx->saveSession()) showMessage("Session saved · " + m_ctx->sessionFile);
     });
-    add(QKeySequence(QKeySequence::Print), [this] { openReportPage(); });                     // Ctrl+P: the PDF report screen
+    add(QKeySequence(QKeySequence::Print), [this] { openReportPage(); });                     // Ctrl+P: the PDF report mode on Export
     add(QKeySequence(Qt::CTRL | Qt::Key_Return), [this] { triggerPrimaryAction(); });
     add(QKeySequence(Qt::CTRL | Qt::Key_Enter), [this] { triggerPrimaryAction(); });    // numeric keypad
     for (int i = 1; i <= 9; ++i)                                              // Ctrl+1..9: the first nine pages
@@ -247,8 +248,11 @@ void MainWindow::triggerPrimaryAction() {
 
 void MainWindow::openReportPage() {
     for (int i = 0; i < m_stack->count(); ++i) {
-        const QString name = QString::fromLatin1(m_stack->widget(i)->metaObject()->className());
-        if (name.endsWith("ReportPage")) { setCurrentPage(i); return; }
+        if (auto* exportPage = qobject_cast<ExportPage*>(m_stack->widget(i))) {
+            exportPage->showPdfReport();
+            setCurrentPage(i);
+            return;
+        }
     }
 }
 

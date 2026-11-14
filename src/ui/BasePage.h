@@ -12,11 +12,12 @@ namespace phy104 {
 
 class AppContext;
 
-/// Shared page shell: title, subtitle, units tag, Save button and one Export menu (PDF / Excel / CSV).
+/// Shared page shell with an optional title/units/Save/Export header; embedded workspaces can omit it.
 class BasePage : public QWidget {
     Q_OBJECT
 public:
-    BasePage(const QString& title, const QString& subtitle, AppContext* context, QWidget* parent = nullptr);
+    BasePage(const QString& title, const QString& subtitle, AppContext* context, QWidget* parent = nullptr,
+             bool showHeader = true);
 
     /// What the status bar shows while this page is open.
     struct StatusInfo {
@@ -51,7 +52,7 @@ protected:
 
 private:
     QVBoxLayout* m_content;
-    QLabel* m_units;
+    QLabel* m_units = nullptr;
     QPushButton* m_saveButton = nullptr;
     QToolButton* m_exportButton = nullptr;
     StatusInfo m_status;

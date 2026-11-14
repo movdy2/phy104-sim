@@ -49,7 +49,7 @@ public slots:
     void setCurrentPage(int index);
     /// Ctrl+Enter: the main action of the page that is showing ("Calculate & Simulate", "Solve", ...).
     void triggerPrimaryAction();
-    /// Ctrl+P: the PDF Report screen, where the document is previewed and saved/printed.
+    /// Ctrl+P: open the PDF report mode on the unified Export page.
     void openReportPage();
 
 signals:

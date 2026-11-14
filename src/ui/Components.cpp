@@ -285,7 +285,7 @@ void LcdRegisterView::setRegister(const LcdRegister& reg) {
         ThemeManager::polishLcdFont(cap);
         auto* big = new QLabel(QString::fromStdString(reg.resultValue));
         big->setObjectName("lcdBig");
-        ThemeManager::polishLcdFont(big, true);
+        ThemeManager::polishLcdFont(big);
         m_layout->addWidget(cap);
         m_layout->addWidget(big);
     }

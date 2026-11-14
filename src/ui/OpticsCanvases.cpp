@@ -407,9 +407,9 @@ void PrismCanvas::paintDiagram(QPainter& p, const QRectF& a) {
     const QPointF faceR = unit(right - apex);
 
     struct Trace { QPointF d0, d1, P2, d2, X; bool ok = false, tir = false, hasX = false; };
-    auto trace = [&](double np) {
+    auto trace = [&](double np, double nm) {
         Trace tr;
-        const double nrel = np / m_in.nMedium;
+        const double nrel = np / nm;
         const double ang = half - m_in.incidence * kDeg;
         tr.d0 = QPointF(std::cos(ang), std::sin(ang));
         const auto d1 = refractVec(tr.d0, nL, 1.0 / nrel);
@@ -428,27 +428,39 @@ void PrismCanvas::paintDiagram(QPainter& p, const QRectF& a) {
         return tr;
     };
 
-    auto drawPath = [&](const Trace& tr, const QColor& c, bool annotate) {
-        const double sx = (P1.x() - 22) / std::max(0.05, tr.d0.x());
-        ray(p, P1 - tr.d0 * sx, P1, c, 1.9);
+    const bool spectrumMode = m_in.dispersion && !m_extra.isEmpty();
+    const double rayWidth = spectrumMode ? 1.35 : 1.9;
+    const double arrowAt = spectrumMode ? -1.0 : 0.5;
+    auto drawPath = [&](const Trace& tr, const QColor& c, bool annotate, bool drawIncident) {
+        if (drawIncident) {
+            const double sx = (P1.x() - 22) / std::max(0.05, tr.d0.x());
+            ray(p, P1 - tr.d0 * sx, P1, c, rayWidth, arrowAt);
+        }
         if (!tr.ok) return;
-        ray(p, P1, tr.P2, c, 1.9);
+        ray(p, P1, tr.P2, c, rayWidth, arrowAt);
         if (tr.tir) {
             if (annotate) text(p, tr.P2 + QPointF(10, -8), "TIR at the exit face: no emergent ray", t.error, 10);
             return;
         }
         const double ex = (a.right() - 22 - tr.P2.x()) / std::max(0.05, tr.d2.x());
-        ray(p, tr.P2, tr.P2 + tr.d2 * std::max(30.0, ex), c, 1.9);
+        ray(p, tr.P2, tr.P2 + tr.d2 * std::max(30.0, ex), c, rayWidth, arrowAt);
     };
 
-    const Trace main = trace(m_in.nPrism);
+    const Trace main = trace(m_in.nPrism, m_in.nMedium);
     // normals
     p.setPen(QPen(t.dim, 1, Qt::DashLine));
     p.drawLine(P1 - nL * 40, P1 + nL * 60);
     if (main.ok) p.drawLine(main.P2 - nR * 40, main.P2 + nR * 60);
 
-    if (m_extra.isEmpty()) drawPath(main, t.amber, true);
-    else for (const PrismPath& e : m_extra) drawPath(trace(e.nPrism), e.color, false);
+    if (!spectrumMode) {
+        drawPath(main, t.amber, true, true);
+    } else {
+        // White light follows one common incident path, then separates into seven thin, arrow-free rays.
+        const double sx = (P1.x() - 22) / std::max(0.05, main.d0.x());
+        ray(p, P1 - main.d0 * sx, P1, t.text, 1.9, 0.5);
+        for (const PrismPath& e : m_extra)
+            drawPath(trace(e.nPrism, e.nMedium), e.color, false, false);
+    }
 
     const auto res = PC::prism(m_in.nPrism, m_in.nMedium, m_in.apex, m_in.incidence);
     // construction lines and angle labels (main ray)
@@ -471,11 +483,21 @@ void PrismCanvas::paintDiagram(QPainter& p, const QRectF& a) {
     arcDirs(p, apex, unit(left - apex), unit(right - apex), 26, t.text);
     text(p, apex + QPointF(0, 44), "A = " + QString::number(m_in.apex, 'g', 5) + "°", t.text, 9, Qt::AlignHCenter);
     text(p, QPointF(apex.x(), left.y() - 22), "n = " + num(m_in.nPrism / m_in.nMedium), t.text, 9, Qt::AlignHCenter);
-    text(p, QPointF(16, P1.y() + 70), "Incident ray", t.amber, 10);
+    text(p, QPointF(16, P1.y() + 70), spectrumMode ? "White-light dispersion" : "Incident ray",
+         spectrumMode ? t.text : t.amber, 10);
 
     text(p, QPointF(16, a.bottom() - 36), "δ = i₁ + i₂ - A", t.text, 10);
     const double ly = a.bottom() - 14;
-    legendItem(p, QPointF(16, ly), "Optical path", t.amber);
+    if (spectrumMode) {
+        for (qsizetype i = 0; i < m_extra.size(); ++i) {
+            const double x = 16.0 + static_cast<double>(i) * 7.0;
+            p.setPen(QPen(m_extra[i].color, 2));
+            p.drawLine(QPointF(x, ly), QPointF(x + 5.0, ly));
+        }
+        text(p, QPointF(66, ly), "Spectrum", t.muted, 10);
+    } else {
+        legendItem(p, QPointF(16, ly), "Optical path", t.amber);
+    }
     legendItem(p, QPointF(16 + 110, ly), "Glass boundary", t.sage);
     legendItem(p, QPointF(16 + 235, ly), "Normals", t.dim, true);
 }

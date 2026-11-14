@@ -8,11 +8,11 @@
   retained, red engine light and status bar.
 * Calculator with an on-screen Casio keypad; global virtual keyboard with fallback target (works before any click).
 * Formula Solver (42 formulas, search, chapters, paging, LaTeX), constants, SVG optical setups.
-* **Export (Excel/CSV)** page: every data series with its description, the full table (no 7-row sample), workbook/CSV
-  settings, and a "recent export" card remembered in the `.phy` session.
-* **PDF Report** (print): header + every experiment's headline, diagram and chart (captured at 2x), parameters, LCD
-  registers, session notes and the saved-calculations table; tick boxes for the sections, A4 portrait/landscape,
-  live preview, Save PDF / Print…, remembered in the `.phy` session.
+* **One Export page** for CSV, Excel and PDF: the **Series data** mode shows every data series, its description and the
+  full table (no 7-row sample), workbook/CSV settings and Print…; the **PDF report** mode produces an academic lab report
+  with date/session metadata, numbered experiment sections, diagrams/charts with captions, parameters, LCD registers,
+  notes, saved calculations, A4 portrait/landscape, repeated page headers and numbered footers. Recent exports are
+  remembered in the `.phy` session.
 * **Second tabs on all six model screens**: Michelson **Fringes** (spacing λ/(2n), count over ±2 µm, contrast from the
   beam balance), Thin-Film **Transmission** (`cos²(2πnt/λ)`, no net reversal, transmitted-beam diagram), Grating **Orders**
   (every peak with its angle, `d/λ` capacity, all maxima marked on the chart), Single slit **Geometry** (minima positions
@@ -20,17 +20,17 @@
   dropdown now switches the physics and the ring pattern, and the Michelson reference arm draws a piezo stack.
 * **Markdown Study Workspace** (Notes): Gruvbox highlighter (H1-H4, formulas, bullets), snippet toolbar, problem
   template, Edit/Split/Preview, autosave into `Snapshot.notesContent` and the `.phy` file - and **only** that: the
-  formula reference (now on the Formula Solver page) and the export panels (Export / PDF Report screens) were removed.
-* **One export icon** in every page header: PDF report / Excel (.xlsx) / CSV (.csv), opening the matching screen with the
-  format preselected. Every page fills the whole window (the old 1500-px content cap is gone); the Draw Space page is gone.
+  formula reference (now on the Formula Solver page) and the export panels were removed.
+* **One export icon** in every page header: PDF report / Excel (.xlsx) / CSV (.csv), opening the matching mode on the
+  unified Export destination. Every page fills the whole window (the old 1500-px content cap is gone); the Draw Space page is gone.
 * **Compare saved runs**: dashboard **Recent / Compare** switch - two run pickers overlay their sweeps on one chart
-  (kept with the run as `RunRecord::series`, session format version 5); rows are selectable and **Delete selected run**
+  (kept with the run as `RunRecord::series`, session format version 6); rows are selectable and **Delete selected run**
   drops a run and autosaves.
 * **Keyboard shortcuts**: Ctrl+S save, Ctrl+Enter calculate/solve, Ctrl+P PDF report, Ctrl+1..9 pages, Ctrl+Tab next
   page, F11 full screen; the pages fill the window (tested at 1920 px wide).
 * **CI**: GitHub Actions build matrix (Linux Qt 6 + ctest, Windows MSVC + Qt 6.7.2, Qt-free `g++` core test).
-* Session file (`.phy`): runs (with their sweep), notes, snapshots (parameters + calculator registers), equations, drawing
-  and the recent export.
+* Session file (`.phy`, format version 6): runs (with their sweep), notes, snapshots (parameters + calculator registers),
+  equations and the recent export. The removed Draw Space sketch is no longer saved; legacy drawing payloads are ignored.
 * **Experiment extras** (v2.8): **Thick Lens & Aberration** page (power with a finite thickness, principal planes,
   BFL/FFL, principal-plane imaging, third-order spherical aberration ∝ D², f/#; a **Spectrum** tab with Cauchy's law and
   the Abbe number), **Thin-Film Colours** tab (CIE 1931 integration of `R(λ)`, a swatch, visibility and order count),
@@ -51,8 +51,7 @@
   thin film and Michelson and Newton's viewing-mode dropdown).
 
 ## Built in the core, UI still missing
-* Nothing right now: `EquationLabPage` (LaTeX lab) and `DrawSpacePage` (sketchpad) are both built on top of their
-  tested engines (`EquationText`/`EquationSolver`, `Drawing`/`DrawingHistory`).
+* Nothing right now: `EquationLabPage` (LaTeX lab) is built on top of the tested `EquationText`/`EquationSolver` engine.
 
 ## Should add next (priority order)
 1. Experiment extras, part 2: coma / astigmatism for the thick lens (the spherical aberration is done), a chromatic

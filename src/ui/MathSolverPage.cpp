@@ -59,7 +59,7 @@ MathSolverPage::MathSolverPage(AppContext* context, QWidget* parent)
 
     m_result = new QLabel("0");
     m_result->setObjectName("lcdResult");
-    ThemeManager::polishLcdFont(m_result, true);
+    ThemeManager::polishLcdFont(m_result);
     m_result->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     m_result->setMinimumHeight(64);
     calculatorPanel->body()->addWidget(m_result);

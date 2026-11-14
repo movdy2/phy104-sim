@@ -126,45 +126,63 @@ std::string reportFileStem(const std::string& isoDate) {
 std::string reportHtml(const ReportContent& content, const ReportOptions& o) {
     const std::string width = std::to_string(std::max(120, o.imageWidth));
     std::string h;
-    h.reserve(4096);
+    h.reserve(6144);
 
-    // ---------------------------------------------------------------- page style
+    // ---------------------------------------------------------------- academic report style
     h += "<html><head><style>";
-    h += "body { font-family: 'Inter', 'Segoe UI', 'DejaVu Sans', sans-serif; font-size: 10pt; color: #1d2021; }";
-    h += "h1 { font-size: 20pt; margin: 0 0 2pt 0; color: #1d2021; }";
-    h += "h2 { font-size: 13pt; margin: 16pt 0 4pt 0; color: #076678; }";
-    h += "h3 { font-size: 11pt; margin: 10pt 0 2pt 0; color: #1d2021; }";
-    h += "h4 { font-size: 10pt; margin: 8pt 0 2pt 0; color: #79740e; }";
-    h += "h5 { font-size: 10pt; margin: 6pt 0 2pt 0; color: #79740e; }";
-    h += "p  { margin: 2pt 0; }";
-    h += "ul { margin: 2pt 0 2pt 14pt; }";
-    h += "table { border-collapse: collapse; }";
-    h += "td, th { padding: 2pt 6pt; font-size: 9pt; vertical-align: top; }";
-    h += "th { color: #7c6f64; text-align: left; }";
+    h += "body { font-family: 'Inter', 'Segoe UI', 'DejaVu Sans', sans-serif; font-size: 10pt; color: #202b38; margin: 0; }";
+    h += "h1 { font-size: 23pt; margin: 8pt 0 2pt 0; color: #102a43; }";
+    h += "h2 { font-size: 13pt; margin: 16pt 0 5pt 0; color: #07566b; border-bottom: 1px solid #cbd5e1; padding-bottom: 3pt; }";
+    h += "h3 { font-size: 10pt; margin: 9pt 0 3pt 0; color: #334e68; }";
+    h += "h4, h5 { font-size: 9.5pt; margin: 6pt 0 2pt 0; color: #52606d; }";
+    h += "p { margin: 3pt 0; } ul { margin: 3pt 0 3pt 14pt; }";
+    h += "table { border-collapse: collapse; } td, th { padding: 3pt 6pt; font-size: 9pt; vertical-align: top; }";
+    h += "th { color: #52606d; text-align: left; }";
+    h += ".masthead td { color: #07566b; font-size: 8pt; letter-spacing: 1pt; border-bottom: 2px solid #07566b; padding: 0 0 5pt 0; }";
+    h += ".metadata td { background: #f1f5f8; border: 1px solid #d9e2ec; padding: 6pt 8pt; }";
+    h += ".meta-label { color: #627d98; font-size: 7.5pt; }";
+    h += ".summary { background: #edf6f7; border-left: 3px solid #0b7285; padding: 5pt 8pt; }";
+    h += ".figure-caption { color: #627d98; font-size: 8pt; margin-top: 0; }";
+    h += ".parameter-label { color: #52606d; }";
     h += "</style></head><body>";
 
-    // ---------------------------------------------------------------- header
+    // ---------------------------------------------------------------- report identity and session metadata
+    if (o.showMasthead) {
+        h += "<table class=\"masthead\" width=\"100%\"><tr><td><b>PHY104 · OPTICS LABORATORY</b></td>";
+        h += "<td align=\"right\">LAB REPORT</td></tr></table>";
+    }
     h += "<h1>" + escape(o.title) + "</h1>";
-    h += "<p style=\"color:#7c6f64; margin-bottom:1pt\">" + escape(o.subtitle) + "</p>";
-    h += "<p style=\"color:#7c6f64; margin-top:0\">" + escape(o.generated) + " · session " + escape(o.sessionName) + "</p>";
-    h += "<hr>";
+    h += "<p style=\"color:#52606d; margin-bottom:7pt\">" + escape(o.subtitle) + "</p>";
+    h += "<table class=\"metadata\" width=\"100%\"><tr>";
+    h += "<td><span class=\"meta-label\">GENERATED</span><br><b>" + escape(o.generated) + "</b></td>";
+    h += "<td><span class=\"meta-label\">SESSION</span><br><b>" + escape(o.sessionName) + "</b></td>";
+    h += "<td><span class=\"meta-label\">EXPERIMENTS</span><br><b>" + std::to_string(content.sections.size()) + "</b></td>";
+    h += "</tr></table><hr>";
 
-    // ---------------------------------------------------------------- experiments
+    // ---------------------------------------------------------------- numbered experiments and figure captions
     int index = 0;
+    int figure = 0;
     for (const ReportSection& s : content.sections) {
         ++index;
         h += "<h2>" + std::to_string(index) + ". " + escape(s.title) + "</h2>";
-        if (!s.headline.empty()) h += "<p><b>" + escape(s.headline) + "</b></p>";
-        if (o.diagrams && !s.diagramKey.empty())
+        if (!s.headline.empty())
+            h += "<p class=\"summary\"><b>RESULT</b><br>" + escape(s.headline) + "</p>";
+        if (o.diagrams && !s.diagramKey.empty()) {
+            ++figure;
             h += "<p><img src=\"" + escape(s.diagramKey) + "\" width=\"" + width + "\"></p>";
-        if (o.charts && !s.chartKey.empty())
+            h += "<p class=\"figure-caption\"><b>Figure " + std::to_string(figure) + ".</b> Optical diagram — " + escape(s.title) + ".</p>";
+        }
+        if (o.charts && !s.chartKey.empty()) {
+            ++figure;
             h += "<p><img src=\"" + escape(s.chartKey) + "\" width=\"" + width + "\"></p>";
+            h += "<p class=\"figure-caption\"><b>Figure " + std::to_string(figure) + ".</b> Data chart — " + escape(s.title) + ".</p>";
+        }
         if (o.registers && !s.parameters.empty()) {
-            h += "<table width=\"100%\">";
+            h += "<h3>Experimental parameters</h3><table width=\"100%\">";
             for (std::size_t i = 0; i < s.parameters.size(); i += 2) {
-                h += "<tr><th>" + escape(s.parameters[i].first) + "</th><td>" + escape(s.parameters[i].second) + "</td>";
+                h += "<tr><th class=\"parameter-label\">" + escape(s.parameters[i].first) + "</th><td>" + escape(s.parameters[i].second) + "</td>";
                 if (i + 1 < s.parameters.size())
-                    h += "<th>" + escape(s.parameters[i + 1].first) + "</th><td>" + escape(s.parameters[i + 1].second) + "</td>";
+                    h += "<th class=\"parameter-label\">" + escape(s.parameters[i + 1].first) + "</th><td>" + escape(s.parameters[i + 1].second) + "</td>";
                 else
                     h += "<td></td><td></td>";
                 h += "</tr>";
@@ -174,10 +192,10 @@ std::string reportHtml(const ReportContent& content, const ReportOptions& o) {
         if (o.registers) {
             for (const LcdRegister& r : s.registers) {
                 h += "<table width=\"100%\" style=\"margin-top:5pt\">";
-                h += "<tr><td colspan=\"2\" style=\"background:#eee8d5\"><b>" + escape(r.title) + "</b></td></tr>";
+                h += "<tr><td colspan=\"2\" style=\"background:#e5eef2; color:#102a43\"><b>" + escape(r.title) + "</b></td></tr>";
                 for (const std::string& line : r.lines) h += "<tr><td colspan=\"2\">" + escape(line) + "</td></tr>";
                 if (!r.resultLabel.empty() || !r.resultValue.empty())
-                    h += "<tr><td style=\"color:#7c6f64\">" + escape(r.resultLabel) + "</td><td align=\"right\"><b>" +
+                    h += "<tr><td style=\"color:#52606d\">" + escape(r.resultLabel) + "</td><td align=\"right\"><b>" +
                          escape(r.resultValue) + "</b></td></tr>";
                 for (const std::string& line : r.extraLines) h += "<tr><td colspan=\"2\">" + escape(line) + "</td></tr>";
                 h += "</table>";
@@ -203,9 +221,8 @@ std::string reportHtml(const ReportContent& content, const ReportOptions& o) {
     }
 
     if (index == 0 && (!o.notes || content.notes.empty()) && (!o.runs || content.runs.empty()))
-        h += "<p style=\"color:#7c6f64\">Nothing selected yet: open an experiment or tick more sections.</p>";
+        h += "<p style=\"color:#52606d\">Nothing selected yet: open an experiment or tick more sections.</p>";
 
-    h += "<p style=\"color:#7c6f64; margin-top:16pt\">Generated by PHY104 Optical Assistant · " + escape(o.generated) + "</p>";
     h += "</body></html>";
     return h;
 }

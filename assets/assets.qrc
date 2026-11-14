@@ -49,6 +49,7 @@
         <file alias="triangle.svg">icons/triangle.svg</file>
         <file alias="waves.svg">icons/waves.svg</file>
         <file alias="align-justify.svg">icons/align-justify.svg</file>
+        <file alias="aperture.svg">icons/aperture.svg</file>
         <file alias="circle-dot.svg">icons/circle-dot.svg</file>
         <file alias="contrast.svg">icons/contrast.svg</file>
         <file alias="git-merge.svg">icons/git-merge.svg</file>

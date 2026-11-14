@@ -32,7 +32,7 @@ public:
     void setNotes(const QString& markdown);      // autosaves
     /// "Send to Notes": appends a Markdown block to the session notes, saves, and tells the notes page to reload.
     void appendNotes(const QString& markdown);
-    /// Export page: remembers the file that was just written (saved in the .phy session) and reports it.
+    /// Export modes share the latest file record in the .phy session and report it here.
     void recordExport(const ExportRecord& record);
     /// Writes the .phy file. Returns false (and emits message) on failure.
     bool saveSession();
