@@ -6,6 +6,7 @@ class QComboBox;
 class QLabel;
 class QListWidget;
 class QPushButton;
+class QStackedWidget;
 class QTableWidget;
 
 namespace phy104 {
@@ -15,11 +16,11 @@ class ModeTabs;
 class NoticeCard;
 class Panel;
 class RecentExportPanel;
+class ReportPage;
 class UnitField;
 
-/// "Export (Excel/CSV)" - the dedicated export frame of the second Figma batch:
-/// the data series and what it contains (left), the full table (centre), the export settings and the
-/// "recent export" card that remembers the last file in the .phy session (right).
+/// The single Export destination: a full-series CSV/Excel workspace and an academic PDF-report workspace
+/// share one sidebar entry, one page header and the same recent-export history.
 class ExportPage : public BasePage {
     Q_OBJECT
 public:
@@ -27,14 +28,18 @@ public:
 
     QListWidget* seriesList() const { return m_series; }
     QTableWidget* previewTable() const { return m_table; }
-    /// The header export icon picks the format before the page is shown (1 = Excel, 2 = CSV).
+    /// Selects the series-export pane and preselects Excel or CSV before the page is shown.
     void setFormat(bool xlsx);
+    void showDataExport();
+    void showPdfReport();
+    void setReportPage(ReportPage* reportPage);
 
 private slots:
     void refreshSeries();
     void refreshPreview();
     void refreshRecent();
     void onFormatChanged();
+    void onExportPaneChanged();
     void printTable();                       // Print… : the table of the selected series, on paper or as PDF
     void exportPrimary();
     void exportSecondary();
@@ -44,6 +49,9 @@ private:
     bool exportAs(bool xlsx);
     QString destinationFolder() const;
 
+    ModeTabs* m_exportModes = nullptr;
+    QStackedWidget* m_workspace = nullptr;
+    ReportPage* m_reportPage = nullptr;
     Panel* m_listPanel;
     QListWidget* m_series;
     QLabel *m_descTitle, *m_descBody, *m_descNote, *m_descColumns;

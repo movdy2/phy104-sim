@@ -25,9 +25,9 @@ class UnitField;
 struct ReportContent;
 struct ReportOptions;
 
-/// "PDF Report" - notes, registers, diagrams and charts of every experiment in one printable document.
-/// The HTML comes from the tested core builder (`ReportDocument`); this page only collects the inputs,
-/// captures the live canvases and hands the document to a QPrinter (PDF file or a real printer).
+/// Embedded PDF-report workspace for the unified Export page: notes, registers, diagrams and charts in one document.
+/// The HTML comes from the tested core builder (`ReportDocument`); this view collects inputs, captures live canvases,
+/// and hands the document to a QPrinter (PDF file or a real printer).
 class ReportPage : public BasePage {
     Q_OBJECT
 public:

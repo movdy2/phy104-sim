@@ -20,12 +20,13 @@ struct ReportSection {
     std::string chartKey;                                  // "img://chart-<slug>", empty = no picture
 };
 
-/// What the student ticked on the PDF report screen.
+/// What the student selected in the PDF-report mode of the Export page.
 struct ReportOptions {
     std::string title = "PHY104 Laboratory Report";
     std::string subtitle = "Optical Assistant · PHY 104 · Optics";
     std::string generated;                                 // "13 November 2026 · 02:15"
     std::string sessionName = "optics_lab.phy";
+    bool showMasthead = true;                              // the PDF renderer supplies its own repeated running header
     bool notes = true;
     bool registers = true;
     bool diagrams = true;

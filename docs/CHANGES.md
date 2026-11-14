@@ -1,5 +1,11 @@
 # What changed compared with the first commit
 
+## Unified Export page and academic PDF report
+* Combined the former Excel/CSV and PDF Report destinations into one **Export** sidebar entry with Series data and PDF
+  report modes. Shared header-menu actions and Ctrl+P route to the appropriate mode.
+* Restyled the PDF template as an academic lab report with a repeated masthead, generated/session metadata, numbered
+  experiment sections, result summaries, figure captions, and numbered page footers.
+
 ## LCD, prism spectrum and Thick Lens icon polish
 * All Casio LCD surfaces now use the same DSEG14 family, including numeric results, register text, calculator/history,
   solver fields and the scientific-keyboard display.

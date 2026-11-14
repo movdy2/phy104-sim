@@ -712,8 +712,20 @@ int main() {
 
         ReportOptions o;
         o.generated = "13 November 2026 · 02:15";
+        o.sessionName = "week-04-optics.phy";
         const std::string html = reportHtml(content, o);
         CHECK(html.find("<h1>PHY104 Laboratory Report</h1>") != std::string::npos);
+        CHECK(html.find("PHY104 · OPTICS LABORATORY") != std::string::npos && html.find("LAB REPORT") != std::string::npos);
+        CHECK(html.find("GENERATED") != std::string::npos && html.find("SESSION") != std::string::npos);
+        CHECK(html.find("week-04-optics.phy") != std::string::npos);
+        CHECK(html.find("Figure 1.") != std::string::npos && html.find("Optical diagram") != std::string::npos);
+        CHECK(html.find("Figure 2.") != std::string::npos && html.find("Data chart") != std::string::npos);
+
+        ReportOptions runningHeader = o;
+        runningHeader.showMasthead = false;
+        const std::string printBody = reportHtml(content, runningHeader);
+        CHECK(printBody.find("<table class=\"masthead\"") == std::string::npos);
+        CHECK(printBody.find("<h1>PHY104 Laboratory Report</h1>") != std::string::npos);
         CHECK(html.find("1. Thin-Film Interference") != std::string::npos && html.find("I_r/I_r,max = 1.0000") != std::string::npos);
         CHECK(html.find("img://diagram-thin-film-interference") != std::string::npos);
         CHECK(html.find("img://chart-thin-film-interference") != std::string::npos);

@@ -70,7 +70,7 @@ public:
     const std::vector<std::string>& equations() const { return m_equations; }
     void setEquations(std::vector<std::string> list) { m_equations = std::move(list); }
 
-    /// Shared export destinations: the file written last (empty path = nothing exported yet).
+    /// Latest export across all formats (empty path = nothing exported yet).
     const ExportRecord& lastExport() const { return m_lastExport; }
     bool hasExport() const { return !m_lastExport.path.empty(); }
     void setLastExport(ExportRecord record) { m_lastExport = std::move(record); }

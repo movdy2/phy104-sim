@@ -33,9 +33,8 @@ into the session, into every snapshot's `notesContent`, and into the `.phy` file
 | **Polarization**, **Single slit**, **Grating**, **Thin film**, **Michelson**, **Newton's rings** | the six screens of the second Figma batch (Save + export icon, Send to Notes); **every tab of every screen works** (thin-film transmission **and its colour swatch**, Michelson fringe count, grating orders **and resolving power**, slit geometry **and the two-slit envelope**, Malus/Brewster) and Newton's viewing-mode dropdown switches to the transmitted rings |
 | **Thick Lens & Aberration** | a real glass element: signed `R₁ R₂`, centre thickness, aperture → paraxial power, **principal planes**, BFL/FFL, imaging from `H₂`, **third-order spherical aberration** (`ΔSA ∝ D²`) and a **Spectrum** tab with the Cauchy focal spread and Abbe number |
 | **Notes** | the clean Markdown study workspace of the design: editor + snippet toolbar + live LaTeX preview, autosaved; **⌨ Keyboard** opens the scientific keyboard (from `keyboard.json`) and types LaTeX straight into the note |
-| **Page actions** | every main-page header uses the same **Save** button plus one **Export** menu for PDF report / Excel (.xlsx) / CSV (.csv); export destinations omit the duplicate menu |
-| *Tools:* **PDF Report** | printable laboratory report: every experiment's headline, diagram and chart, the registers, the notes and the saved runs in one A4 document (Save PDF / Print…) |
-| *Tools:* **Export (Excel/CSV)** | data series and what it contains, every row of the table, workbook/CSV settings, **Print…** (paper or PDF), remembered recent export |
+| **Page actions** | every main-page header uses the same **Save** button plus one **Export** menu for PDF report / Excel (.xlsx) / CSV (.csv); all formats open the unified Export destination |
+| *Tools:* **Export** | one sidebar destination with **Series data** (full CSV/Excel tables, workbook settings and Print…) and **PDF report** (academic lab-report layout, session metadata, numbered experiments, figure captions, page-numbered PDF and Print…); recent exports are remembered in the `.phy` session |
 | *Tools:* **Formula Solver** | 42 formulas in 7 chapters: search, chapter filter, paging, LaTeX, LCD input/answer |
 | *Tools:* **Calculator** | clean expression → result layout with recent history, DEG/RAD, `Ans`, and a focused math keypad (numbers, operators, parentheses, powers, roots, trig and logs); no extra physics-variable browser |
 | *Tools:* **Study Hub** | tabs for ten chapters (summary, rules and chapter constants), shared autosaving Notes, and six Optical Setups (PNG export); the Notes shortcut stays in the sidebar, and global Constants are no longer a Study Hub tab |
@@ -66,7 +65,7 @@ test on every push and pull request - the badge above shows the last run.
 |---|---|
 | `Ctrl+S` | save the session (`.phy`) |
 | `Ctrl+Enter` | the main action of the page that is showing: **Calculate & Simulate** on the experiment screens, **Solve** on the Formula Solver |
-| `Ctrl+P` | open the **PDF Report** screen (preview, Save PDF, Print…) |
+| `Ctrl+P` | open the **PDF report** mode on Export (preview, Save PDF, Print…) |
 | `Ctrl+1` … `Ctrl+9` | the first nine pages of the sidebar |
 | `Ctrl+Tab` | next page |
 | `F11` | full screen (the window starts maximised) |

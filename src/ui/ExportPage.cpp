@@ -4,6 +4,7 @@
 #include "DataExport.h"
 #include "ExportService.h"
 #include "RecentExportPanel.h"
+#include "ReportPage.h"
 #include "ThemeManager.h"
 
 #include <QCheckBox>
@@ -18,6 +19,7 @@
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QStandardPaths>
+#include <QStackedWidget>
 #include <QTableWidget>
 #include <QTextDocument>
 #include <QToolButton>
@@ -27,10 +29,34 @@
 namespace phy104 {
 
 ExportPage::ExportPage(AppContext* ctx, QWidget* parent)
-    : BasePage("Export (Excel/CSV)", "REPORT DATA / What the series contains, every row of the table, and the file you last wrote",
+    : BasePage("Export", "CSV, Excel and PDF reports / Prepare complete data files or a formatted laboratory report",
                ctx, parent) {
-    exportButton()->hide();            // this IS the export screen: no menu pointing at itself
-    auto cols = addThreeColumns(252, 268);
+    m_exportModes = new ModeTabs({"Series data", "PDF report"});
+    m_exportModes->setObjectName("exportModeTabs");
+    content()->addWidget(m_exportModes);
+    m_workspace = new QStackedWidget;
+    m_workspace->setObjectName("exportWorkspace");
+    content()->addWidget(m_workspace, 1);
+
+    auto* dataPane = new QWidget;
+    auto* columnsRow = new QHBoxLayout(dataPane);
+    columnsRow->setContentsMargins(0, 0, 0, 0);
+    columnsRow->setSpacing(12);
+    Columns cols;
+    auto makeColumn = [columnsRow](int width) {
+        auto* column = new QVBoxLayout;
+        column->setSpacing(12);
+        auto* holder = new QWidget;
+        holder->setLayout(column);
+        column->setContentsMargins(0, 0, 0, 0);
+        if (width > 0) holder->setFixedWidth(width);
+        columnsRow->addWidget(holder, width > 0 ? 0 : 1);
+        return column;
+    };
+    cols.left = makeColumn(252);
+    cols.center = makeColumn(0);
+    cols.right = makeColumn(268);
+    m_workspace->addWidget(dataPane);
 
     // ---------------------------------------------------------------- left: the series and its description
     m_listPanel = new Panel("Data series", "none");
@@ -83,6 +109,7 @@ ExportPage::ExportPage(AppContext* ctx, QWidget* parent)
     // ---------------------------------------------------------------- right: settings + recent export
     auto* settings = new Panel("Export settings", "LOCAL");
     m_format = new ModeTabs({"Excel (.xlsx)", "CSV (.csv)"});
+    m_format->setObjectName("seriesFormatTabs");
     m_fileName = new UnitField(".xlsx");
     m_folder = new QComboBox;
     m_folder->addItem("Documents / PHY104", QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/PHY104");
@@ -119,6 +146,7 @@ ExportPage::ExportPage(AppContext* ctx, QWidget* parent)
     m_recent = new RecentExportPanel;
     cols.right->addWidget(m_recent, 0);
 
+    connect(m_exportModes, &ModeTabs::currentChanged, this, &ExportPage::onExportPaneChanged);
     connect(m_format, &ModeTabs::currentChanged, this, &ExportPage::onFormatChanged);
     connect(m_series, &QListWidget::currentRowChanged, this, [this](int) { refreshPreview(); });
     connect(m_series, &QListWidget::itemDoubleClicked, this, [this] { m_primary->click(); });
@@ -144,8 +172,48 @@ ExportPage::ExportPage(AppContext* ctx, QWidget* parent)
     setStatusInfo(st, false);
 
     onFormatChanged();
+    onExportPaneChanged();
     refreshSeries();
     refreshRecent();
+}
+
+void ExportPage::setReportPage(ReportPage* reportPage) {
+    if (!reportPage || m_reportPage) return;
+    m_reportPage = reportPage;
+    m_workspace->addWidget(reportPage);
+    connect(reportPage, &BasePage::stateChanged, this, [this] {
+        if (m_exportModes->current() == 1 && m_reportPage)
+            setStatusInfo(m_reportPage->statusInfo(), m_reportPage->isPaused());
+    });
+    onExportPaneChanged();
+}
+
+void ExportPage::showDataExport() {
+    m_exportModes->setCurrent(0);
+    onExportPaneChanged();
+}
+
+void ExportPage::showPdfReport() {
+    m_exportModes->setCurrent(1);
+    onExportPaneChanged();
+}
+
+void ExportPage::onExportPaneChanged() {
+    int pane = m_exportModes->current();
+    if (pane == 1 && !m_reportPage) {
+        m_exportModes->setCurrent(0);
+        pane = 0;
+    }
+    m_workspace->setCurrentIndex(pane);
+    if (pane == 1) {
+        setStatusInfo(m_reportPage->statusInfo(), m_reportPage->isPaused());
+        return;
+    }
+    StatusInfo st;
+    st.left = "Ready to export";
+    st.mid = m_format->current() == 0 ? "Excel workbook" : "CSV file";
+    st.right = "Local files only";
+    setStatusInfo(st, false);
 }
 
 QString ExportPage::destinationFolder() const { return m_folder->currentData().toString(); }
@@ -252,6 +320,7 @@ void ExportPage::refreshRecent() {
 void ExportPage::setFormat(bool xlsx) {
     m_format->setCurrent(xlsx ? 0 : 1);      // setCurrent does not emit currentChanged
     onFormatChanged();
+    showDataExport();
 }
 
 void ExportPage::onFormatChanged() {
@@ -261,6 +330,7 @@ void ExportPage::onFormatChanged() {
     m_secondary->setText(excel ? "Export as CSV instead" : "Export workbook instead");
     for (auto* c : {m_chkParams, m_chkSteps, m_chkNotes}) c->setEnabled(excel);   // CSV is the series only
     refreshPreview();
+    if (m_exportModes->current() == 0) onExportPaneChanged();
 }
 
 bool ExportPage::exportAs(bool xlsx) {

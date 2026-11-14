@@ -8,6 +8,7 @@
 #include "ThemeManager.h"
 
 #include <QCheckBox>
+#include <QColor>
 #include <QComboBox>
 #include <QDate>
 #include <QDateTime>
@@ -20,6 +21,7 @@
 #include <QPageLayout>
 #include <QPageSize>
 #include <QPainter>
+#include <QPen>
 #include <QPrintDialog>
 #include <QPrinter>
 #include <QPushButton>
@@ -54,8 +56,7 @@ QImage grabWidget(QWidget* widget) {
 
 ReportPage::ReportPage(AppContext* ctx, QWidget* parent)
     : BasePage("PDF Report", "PRINT / Notes, registers, diagrams and charts of every experiment in one document",
-               ctx, parent) {
-    exportButton()->hide();            // this IS the PDF screen: no menu pointing at itself
+               ctx, parent, false) {
     auto cols = addThreeColumns(252, 268);
 
     // ---------------------------------------------------------------- left: what goes into the document
@@ -183,7 +184,8 @@ QString ReportPage::destinationFolder() const { return m_folder->currentData().t
 ReportOptions ReportPage::options(int imageWidth) const {
     ReportOptions o;
     o.generated = QDateTime::currentDateTime().toString("d MMMM yyyy · HH:mm").toStdString();
-    o.sessionName = m_ctx->sessionFile.toStdString();
+    const QString sessionName = QFileInfo(m_ctx->sessionFile).fileName();
+    o.sessionName = (sessionName.isEmpty() ? QString("Unsaved session") : sessionName).toStdString();
     o.notes = m_chkNotes->isChecked();
     o.registers = m_chkRegs->isChecked();
     o.diagrams = m_chkDiagrams->isChecked();
@@ -256,14 +258,67 @@ void ReportPage::refreshPreview() {
 bool ReportPage::renderTo(QPrinter& printer) {
     QMap<QString, QImage> images;
     const ReportContent content = collect(images);
-    const ReportOptions o = options(520);                                    // A4 text width
+    ReportOptions o = options(520);                                          // A4 text width
+    o.showMasthead = false;                                                  // the repeated QPainter header replaces the HTML masthead
+
+    // Use a 96-dpi logical page so the HTML's pixel-sized diagrams remain readable; PDF text stays vector.
+    printer.setResolution(96);
+    printer.setFullPage(true);
+    const QRectF page = printer.pageLayout().paintRect(QPageLayout::DevicePixel);
+    constexpr qreal headerHeight = 30.0;
+    constexpr qreal footerHeight = 26.0;
+    const qreal bodyHeight = page.height() - headerHeight - footerHeight;
+    if (page.width() < 120 || bodyHeight < 120) return false;
+
     QTextDocument doc;
     doc.setDefaultFont(QFont("Inter", 10));
+    doc.setDocumentMargin(0);
+    doc.setPageSize(QSizeF(page.width(), bodyHeight));
     for (auto it = images.cbegin(); it != images.cend(); ++it)
         doc.addResource(QTextDocument::ImageResource, QUrl(it.key()), it.value());
     QTextCursor cursor(&doc);
     cursor.insertHtml(QString::fromStdString(reportHtml(content, o)));
-    doc.print(&printer);
+    const int pages = std::max(1, doc.pageCount());
+
+    QPainter painter;
+    if (!painter.begin(&printer)) return false;
+    const QColor accent("#07566b"), rule("#cbd5e1"), muted("#52606d");
+    for (int pageIndex = 0; pageIndex < pages; ++pageIndex) {
+        if (pageIndex > 0 && !printer.newPage()) { painter.end(); return false; }
+        painter.save();
+        painter.setPen(accent);
+        QFont headerFont("Inter");
+        headerFont.setPointSize(8);
+        headerFont.setWeight(QFont::DemiBold);
+        painter.setFont(headerFont);
+        const QRectF header(page.left(), page.top() + 2, page.width(), headerHeight - 4);
+        painter.drawText(header, Qt::AlignLeft | Qt::AlignVCenter, "PHY104 · OPTICS LABORATORY");
+        painter.drawText(header, Qt::AlignRight | Qt::AlignVCenter, "LABORATORY REPORT");
+        painter.setPen(QPen(rule, 0.8));
+        const qreal headerRuleY = page.top() + headerHeight - 1;
+        painter.drawLine(QPointF(page.left(), headerRuleY), QPointF(page.right(), headerRuleY));
+
+        painter.save();
+        painter.setClipRect(QRectF(page.left(), page.top() + headerHeight, page.width(), bodyHeight));
+        painter.translate(page.left(), page.top() + headerHeight - pageIndex * bodyHeight);
+        doc.drawContents(&painter, QRectF(0, pageIndex * bodyHeight, page.width(), bodyHeight));
+        painter.restore();
+
+        painter.setPen(QPen(rule, 0.8));
+        const qreal footerRuleY = page.bottom() - footerHeight + 1;
+        painter.drawLine(QPointF(page.left(), footerRuleY), QPointF(page.right(), footerRuleY));
+        painter.setPen(muted);
+        QFont footerFont("Inter");
+        footerFont.setPointSize(8);
+        painter.setFont(footerFont);
+        const QRectF footer(page.left(), footerRuleY + 2, page.width(), footerHeight - 2);
+        painter.drawText(footer, Qt::AlignLeft | Qt::AlignVCenter,
+                         "PHY104 Optical Assistant · " + QString::fromStdString(o.generated));
+        painter.drawText(footer, Qt::AlignRight | Qt::AlignVCenter,
+                         QString("Page %1 of %2").arg(pageIndex + 1).arg(pages));
+        painter.restore();
+    }
+    painter.end();
     return true;
 }
 

@@ -10,7 +10,7 @@ class QPushButton;
 
 namespace phy104 {
 
-/// Shared recent-export card used by both data export destinations.
+/// Recent-export card used by both modes of the unified Export page.
 class RecentExportPanel : public Panel {
     Q_OBJECT
 public:

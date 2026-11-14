@@ -13,7 +13,7 @@ Wave Interference, Formulas Notes & Export, Component Sheet).
 | Prisms | `PrismsPage` + `PrismCanvas`, `LineChart` | dispersion mode draws three rays |
 | Wave Interference | `WavePage` + `WaveCanvas`, `LineChart` | Intensity / Wavefronts tabs |
 | Notes | `NotesPage` | the Markdown study workspace (editor + live preview); the reference is on the Formula Solver screen |
-| Export (Excel/CSV) | `ExportPage` | series description + full preview + "recent export" card; `XlsxWriter` builds real .xlsx files without a library |
+| Export | `ExportPage` + embedded `ReportPage` | one sidebar destination with Series data (full preview, Excel/CSV) and PDF report modes; academic report metadata, numbered experiment sections, figure captions and PDF page numbers |
 | Component sheet | `Components.h` + `ThemeManager` | see below |
 
 ## Component sheet
@@ -34,18 +34,19 @@ Wave Interference, Formulas Notes & Export, Component Sheet).
 
 ## Where the app goes beyond or differs from the design
 * **Light theme** (Gruvbox-light mapping) - the design is dark only. Toggle in the status bar.
-* **Tools section** in the sidebar (Notes, Equation Lab, Study Hub, Formula Solver, Calculator, Export, PDF Report):
-  features from the project brief that have no own Figma frame. The Study Hub includes tabs for chapters, shared Notes
-  and Optical Setups; chapter-specific constants remain beside each chapter's rules. The Notes sidebar shortcut stays,
-  while Optical Setups is accessed through the Hub.
-* The shared page header keeps **Save** separate from one **Export** menu (PDF / Excel / CSV); the export destinations
-  hide their duplicate menu. The Draw Space page and its model were removed at the author's request; `.phy` files no longer
-  persist sketches. The Notes page is only the Markdown workspace (no formula reference, no export panels).
+* **Tools section** in the sidebar (Notes, Equation Lab, Study Hub, Formula Solver, Calculator, Export): features from
+  the project brief that have no own Figma frame. The Study Hub includes tabs for chapters, shared Notes and Optical Setups;
+  chapter-specific constants remain beside each chapter's rules. The Notes sidebar shortcut stays, while Optical Setups is
+  accessed through the Hub.
+* The shared page header keeps **Save** separate from one **Export** menu (PDF / Excel / CSV); every format routes to the
+  corresponding mode of the unified Export destination. The Draw Space page and its model were removed at the author's
+  request; `.phy` files no longer persist sketches. The Notes page is only the Markdown workspace (no formula reference,
+  no export panels).
 * **Error red** is the design's `#fb4934` (earlier brief: `#cc241d`); physics notices use the design's amber card.
 * **Real functionality behind the frames**: Calculate & Simulate saves runs, the session autosaves and restores,
   export writes real files. The "21 saved calculations" in the frame is demo data; a fresh session starts at 00.
-* **Export (Excel/CSV)** is its own screen (second batch) next to the combined Formulas & Notes page: the export
-  settings live on both, the recent-export record is shared and stored in the `.phy` session.
+* **Export** is one screen with Series data and PDF report modes; both modes show the recent-export record stored in the
+  `.phy` session.
 * Charts are drawn with QPainter (`LineChart`), not Qt Charts, to avoid an extra Qt module; the panel meta keeps
   the design's "QT CHARTS" label.
 * The faux title bar of the frame is the native window title.

@@ -177,6 +177,9 @@ private slots:
         go(0);
         click(findButton(m_app->dashboard, "Export data"));
         QCOMPARE(win().currentPage(), idx(m_app->exportPage));
+        auto* exportModes = m_app->exportPage->findChild<ModeTabs*>("exportModeTabs");
+        QVERIFY(exportModes);
+        QCOMPARE(exportModes->current(), 0);
     }
     void dashboardBrowseListsAllElevenExperiments() {
         go(0);
@@ -269,16 +272,23 @@ private slots:
         win().triggerPrimaryAction();                                      // what Ctrl+Enter does
         QCOMPARE(m_app->context().log.savedCalculations(), runs + 1);
         win().openReportPage();                                            // what Ctrl+P does
-        QCOMPARE(win().currentPage(), idx(m_app->reportPage));
+        QCOMPARE(win().currentPage(), idx(m_app->exportPage));
+        QVERIFY(m_app->reportPage->isVisibleTo(&win()));
     }
-    void exportScreensDoNotOfferTheExportMenu() {
-        for (QWidget* page : QList<QWidget*>{m_app->exportPage, m_app->reportPage}) {
-            goTo(page);
-            auto* button = page->findChild<QToolButton*>("exportMenu");
-            QVERIFY2(button && !button->isVisibleTo(&win()), "the export screens still show the export menu");
+    void exportIsOneSidebarDestinationWithAFormatMenu() {
+        int exportEntries = 0, pdfEntries = 0;
+        for (QPushButton* button : win().navButtons()) {
+            exportEntries += button->accessibleName() == "Export";
+            pdfEntries += button->accessibleName() == "PDF Report";
         }
-        goTo(m_app->prisms);                                     // ...while the experiment screens keep it
-        auto* button = m_app->prisms->findChild<QToolButton*>("exportMenu");
+        QCOMPARE(exportEntries, 1);
+        QCOMPARE(pdfEntries, 0);
+        goTo(m_app->exportPage);
+        auto* button = m_app->exportPage->findChild<QToolButton*>("exportMenu");
+        QVERIFY2(button && button->menu() && button->isVisibleTo(&win()), "the unified Export page has no visible format menu");
+        QVERIFY(m_app->reportPage->findChild<QToolButton*>("exportMenu") == nullptr);
+        goTo(m_app->prisms);                                     // experiment screens share the same menu
+        button = m_app->prisms->findChild<QToolButton*>("exportMenu");
         QVERIFY(button && button->isVisibleTo(&win()));
     }
     void theChosenThemeIsRemembered() {
@@ -907,7 +917,7 @@ private slots:
         const QList<QWidget*> pages = {m_app->dashboard, m_app->refraction, m_app->lenses, m_app->prisms, m_app->wave,
                                        m_app->polarization, m_app->singleSlit, m_app->grating, m_app->thinFilm, m_app->michelson,
                                        m_app->newton, m_app->thickLens, m_app->notes, m_app->equationLab, m_app->studyHub,
-                                       m_app->solver, m_app->calculator};
+                                       m_app->solver, m_app->calculator, m_app->exportPage};
         for (QWidget* page : pages) {
             goTo(page);
             QVERIFY2(findButton(page, "Save"), "a main page is missing the shared Save action");
@@ -925,14 +935,18 @@ private slots:
         QCOMPARE(actions.size(), 3);
 
         actions[0]->trigger();
-        QCOMPARE(win().currentPage(), idx(m_app->reportPage));
+        QCOMPARE(win().currentPage(), idx(m_app->exportPage));
+        QVERIFY(m_app->reportPage->isVisibleTo(&win()));             // PDF report pane of the same page
         actions[1]->trigger();
         QCOMPARE(win().currentPage(), idx(m_app->exportPage));
-        auto* formatTabs = m_app->exportPage->findChild<ModeTabs*>();
-        QVERIFY(formatTabs);
+        auto* formatTabs = m_app->exportPage->findChild<ModeTabs*>("seriesFormatTabs");
+        auto* paneTabs = m_app->exportPage->findChild<ModeTabs*>("exportModeTabs");
+        QVERIFY(formatTabs && paneTabs);
+        QCOMPARE(paneTabs->current(), 0);
         QCOMPARE(formatTabs->current(), 0);                         // Excel selected before the destination opens
         actions[2]->trigger();
         QCOMPARE(win().currentPage(), idx(m_app->exportPage));
+        QCOMPARE(paneTabs->current(), 0);
         QCOMPARE(formatTabs->current(), 1);                         // CSV selected before the destination opens
     }
 
@@ -1093,12 +1107,17 @@ private slots:
         QCOMPARE(win().currentPage(), idx(m_app->exportPage));
         QVERIFY(findButton(m_app->exportPage, "Export CSV"));               // the format was preselected
         goTo(m_app->prisms);
-        actions[0]->trigger();                                              // PDF report
-        QCOMPARE(win().currentPage(), idx(m_app->reportPage));
+        actions[0]->trigger();                                              // PDF report pane of the same Export page
+        QCOMPARE(win().currentPage(), idx(m_app->exportPage));
+        auto* panes = m_app->exportPage->findChild<ModeTabs*>("exportModeTabs");
+        QVERIFY(panes);
+        QCOMPARE(panes->current(), 1);
+        QVERIFY(m_app->reportPage->isVisibleTo(&win()));
     }
     void exportPageCanPrintTheTable() {
         goTo(m_app->exportPage);
-        QVERIFY2(findButton(m_app->exportPage, "Print…"), "no Print button on the export screen");
+        m_app->exportPage->showDataExport();
+        QVERIFY2(findButton(m_app->exportPage, "Print…"), "no Print button on the series-export pane");
     }
     // ------------------------------------------------------------------ Study Hub (JSON array -> page)
     void studyHubKeepsChapterConstantsAndRemovesGlobalConstantsTab() {
@@ -1257,15 +1276,16 @@ private slots:
         QVERIFY2(m_app->notes->findChildren<QTableWidget*>().isEmpty(), "an export table is still on the notes page");
     }
 
-    void exportPagesShareTheRecentExportPanelAndServiceNames() {
-        QCOMPARE(m_app->exportPage->findChildren<RecentExportPanel*>().size(), 1);
+    void unifiedExportKeepsRecentHistoryInBothModes() {
+        // The data and report panes each present the same session-backed latest export record.
+        QCOMPARE(m_app->exportPage->findChildren<RecentExportPanel*>().size(), 2);
         QCOMPARE(m_app->reportPage->findChildren<RecentExportPanel*>().size(), 1);
         QCOMPARE(ExportService::fileStem("PHY104_refraction.CSV", "fallback"), QString("PHY104_refraction"));
         QCOMPARE(ExportService::outputPath("exports", "report.pdf", "fallback", ".pdf"),
                  QDir("exports").filePath("report.pdf"));
     }
 
-    // ------------------------------------------------------------------ dedicated Export (Excel/CSV) page
+    // ------------------------------------------------------------------ unified Export page: series data and report panes
     const Snapshot* selectedSeries() {
         auto* list = m_app->exportPage->seriesList();
         if (!list || !list->currentItem()) return nullptr;
@@ -1273,6 +1293,7 @@ private slots:
     }
     void exportPageListsEverySeriesAndDescribesIt() {
         goTo(m_app->exportPage);
+        m_app->exportPage->showDataExport();
         auto* list = m_app->exportPage->seriesList();
         QVERIFY(list && list->count() > 0);
         int withRows = 0;                                                       // every published series that has rows
@@ -1290,6 +1311,7 @@ private slots:
     }
     void exportPageShowsEveryRowOfTheChosenSeries() {
         goTo(m_app->exportPage);
+        m_app->exportPage->showDataExport();
         auto* list = m_app->exportPage->seriesList();
         QVERIFY(list && list->count() > 0);
         int mostRows = 0;
@@ -1335,9 +1357,11 @@ private slots:
         QVERIFY2(texts.contains(QFileInfo(path).fileName()), "the recent-export card forgot the file");
     }
 
-    // ------------------------------------------------------------------ the printable report
+    // ------------------------------------------------------------------ the PDF report pane of the unified Export page
     void reportPageCapturesEveryScreenAndWritesAPdf() {
-        goTo(m_app->reportPage);
+        goTo(m_app->exportPage);
+        m_app->exportPage->showPdfReport();
+        QApplication::processEvents();
         auto* page = m_app->reportPage;
         QTRY_VERIFY_WITH_TIMEOUT(page->sectionCount() >= 6, 2000);
         QVERIFY(page->html().contains("PHY104 Laboratory Report"));

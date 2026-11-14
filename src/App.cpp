@@ -82,25 +82,28 @@ App::App(const Paths& paths) {
     calculator = new MathSolverPage(m_context.get());
     m_window->addPage("Calculator", "calculator", calculator, 1);
     exportPage = new ExportPage(m_context.get());
-    const int exportIndex = m_window->addPage("Export (Excel/CSV)", "file-spreadsheet", exportPage, 1);   // tools entry, as in Figma
-    reportPage = new ReportPage(m_context.get());
-    const int reportIndex = m_window->addPage("PDF Report", "printer", reportPage, 1);
+    const int exportIndex = m_window->addPage("Export", "download", exportPage, 1);
+    reportPage = new ReportPage(m_context.get(), exportPage);
+    exportPage->setReportPage(reportPage);
     reportPage->setSources({refraction, lenses, prisms, wave, polarization, singleSlit, grating, thinFilm, michelson, newton, thickLens});
     dashboard->setNotesPage(notesIndex);
     dashboard->setExportPage(exportIndex);
 
-    // Route each shared page-header Export action; the destination pages hide their own duplicate menu.
+    // Route each shared page-header Export action into the matching mode of the unified Export destination.
     for (int i = 0; i < m_window->pageCount(); ++i) {
         auto* page = qobject_cast<BasePage*>(m_window->page(i));
         if (!page) continue;
-        QObject::connect(page, &BasePage::exportFormatRequested, m_window.get(), [this, exportIndex, reportIndex](int format) {
-            if (format == 0) { m_window->setCurrentPage(reportIndex); return; }
-            exportPage->setFormat(format == 1);            // 1 = Excel (.xlsx), 2 = CSV (.csv)
+        QObject::connect(page, &BasePage::exportFormatRequested, m_window.get(), [this, exportIndex](int format) {
+            if (format == 0) exportPage->showPdfReport();
+            else exportPage->setFormat(format == 1);        // 1 = Excel (.xlsx), 2 = CSV (.csv)
             m_window->setCurrentPage(exportIndex);
         });
     }
 
-    QObject::connect(dashboard, &BasePage::openPageRequested, m_window.get(), &MainWindow::setCurrentPage);
+    QObject::connect(dashboard, &BasePage::openPageRequested, m_window.get(), [this, exportIndex](int index) {
+        if (index == exportIndex) exportPage->showDataExport();
+        m_window->setCurrentPage(index);
+    });
 }
 
 App::~App() = default;
