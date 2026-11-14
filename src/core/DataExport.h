@@ -17,10 +17,10 @@ struct ExportOptions {
 
 namespace DataExport {
 
-/// UTF-8 CSV of one data series (header row + full-precision numbers; NaN -> empty cell).
+/// UTF-8 CSV of one data series (metadata comments, header row + full-precision numbers; NaN -> empty cell).
 std::string toCsv(const DataSeries& series);
 
-/// Sheets of the workbook, in this order: Parameters, Steps, Measurements, Notes (only the enabled ones).
+/// Workbook sheets: Parameters, Steps, Measurements, optional Analysis metadata, and Notes (enabled sections only).
 std::vector<XlsxSheet> workbookSheets(const SessionLog& log, const DataSeries& series, const ExportOptions& options);
 
 std::vector<std::uint8_t> buildWorkbook(const SessionLog& log, const DataSeries& series, const ExportOptions& options);

@@ -1,6 +1,7 @@
 #pragma once
 // JSON implementations of the repository interfaces declared in core/Repositories.h
 #include "Repositories.h"
+#include <QMap>
 #include <QString>
 
 namespace phy104 {
@@ -62,6 +63,10 @@ public:
 private:
     QString m_path;
 };
+
+/// Separate user-writable JSON file: chapter key -> plain-text Study Hub notes.
+QMap<QString, QString> loadStudyHubNotes(const QString& path);
+bool saveStudyHubNotes(const QString& path, const QMap<QString, QString>& notes, QString* error = nullptr);
 
 /// The ".phy" session file: JSON with the saved runs and the session notes.
 class JsonSessionStore : public ISessionStore {

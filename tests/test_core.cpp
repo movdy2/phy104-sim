@@ -5,6 +5,7 @@
 #include "DataExport.h"
 #include "EquationText.h"
 #include "ExperimentReports.h"
+#include "FieldIds.h"
 #include "FormulaManager.h"
 #include "NumberFormat.h"
 #include "SessionLog.h"
@@ -17,6 +18,7 @@
 #include "SolverEngine.h"
 #include "Spectrum.h"
 #include "ThickLens.h"
+#include "Uncertainty.h"
 
 #include <cmath>
 #include <iostream>
@@ -256,6 +258,11 @@ int main() {
         for (const auto& l : r.extraLines) if (l == text) return true;
         return false;
     };
+    auto hasText = [](const LcdRegister& r, const std::string& text) {
+        for (const auto& l : r.lines) if (l.find(text) != std::string::npos) return true;
+        for (const auto& l : r.extraLines) if (l.find(text) != std::string::npos) return true;
+        return false;
+    };
     // --- number formatting
     CHECK(NumberFormat::fixed(48.59037789) == "48.5904" && NumberFormat::fixed(-0.00000001) == "0.0000");
     CHECK(NumberFormat::signedFixed(15) == "+15.0000" && NumberFormat::signedFixed(-0.5) == "-0.5000");
@@ -281,7 +288,8 @@ int main() {
         CHECK(std::fabs(ER::defaultTirAngle(1.5, 1.0) - 50.0) < 1e-9);
         auto sweep = ER::refractionSweep({});
         CHECK(sweep.rows.size() == 8 && std::fabs(sweep.rows[6][1] - 48.5904) < 1e-3);
-        CHECK(sweep.description == "Crown glass → Air · n₁ = 1.5000 · n₂ = 1.0000" && sweep.note == "sin θ is dimensionless");
+        CHECK(sweep.description == "Crown glass → Air · n₁ = 1.5000 · n₂ = 1.0000" &&
+              sweep.note.find("sin θ is dimensionless") == 0 && sweep.headers.size() == 7);
         std::vector<double> xs, ys;
         for (auto& row : sweep.rows) if (!std::isnan(row[1])) { xs.push_back(row[2]); ys.push_back(row[3]); }
         auto fit = ER::linearFit(xs, ys);
@@ -428,20 +436,22 @@ int main() {
         CHECK(XlsxWriter::xmlEscape("a<b&\"c\">") == "a&lt;b&amp;&quot;c&quot;&gt;");
         auto series = ER::refractionSweep({});
         const std::string csv = DataExport::toCsv(series);
-        CHECK(csv.rfind("θ₁ (°),θ₂ (°),sin θ₁,sin θ₂\n", 0) == 0);
+        CHECK(csv.find("\nθ₁ (°),θ₂ (°),sin θ₁,sin θ₂,σ θ₂ (°),σ sin θ₁,σ sin θ₂\n") != std::string::npos);
+        CHECK(csv.find("# Slope standard uncertainty (1σ):") != std::string::npos);
         RefractionInput dense; dense.n1 = 2.4;                                    // critical angle 24.6°: rows from 25° are TIR
         const std::string csvTir = DataExport::toCsv(ER::refractionSweep(dense));
-        CHECK(csvTir.find("30,,0.5,1.2\n") != std::string::npos);                // TIR row: empty cell, not "nan"
+        CHECK(csvTir.find("30,,0.5,1.2,,0,0\n") != std::string::npos);         // TIR row: empty angle/σ, not "nan"
         CHECK(csvTir.find("nan") == std::string::npos);
         SessionLog log; log.setNotes("line one\nline two");
         log.setSnapshot({"Refraction & TIR", {{"n₁", "1.5"}}, {ER::refraction({}).registers[0]}, "x", {}, ""});
         auto sheets = DataExport::workbookSheets(log, series, {});
-        CHECK(sheets.size() == 4 && sheets[0].name == "Parameters" && sheets[3].name == "Notes");
+        CHECK(sheets.size() == 5 && sheets[0].name == "Parameters" && sheets[2].name == "Measurements" &&
+              sheets[3].name == "Analysis" && sheets[4].name == "Notes");
         ExportOptions only; only.parameters = only.steps = only.notes = false;
-        CHECK(DataExport::workbookSheets(log, series, only).size() == 1);
+        CHECK(DataExport::workbookSheets(log, series, only).size() == 2);
         const auto bytes = DataExport::buildWorkbook(log, series, {});
         CHECK(bytes.size() > 500 && bytes[0] == 'P' && bytes[1] == 'K');
-        CHECK(DataExport::describeWorkbook(log, series, {}).rfind("4 sheets · 8 measurements · ", 0) == 0);
+        CHECK(DataExport::describeWorkbook(log, series, {}).rfind("5 sheets · 8 measurements · ", 0) == 0);
         CHECK(DataExport::suggestedFileName(series, ".xlsx") == "PHY104_refraction.xlsx");
         if (FILE* f = std::fopen("/tmp/phy104_test.xlsx", "wb")) { std::fwrite(bytes.data(), 1, bytes.size(), f); std::fclose(f); }
     }
@@ -761,6 +771,83 @@ int main() {
         CHECK(markdownToHtml("") .empty());
         CHECK(reportFileStem("2026-11-13") == "PHY104_report_2026-11-13" && reportFileStem("") == "PHY104_report");
         CHECK(reportImageKey("chart", "Newton's Rings") == "img://chart-newton-s-rings");
+    }
+
+    // ====================================================================== measurement uncertainty and weighted fits
+    {
+        const auto product = propagateUncertainty({2.0, 3.0}, {0.1, 0.2}, [](const std::vector<double>& x) {
+            return x[0] * x[1];
+        });
+        CHECK(product.valid && near(product.value, 6.0));
+        CHECK(near(product.standardUncertainty, 0.5));       // sqrt((3·0.1)^2 + (2·0.2)^2)
+
+        const auto ratio = propagateUncertainty({12.0, 4.0}, {0.0, 0.1}, [](const std::vector<double>& x) {
+            return x[0] / x[1];
+        });
+        CHECK(ratio.valid && near(ratio.value, 3.0));
+        CHECK(near(ratio.standardUncertainty, 0.075));
+        CHECK(!propagateUncertainty({1.0}, {-0.1}, [](const std::vector<double>& x) { return x[0]; }).valid);
+
+        const WeightedLinearFit fit = weightedLinearFit({0, 1, 2, 3}, {1.02, 2.98, 5.03, 6.99}, {0.1, 0.1, 0.1, 0.1});
+        CHECK(fit.ok && near(fit.slope, 2.0, 0.03) && near(fit.intercept, 1.0, 0.03));
+        CHECK(fit.slopeUncertainty > 0.0 && fit.interceptUncertainty > 0.0);
+        CHECK(fit.degreesOfFreedom == 2 && fit.chiSquared >= 0.0 && fit.r2 > 0.99);
+        CHECK(!weightedLinearFit({0, 1}, {1, 3}, {0, 0.1}).ok);      // known σy must be positive
+
+        RefractionInput refraction; refraction.sigmaN1 = 0.001; refraction.sigmaN2 = 0.001; refraction.sigmaTheta1 = 0.1;
+        const Report refractionReport = ER::refraction(refraction);
+        CHECK(refractionReport.headline.find(" ± ") != std::string::npos);
+        CHECK(hasText(refractionReport.registers[0], "σ(θ₂) = "));
+        CHECK(hasText(refractionReport.registers[1], "WEIGHTED FIT · slope = "));
+        const DataSeries refractionData = ER::refractionSweep(refraction);
+        CHECK(refractionData.rows[6][4] > 0.0 && refractionData.rows[6][5] > 0.0 && refractionData.rows[6][6] > 0.0);
+        CHECK(!refractionData.analysis.empty());
+        ReportSection uncertaintySection;
+        uncertaintySection.title = "Refraction & TIR";
+        uncertaintySection.headline = refractionReport.headline;
+        uncertaintySection.parameters = refractionReport.parameters;
+        uncertaintySection.registers = refractionReport.registers;
+        ReportContent uncertaintyReport;
+        uncertaintyReport.sections = {uncertaintySection};
+        const std::string uncertaintyHtml = reportHtml(uncertaintyReport, ReportOptions{});
+        CHECK(uncertaintyHtml.find(" ± ") != std::string::npos && uncertaintyHtml.find("σ(θ₂)") != std::string::npos &&
+              uncertaintyHtml.find("WEIGHTED FIT") != std::string::npos);
+
+        ImagingInput imaging; imaging.sigmaF = 0.1; imaging.sigmaS = 0.2; imaging.sigmaH = 0.05;
+        const Report imagingReport = ER::imaging(imaging);
+        CHECK(imagingReport.headline.find(" ± ") != std::string::npos);
+        CHECK(hasText(imagingReport.registers[0], "σ(dᵢ) = ") && hasText(imagingReport.registers[1], "σ(hᵢ) = "));
+        CHECK(ER::imagingSweep(imaging).headers.size() == 5 && ER::imagingSweep(imaging).rows[0][3] > 0.0);
+
+        PrismInput prism; prism.sigmaNPrism = 0.001; prism.sigmaNMedium = 0.0002;
+        prism.sigmaApex = 0.02; prism.sigmaIncidence = 0.03;
+        const Report prismReport = ER::prism(prism);
+        CHECK(prismReport.headline.find(" ± ") != std::string::npos && hasText(prismReport.registers[0], "σ(δ) = "));
+        CHECK(ER::prismSweep(prism).headers.size() == 4 && ER::prismSweep(prism).rows[3][3] > 0.0);
+        PrismInput prismTir; prismTir.incidence = 0.0; prismTir.sigmaNPrism = 0.001;
+        const Report prismTirReport = ER::prism(prismTir);
+        bool prismTirShowsTolerance = false;
+        for (const auto& [name, value] : prismTirReport.parameters)
+            if (name == "n prism" && value.find(" ± ") != std::string::npos) prismTirShowsTolerance = true;
+        CHECK(prismTirReport.headline == "δ = no emergent ray" && prismTirShowsTolerance);
+
+        PrismInput dispersive; dispersive.sigmaWavelengthNm = 1.0;
+        dispersive.dnPrismDlambda = -0.0002; dispersive.dnMediumDlambda = -0.00005;
+        const Report dispersiveReport = ER::prism(dispersive);
+        bool checkedDispersiveRatio = false;
+        for (const auto& [name, value] : dispersiveReport.parameters) if (name == "n (prism / medium)") {
+            checkedDispersiveRatio = true;
+            const std::size_t marker = value.find(" ± ");
+            CHECK(marker != std::string::npos && near(std::stod(value.substr(marker + 4)), 0.000125, 1e-8));
+        }
+        CHECK(checkedDispersiveRatio);
+
+        SlitInput uncertainSlit; uncertainSlit.sigmaWavelengthNm = 1.0; uncertainSlit.sigmaSeparationMm = 0.001; uncertainSlit.sigmaScreenM = 0.01;
+        const Report slitReport = ER::doubleSlit(uncertainSlit);
+        CHECK(slitReport.headline.find(" ± ") != std::string::npos && hasText(slitReport.registers[0], "σ(β) = "));
+        CHECK(ER::doubleSlitSweep(uncertainSlit).headers.size() == 3 && ER::doubleSlitSweep(uncertainSlit).rows[9][2] > 0.0);
+        SlitInput badTolerance; badTolerance.sigmaScreenM = -0.1;
+        CHECK(ER::doubleSlit(badTolerance).paused && ER::doubleSlit(badTolerance).issues[0].field == FieldIds::sigmaScreenDistance);
     }
 
     if (g_failures == 0) std::cout << "All core tests passed\n";

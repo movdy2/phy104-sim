@@ -3,27 +3,31 @@
 #include "AppContext.h"
 #include "Components.h"
 #include "DiagramsPage.h"
+#include "JsonRepositories.h"
 #include "LatexRenderer.h"
-#include "MarkdownWorkspace.h"
 
 #include <QAbstractItemView>
+#include <QComboBox>
+#include <QFileInfo>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
 #include <QListWidget>
+#include <QPlainTextEdit>
 #include <QScrollArea>
 #include <QStackedWidget>
 #include <QTableWidget>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <utility>
 
 namespace phy104 {
 
 StudyHubPage::StudyHubPage(std::vector<StudyTopic> topics, AppContext* context,
-                           DiagramsPage* opticalSetups, QWidget* parent)
-    : BasePage("Study Hub", "STUDY / Chapters, notes and optical setups", context, parent),
-      m_topics(std::move(topics)) {
+                           DiagramsPage* opticalSetups, QString notesFilePath, QWidget* parent)
+    : BasePage("Study Hub", "STUDY / Chapters, JSON notes and optical setups", context, parent),
+      m_topics(std::move(topics)), m_notesFilePath(std::move(notesFilePath)) {
     m_sections = new ModeTabs({"Chapters", "Notes", "Optical Setups"});
     m_sections->setObjectName("studyHubTabs");
     content()->addWidget(m_sections);
@@ -105,24 +109,40 @@ StudyHubPage::StudyHubPage(std::vector<StudyTopic> topics, AppContext* context,
     columns->addWidget(constantsColumn);
     m_sectionStack->addWidget(chaptersPage);
 
-    // ---------------------------------------------------------------- shared lab notes, also available from the Notes sidebar shortcut
-    auto* notesPanel = new Panel("Lab notes", "AUTOSAVED");
-    m_notes = new MarkdownWorkspace;
-    const QString savedNotes = QString::fromStdString(context->log.notes());
-    m_notes->setMarkdown(savedNotes.isEmpty() ? MarkdownWorkspace::starterNotes() : savedNotes);
+    // ---------------------------------------------------------------- chapter notes: plain text persisted in a separate JSON file
+    auto* notesPanel = new Panel("Chapter notes", "JSON · AUTOSAVED");
+    m_noteChapter = new QComboBox;
+    m_noteChapter->setObjectName("studyHubNoteChapter");
+    for (const StudyTopic& topic : m_topics)
+        m_noteChapter->addItem(QString::fromStdString(topic.title), noteKey(topic));
+    m_notesEditor = new QPlainTextEdit;
+    m_notesEditor->setObjectName("studyHubNoteEditor");
+    m_notesEditor->setPlaceholderText("Write plain-text notes for the selected chapter…");
+    m_notesEditor->setLineWrapMode(QPlainTextEdit::WidgetWidth);
+    m_noteStatus = new QLabel;
+    m_noteStatus->setObjectName("caption");
+    m_noteStatus->setWordWrap(true);
     notesPanel->body()->setContentsMargins(12, 0, 12, 10);
-    notesPanel->body()->addWidget(m_notes, 1);
+    notesPanel->body()->addWidget(labeled("Chapter", m_noteChapter));
+    notesPanel->body()->addWidget(m_notesEditor, 1);
+    notesPanel->body()->addWidget(m_noteStatus);
     m_sectionStack->addWidget(notesPanel);
-    connect(m_notes, &MarkdownWorkspace::contentChanged, context, &AppContext::setNotes);
-    connect(context, &AppContext::notesAppended, this, [this] {
-        const QString latest = QString::fromStdString(m_ctx->log.notes());
-        if (m_notes->markdown() != latest) m_notes->setMarkdown(latest);
+
+    m_studyNotes = loadStudyHubNotes(m_notesFilePath);
+    m_noteSaveTimer = new QTimer(this);
+    m_noteSaveTimer->setSingleShot(true);
+    m_noteSaveTimer->setInterval(650);
+    connect(m_noteSaveTimer, &QTimer::timeout, this, &StudyHubPage::saveCurrentNote);
+    connect(m_noteChapter, qOverload<int>(&QComboBox::currentIndexChanged), this, [this](int) {
+        flushStudyNotes();
+        loadCurrentNote();
     });
-    connect(context, &AppContext::notesSaved, this, [this] {
-        const QString latest = QString::fromStdString(m_ctx->log.notes());
-        if (m_notes->markdown() != latest) m_notes->setMarkdown(latest);
-        m_notes->setSavedText("Saved " + m_ctx->lastSavedTime());
+    connect(m_notesEditor, &QPlainTextEdit::textChanged, this, [this] {
+        if (m_loadingNote) return;
+        m_noteStatus->setText("Unsaved · writing to " + QFileInfo(m_notesFilePath).fileName());
+        m_noteSaveTimer->start();
     });
+    loadCurrentNote();
 
     // ---------------------------------------------------------------- full optical setup gallery
     m_sectionStack->addWidget(opticalSetups);
@@ -130,6 +150,52 @@ StudyHubPage::StudyHubPage(std::vector<StudyTopic> topics, AppContext* context,
     connect(m_sections, &ModeTabs::currentChanged, m_sectionStack, &QStackedWidget::setCurrentIndex);
     connect(m_list, &QListWidget::currentRowChanged, this, &StudyHubPage::selectTopic);
     if (!m_topics.empty()) m_list->setCurrentRow(0);
+}
+
+StudyHubPage::~StudyHubPage() { flushStudyNotes(); }
+
+QString StudyHubPage::noteKey(const StudyTopic& topic) const {
+    if (!topic.id.empty()) return QString::fromStdString(topic.id);
+    if (!topic.chapter.empty()) return QString::fromStdString(topic.chapter);
+    return QString::fromStdString(topic.title);
+}
+
+void StudyHubPage::loadCurrentNote() {
+    if (!m_notesEditor) return;
+    const QString key = m_noteChapter ? m_noteChapter->currentData().toString() : QString();
+    m_loadingNote = true;
+    m_notesEditor->setPlainText(m_studyNotes.value(key));
+    m_loadedNoteKey = key;
+    m_loadingNote = false;
+    if (key.isEmpty()) m_noteStatus->setText("Select a chapter to write its notes.");
+    else if (m_notesDirty) m_noteStatus->setText("Unsaved chapter changes · JSON save pending for " + QFileInfo(m_notesFilePath).fileName());
+    else m_noteStatus->setText("Plain text · autosaves to " + QFileInfo(m_notesFilePath).fileName());
+}
+
+void StudyHubPage::saveCurrentNote() {
+    if (!m_notesEditor || m_loadedNoteKey.isEmpty()) return;
+    const QString text = m_notesEditor->toPlainText();
+    const bool unchanged = text.isEmpty() ? !m_studyNotes.contains(m_loadedNoteKey)
+                                          : m_studyNotes.value(m_loadedNoteKey) == text;
+    if (!unchanged) {
+        if (text.isEmpty()) m_studyNotes.remove(m_loadedNoteKey);
+        else m_studyNotes.insert(m_loadedNoteKey, text);
+        m_notesDirty = true;
+    }
+    if (!m_notesDirty) return;
+    QString error;
+    if (saveStudyHubNotes(m_notesFilePath, m_studyNotes, &error)) {
+        m_notesDirty = false;
+        m_noteStatus->setText("Saved JSON · " + QFileInfo(m_notesFilePath).fileName());
+    } else {
+        m_noteStatus->setText("Could not save JSON notes: " + error);
+        emit m_ctx->message("Could not save Study Hub notes: " + error);
+    }
+}
+
+void StudyHubPage::flushStudyNotes() {
+    if (m_noteSaveTimer && m_noteSaveTimer->isActive()) m_noteSaveTimer->stop();
+    saveCurrentNote();
 }
 
 int StudyHubPage::currentSection() const { return m_sections->current(); }
