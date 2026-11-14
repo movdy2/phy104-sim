@@ -2,6 +2,7 @@
 #include "JsonLoader.h"
 
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -135,6 +136,44 @@ std::vector<StudyTopic> JsonStudyHubRepository::loadAll() const {
     return topics;
 }
 
+QMap<QString, QString> loadStudyHubNotes(const QString& path) {
+    QMap<QString, QString> notes;
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) return notes;
+    const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    if (!doc.isObject()) return notes;
+    const QJsonObject root = doc.object();
+    if (root.value("format").toString() != "phy104-study-hub-notes") return notes;
+    const QJsonObject stored = root.value("notes").toObject();
+    for (auto it = stored.begin(); it != stored.end(); ++it)
+        if (it.value().isString()) notes.insert(it.key(), it.value().toString());
+    return notes;
+}
+
+bool saveStudyHubNotes(const QString& path, const QMap<QString, QString>& notes, QString* error) {
+    QJsonObject stored;
+    for (auto it = notes.begin(); it != notes.end(); ++it) stored.insert(it.key(), it.value());
+    const QJsonObject root{{"format", "phy104-study-hub-notes"}, {"version", 1}, {"notes", stored}};
+    const QByteArray bytes = QJsonDocument(root).toJson(QJsonDocument::Indented);
+    QDir().mkpath(QFileInfo(path).absolutePath());
+    QSaveFile file(path);
+    if (!file.open(QIODevice::WriteOnly)) {
+        if (error) *error = file.errorString();
+        return false;
+    }
+    if (file.write(bytes) != bytes.size()) {
+        if (error) *error = file.errorString();
+        file.cancelWriting();
+        return false;
+    }
+    if (!file.commit()) {
+        if (error) *error = file.errorString();
+        return false;
+    }
+    if (error) error->clear();
+    return true;
+}
+
 std::string JsonReferenceRepository::unitDiscipline() const {
     const QJsonObject o = JsonLoader::loadObject(m_path).value("unitDiscipline").toObject();
     return str(o, "title", false) + "\n" + str(o, "text", false);
@@ -173,8 +212,10 @@ QJsonObject snapshotToJson(const Snapshot& s) {
 
 /// A saved run keeps the sweep it produced, so two runs can be overlaid later.
 QJsonObject seriesToJson(const DataSeries& s) {
-    QJsonArray headers, rows;
+    QJsonArray headers, rows, analysis;
     for (const auto& h : s.headers) headers.append(QString::fromStdString(h));
+    for (const auto& [name, value] : s.analysis)
+        analysis.append(QJsonObject{{"name", QString::fromStdString(name)}, {"value", QString::fromStdString(value)}});
     for (const auto& row : s.rows) {
         QJsonArray cells;
         for (double v : row) cells.append(std::isfinite(v) ? QJsonValue(v) : QJsonValue(QJsonValue::Null));
@@ -182,7 +223,7 @@ QJsonObject seriesToJson(const DataSeries& s) {
     }
     return {{"id", QString::fromStdString(s.id)}, {"name", QString::fromStdString(s.name)},
             {"description", QString::fromStdString(s.description)}, {"note", QString::fromStdString(s.note)},
-            {"headers", headers}, {"rows", rows}};
+            {"headers", headers}, {"rows", rows}, {"analysis", analysis}};
 }
 
 DataSeries seriesFromJson(const QJsonObject& o) {
@@ -191,6 +232,10 @@ DataSeries seriesFromJson(const QJsonObject& o) {
     s.name = o.value("name").toString().toStdString();
     s.description = o.value("description").toString().toStdString();
     s.note = o.value("note").toString().toStdString();
+    for (const auto& v : o.value("analysis").toArray()) {
+        const QJsonObject item = v.toObject();
+        s.analysis.emplace_back(item.value("name").toString().toStdString(), item.value("value").toString().toStdString());
+    }
     for (const auto& h : o.value("headers").toArray()) s.headers.push_back(h.toString().toStdString());
     for (const auto& rv : o.value("rows").toArray()) {
         std::vector<double> row;

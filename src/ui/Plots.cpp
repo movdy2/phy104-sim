@@ -4,6 +4,9 @@
 #include <QFontMetricsF>
 #include <QPainter>
 
+#include <algorithm>
+#include <cmath>
+
 namespace phy104 {
 
 GridCanvas::GridCanvas(QWidget* parent) : QWidget(parent) {
@@ -126,6 +129,29 @@ void LineChart::paintEvent(QPaintEvent*) {
             p.setPen(QPen(s.color.isValid() ? s.color : t.amber, 1.8));
             p.drawPolyline(poly);
         }
+        if (!s.xUncertainties.isEmpty() || !s.yUncertainties.isEmpty()) {
+            QColor errorColor = s.color.isValid() ? s.color : (s.markers ? t.sage : t.amber);
+            errorColor.setAlpha(210);
+            p.setPen(QPen(errorColor, 1.0));
+            p.setBrush(Qt::NoBrush);
+            for (qsizetype i = 0; i < s.points.size(); ++i) {
+                const QPointF& point = s.points[i];
+                const double xSigma = i < s.xUncertainties.size() ? s.xUncertainties[i] : 0.0;
+                const double ySigma = i < s.yUncertainties.size() ? s.yUncertainties[i] : 0.0;
+                if (std::isfinite(xSigma) && xSigma > 0.0) {
+                    const double left = X(point.x() - xSigma), right = X(point.x() + xSigma), y = Y(point.y());
+                    p.drawLine(QPointF(left, y), QPointF(right, y));
+                    p.drawLine(QPointF(left, y - 3), QPointF(left, y + 3));
+                    p.drawLine(QPointF(right, y - 3), QPointF(right, y + 3));
+                }
+                if (std::isfinite(ySigma) && ySigma > 0.0) {
+                    const double top = Y(point.y() + ySigma), bottom = Y(point.y() - ySigma), x = X(point.x());
+                    p.drawLine(QPointF(x, top), QPointF(x, bottom));
+                    p.drawLine(QPointF(x - 3, top), QPointF(x + 3, top));
+                    p.drawLine(QPointF(x - 3, bottom), QPointF(x + 3, bottom));
+                }
+            }
+        }
         if (s.markers) {
             p.setPen(Qt::NoPen);
             p.setBrush(s.color.isValid() ? s.color : t.sage);
@@ -142,6 +168,24 @@ void LineChart::paintEvent(QPaintEvent*) {
     }
     for (const ChartPoint& pt : m_points) {
         const QColor col = pt.color.isValid() ? pt.color : t.sage;
+        if (pt.xUncertainty > 0.0 || pt.yUncertainty > 0.0) {
+            p.save();
+            p.setClipRect(plot.adjusted(-2, -2, 2, 2));
+            p.setPen(QPen(col, 1.1));
+            if (std::isfinite(pt.xUncertainty) && pt.xUncertainty > 0.0) {
+                const double left = X(pt.x - pt.xUncertainty), right = X(pt.x + pt.xUncertainty), y = Y(pt.y);
+                p.drawLine(QPointF(left, y), QPointF(right, y));
+                p.drawLine(QPointF(left, y - 3), QPointF(left, y + 3));
+                p.drawLine(QPointF(right, y - 3), QPointF(right, y + 3));
+            }
+            if (std::isfinite(pt.yUncertainty) && pt.yUncertainty > 0.0) {
+                const double top = Y(pt.y + pt.yUncertainty), bottom = Y(pt.y - pt.yUncertainty), x = X(pt.x);
+                p.drawLine(QPointF(x, top), QPointF(x, bottom));
+                p.drawLine(QPointF(x - 3, top), QPointF(x + 3, top));
+                p.drawLine(QPointF(x - 3, bottom), QPointF(x + 3, bottom));
+            }
+            p.restore();
+        }
         if (pt.crosshair) {
             p.setPen(QPen(t.dim, 1, Qt::DashLine));
             p.drawLine(QPointF(X(pt.x), Y(pt.y)), QPointF(X(pt.x), plot.bottom()));

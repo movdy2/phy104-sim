@@ -4,6 +4,7 @@
 #include "PhysicsCalculator.h"
 #include "ReportSupport.h"
 #include "ThickLens.h"
+#include "Uncertainty.h"
 
 #include <algorithm>
 #include <cmath>
@@ -19,6 +20,22 @@ constexpr double kDeg = std::numbers::pi / 180.0;
 
 std::string num(double v) { return NF::general(v, 6); }
 std::string fx(double v) { return NF::fixed(v, 4); }
+
+std::string measured(double value, double sigma, const std::string& unit = {}) {
+    std::string text = num(value);
+    if (sigma > 0.0) text += " ± " + num(sigma);
+    if (!unit.empty()) text += " " + unit;
+    return text;
+}
+
+void validateSigma(std::vector<FieldIssue>& issues, const char* field, double sigma, const char* label) {
+    if (!std::isfinite(sigma) || sigma < 0.0)
+        issues.push_back({field, std::string("Enter ") + label + " ≥ 0.", label});
+}
+
+bool anyUncertainty(std::initializer_list<double> values) {
+    return std::any_of(values.begin(), values.end(), [](double value) { return value > 0.0; });
+}
 
 std::string ordinal(int m) {
     switch (m) {
@@ -73,9 +90,12 @@ Report tirReport(const RefractionInput& in, const ReportContext& ctx);
 
 Report refraction(const RefractionInput& in, const ReportContext& ctx) {
     std::vector<FieldIssue> issues;
-    if (in.n1 <= 0.0) issues.push_back({FieldIds::refractiveIndex1, "Enter n₁ > 0.", "n₁"});
-    if (in.n2 <= 0.0) issues.push_back({FieldIds::refractiveIndex2, "Enter n₂ > 0.", "n₂"});
-    if (in.theta1 < 0.0 || in.theta1 >= 90.0) issues.push_back({FieldIds::incidentAngle, "Enter 0° ≤ θ₁ < 90°.", "θ₁"});
+    if (!std::isfinite(in.n1) || in.n1 <= 0.0) issues.push_back({FieldIds::refractiveIndex1, "Enter n₁ > 0.", "n₁"});
+    if (!std::isfinite(in.n2) || in.n2 <= 0.0) issues.push_back({FieldIds::refractiveIndex2, "Enter n₂ > 0.", "n₂"});
+    if (!std::isfinite(in.theta1) || in.theta1 < 0.0 || in.theta1 >= 90.0) issues.push_back({FieldIds::incidentAngle, "Enter 0° ≤ θ₁ < 90°.", "θ₁"});
+    validateSigma(issues, FieldIds::sigmaRefractiveIndex1, in.sigmaN1, "σ(n₁)");
+    validateSigma(issues, FieldIds::sigmaRefractiveIndex2, in.sigmaN2, "σ(n₂)");
+    validateSigma(issues, FieldIds::sigmaIncidentAngle, in.sigmaTheta1, "σ(θ₁)");
     if (!issues.empty()) {
         const std::string first = issues.front().label;
         return ReportSupport::pausedReport("E_INPUT_RANGE", issues,
@@ -89,10 +109,21 @@ Report refraction(const RefractionInput& in, const ReportContext& ctx) {
     const double thetaA = in.theta1;
     const double thetaB = defaultTirAngle(in.n1, in.n2);
     const auto crit = PC::criticalAngleDeg(in.n1, in.n2);
+    const std::vector<double> values{in.n1, in.n2, in.theta1};
+    const std::vector<double> sigmas{in.sigmaN1, in.sigmaN2, in.sigmaTheta1};
+    const UncertainEstimate criticalEstimate = propagateUncertainty({in.n1, in.n2}, {in.sigmaN1, in.sigmaN2},
+        [](const std::vector<double>& v) {
+            const double ratio = v[1] / v[0];
+            return ratio >= 0.0 && ratio < 1.0 ? std::asin(ratio) / kDeg : std::numeric_limits<double>::quiet_NaN();
+        });
 
     Report rep;
     {
         const auto ref = PC::refraction(in.n1, in.n2, thetaA);
+        const UncertainEstimate thetaEstimate = propagateUncertainty(values, sigmas, [](const std::vector<double>& v) {
+            const double sin2 = v[0] * std::sin(v[2] * kDeg) / v[1];
+            return std::fabs(sin2) <= 1.0 ? std::asin(sin2) / kDeg : std::numeric_limits<double>::quiet_NaN();
+        });
         const double sinA = std::sin(thetaA * kDeg);
         const double sin2 = in.n1 * sinA / in.n2;
         LcdRegister r;
@@ -108,6 +139,11 @@ Report refraction(const RefractionInput& in, const ReportContext& ctx) {
             r.lines.push_back("04  θ₂ = asin(" + fx(sin2) + ")");
             r.resultValue = fx(ref.refractedDeg) + "°";
             rep.headline = "θ₂ = " + fx(ref.refractedDeg) + "°";
+            if (thetaEstimate.valid && anyUncertainty({in.sigmaN1, in.sigmaN2, in.sigmaTheta1})) {
+                r.resultValue += " ± " + num(thetaEstimate.standardUncertainty) + "°";
+                r.extraLines.push_back("σ(θ₂) = " + num(thetaEstimate.standardUncertainty) + "° (1σ)");
+                rep.headline += " ± " + num(thetaEstimate.standardUncertainty) + "°";
+            }
         }
         rep.registers.push_back(r);
         rep.retained = retainedRegister({"n₁ = " + fx(in.n1) + " · n₂ = " + fx(in.n2), "θ₁ = " + NF::fixed(in.theta1, 2) + "°"},
@@ -126,11 +162,35 @@ Report refraction(const RefractionInput& in, const ReportContext& ctx) {
             r.lines = {"θc = asin(n₂ / n₁)", "n₁ ≤ n₂: no critical angle", "θ₁ = " + num(thetaB) + "°",
                        "sin θ₂ = " + fx(sinB), "STATUS: REFRACTION ONLY"};
         }
+        if (crit && criticalEstimate.valid && anyUncertainty({in.sigmaN1, in.sigmaN2}))
+            r.extraLines.push_back("σ(θc) = " + num(criticalEstimate.standardUncertainty) + "° (1σ)");
         rep.registers.push_back(r);
     }
+    if (anyUncertainty({in.sigmaN1, in.sigmaN2, in.sigmaTheta1})) {
+        const DataSeries sweep = refractionSweep(in);
+        std::vector<double> xs, ys, ySigmas;
+        for (const auto& row : sweep.rows) if (std::isfinite(row[1])) {
+            xs.push_back(row[2]); ys.push_back(row[3]); ySigmas.push_back(row[6]);
+        }
+        const LinearFit fit = linearFit(xs, ys, ySigmas);
+        if (fit.ok) {
+            LcdRegister& analysis = rep.registers[1];
+            analysis.extraLines.push_back(std::string(fit.weighted ? "WEIGHTED FIT · " : "OLS FIT · ") +
+                "slope = " + num(fit.slope) + " ± " + num(fit.slopeUncertainty) + " (1σ)");
+            const std::string fitQuality = fit.degreesOfFreedom <= 0 ? "fit quality = n/a" :
+                fit.weighted ? "χ²/ν = " + num(fit.chiSquared / fit.degreesOfFreedom) :
+                               "residual s = " + num(std::sqrt(fit.chiSquared / fit.degreesOfFreedom));
+            analysis.extraLines.push_back("intercept = " + num(fit.intercept) + " ± " + num(fit.interceptUncertainty) + " (1σ)"+
+                " · R² = " + num(fit.r2) + " · " + fitQuality);
+        }
+    }
     rep.notices.push_back({"Physical limit, not a solver error",
-                           "For θ₁ > θc, no real refracted angle exists. TIR is reported instead of evaluating asin outside [−1, 1].", false});
-    rep.parameters = {{"Mode", "Refraction"}, {"n₁", num(in.n1)}, {"n₂", num(in.n2)}, {"θ₁ (incidence)", num(in.theta1) + " °"}};
+                           "For θ₁ > θc, no real refracted angle exists. TIR is reported instead of evaluating asin outside [−1, 1]. "
+                           "Entered uncertainties are independent 1σ standard uncertainties.", false});
+    rep.parameters = {{"Mode", "Refraction"}, {"n₁", measured(in.n1, in.sigmaN1)}, {"n₂", measured(in.n2, in.sigmaN2)},
+                      {"θ₁ (incidence)", measured(in.theta1, in.sigmaTheta1, "°")}};
+    if (crit && criticalEstimate.valid && anyUncertainty({in.sigmaN1, in.sigmaN2}))
+        rep.parameters.emplace_back("Critical angle θc", fx(*crit) + "° ± " + num(criticalEstimate.standardUncertainty) + "°");
     return rep;
 }
 
@@ -142,6 +202,13 @@ Report tirReport(const RefractionInput& in, const ReportContext&) {
     const double th = in.theta1;
     const double sin2 = in.n1 * std::sin(th * kDeg) / in.n2;
     const bool tir = crit && th > *crit && sin2 > 1.0;
+    const std::vector<double> values{in.n1, in.n2, th};
+    const std::vector<double> sigmas{in.sigmaN1, in.sigmaN2, in.sigmaTheta1};
+    const UncertainEstimate criticalEstimate = propagateUncertainty({in.n1, in.n2}, {in.sigmaN1, in.sigmaN2},
+        [](const std::vector<double>& v) {
+            const double ratio = v[1] / v[0];
+            return ratio >= 0.0 && ratio < 1.0 ? std::asin(ratio) / kDeg : std::numeric_limits<double>::quiet_NaN();
+        });
 
     Report rep;
     LcdRegister r1;
@@ -161,6 +228,8 @@ Report tirReport(const RefractionInput& in, const ReportContext&) {
         r1.lines.push_back("05 " + num(in.n1) + " sin(" + num(th) + "°) = " + fx(sin2));
         r1.lines.push_back("06 " + fx(sin2) + " ≤ 1 → refraction only");
     }
+    if (crit && criticalEstimate.valid && anyUncertainty({in.sigmaN1, in.sigmaN2}))
+        r1.extraLines.push_back("σ(θc) = " + num(criticalEstimate.standardUncertainty) + "° (1σ)");
     r1.resultLabel = "PHYSICAL OUTCOME";
     r1.resultValue = tir ? "TIR" : (crit ? "PARTIAL" : "NO TIR");
     rep.registers.push_back(r1);
@@ -169,6 +238,7 @@ Report tirReport(const RefractionInput& in, const ReportContext&) {
     r2.title = "REFLECTION REGISTER";
     r2.mode = "OK";
     r2.lines.push_back("θᵣ = θ₁ = " + fx(th) + "°");
+    if (in.sigmaTheta1 > 0.0) r2.extraLines.push_back("σ(θᵣ) = " + num(in.sigmaTheta1) + "° (1σ)");
     if (tir) {
         r2.lines.push_back("TRANSMISSION: NONE");
         r2.lines.push_back("STATUS: VALID / TIR");
@@ -178,6 +248,23 @@ Report tirReport(const RefractionInput& in, const ReportContext&) {
         r2.lines.push_back("TRANSMISSION: θ₂ = " + fx(std::asin(std::min(1.0, sin2)) / kDeg) + "°");
         r2.lines.push_back(std::string("STATUS: VALID / ") + (crit ? "REFRACTION" : "NO TIR"));
         if (crit) { r2.resultLabel = "BELOW CRITICAL BY"; r2.resultValue = fx(*crit - th) + "°"; }
+        if (sin2 <= 1.0 && anyUncertainty({in.sigmaN1, in.sigmaN2, in.sigmaTheta1})) {
+            const UncertainEstimate thetaEstimate = propagateUncertainty(values, sigmas, [](const std::vector<double>& v) {
+                const double q = v[0] * std::sin(v[2] * kDeg) / v[1];
+                return std::fabs(q) <= 1.0 ? std::asin(q) / kDeg : std::numeric_limits<double>::quiet_NaN();
+            });
+            if (thetaEstimate.valid) r2.extraLines.push_back("σ(θ₂) = " + num(thetaEstimate.standardUncertainty) + "° (1σ)");
+        }
+    }
+    if (crit && anyUncertainty({in.sigmaN1, in.sigmaN2, in.sigmaTheta1})) {
+        const double sign = tir ? 1.0 : -1.0;
+        const UncertainEstimate margin = propagateUncertainty(values, sigmas, [sign](const std::vector<double>& v) {
+            const double ratio = v[1] / v[0];
+            if (ratio < 0.0 || ratio >= 1.0) return std::numeric_limits<double>::quiet_NaN();
+            const double critical = std::asin(ratio) / kDeg;
+            return sign * (v[2] - critical);
+        });
+        if (margin.valid) r2.resultValue += " ± " + num(margin.standardUncertainty) + "°";
     }
     rep.registers.push_back(r2);
 
@@ -190,10 +277,20 @@ Report tirReport(const RefractionInput& in, const ReportContext&) {
                                crit ? "θ₁ is below θc = " + fx(*crit) + "°, so part of the light is transmitted into " + ReportSupport::lowercaseAscii(n2) + " and part is reflected."
                                     : "TIR requires n₁ > n₂. Going into a denser medium the ray always refracts.", false});
     rep.headline = tir ? "θc = " + fx(*crit) + "° · TIR" : "θ₂ = " + fx(std::asin(std::min(1.0, sin2)) / kDeg) + "°";
+    if (tir && crit && criticalEstimate.valid && anyUncertainty({in.sigmaN1, in.sigmaN2}))
+        rep.headline = "θc = " + fx(*crit) + "° ± " + num(criticalEstimate.standardUncertainty) + "° · TIR";
+    if (!tir && anyUncertainty({in.sigmaN1, in.sigmaN2, in.sigmaTheta1})) {
+        const UncertainEstimate thetaEstimate = propagateUncertainty(values, sigmas, [](const std::vector<double>& v) {
+            const double q = v[0] * std::sin(v[2] * kDeg) / v[1];
+            return std::fabs(q) <= 1.0 ? std::asin(q) / kDeg : std::numeric_limits<double>::quiet_NaN();
+        });
+        if (thetaEstimate.valid) rep.headline += " ± " + num(thetaEstimate.standardUncertainty) + "°";
+    }
     rep.statusText = tir ? "Valid outcome: TIR" : "Valid outcome: refraction";
     rep.retained = retainedRegister({"n₁ = " + fx(in.n1) + " · n₂ = " + fx(in.n2), "θ₁ = " + NF::fixed(th, 2) + "°"},
                                     "RETAINED OUTCOME", r1.resultValue, {});
-    rep.parameters = {{"Mode", "TIR"}, {"n₁", num(in.n1)}, {"n₂", num(in.n2)}, {"θ₁ (incidence)", num(th) + " °"}};
+    rep.parameters = {{"Mode", "TIR"}, {"n₁", measured(in.n1, in.sigmaN1)}, {"n₂", measured(in.n2, in.sigmaN2)},
+                      {"θ₁ (incidence)", measured(th, in.sigmaTheta1, "°")}};
     return rep;
 }
 
@@ -201,52 +298,151 @@ Report tirReport(const RefractionInput& in, const ReportContext&) {
 
 DataSeries refractionSweep(const RefractionInput& in) {
     DataSeries s{"refraction_sweep", "Refraction sweep",
-                 in.name1 + " → " + in.name2 + " · n₁ = " + fx(in.n1) + " · n₂ = " + fx(in.n2), "sin θ is dimensionless",
-                 {"θ₁ (°)", "θ₂ (°)", "sin θ₁", "sin θ₂"}, {}};
+                 in.name1 + " → " + in.name2 + " · n₁ = " + fx(in.n1) + " · n₂ = " + fx(in.n2),
+                 "sin θ is dimensionless; uncertainty columns are independent 1σ standard uncertainties",
+                 {"θ₁ (°)", "θ₂ (°)", "sin θ₁", "sin θ₂", "σ θ₂ (°)", "σ sin θ₁", "σ sin θ₂"}, {}, {}};
     for (int a = 0; a <= 35; a += 5) {
+        const std::vector<double> values{in.n1, in.n2, double(a)};
+        const std::vector<double> sigmas{in.sigmaN1, in.sigmaN2, in.sigmaTheta1};
         const double sin1 = std::sin(a * kDeg), sin2 = in.n1 * sin1 / in.n2;
         const double th2 = std::fabs(sin2) > 1.0 ? kNaN : std::asin(sin2) / kDeg;
-        s.rows.push_back({double(a), th2, sin1, sin2});
+        const auto thetaError = propagateUncertainty(values, sigmas, [](const std::vector<double>& v) {
+            const double z = v[0] * std::sin(v[2] * kDeg) / v[1];
+            return std::fabs(z) <= 1.0 ? std::asin(z) / kDeg : kNaN;
+        });
+        const auto sin1Error = propagateUncertainty({double(a)}, {in.sigmaTheta1}, [](const std::vector<double>& v) {
+            return std::sin(v[0] * kDeg);
+        });
+        const auto sin2Error = propagateUncertainty(values, sigmas, [](const std::vector<double>& v) {
+            return v[0] * std::sin(v[2] * kDeg) / v[1];
+        });
+        s.rows.push_back({double(a), th2, sin1, sin2,
+                          thetaError.valid ? thetaError.standardUncertainty : kNaN,
+                          sin1Error.valid ? sin1Error.standardUncertainty : kNaN,
+                          sin2Error.valid ? sin2Error.standardUncertainty : kNaN});
+    }
+    s.analysis = {{"Input n₁", measured(in.n1, in.sigmaN1)}, {"Input n₂", measured(in.n2, in.sigmaN2)},
+                  {"Input σ(θ₁)", num(in.sigmaTheta1) + "° (1σ)"}};
+    std::vector<double> xs, ys, ySigmas;
+    for (const auto& row : s.rows) if (std::isfinite(row[3])) {
+        xs.push_back(row[2]); ys.push_back(row[3]); ySigmas.push_back(row[6]);
+    }
+    const LinearFit fit = linearFit(xs, ys, ySigmas);
+    if (fit.ok) {
+        s.analysis.emplace_back("Fit", fit.weighted ? "Weighted least squares (y uncertainties)" : "Ordinary least squares");
+        s.analysis.emplace_back("Slope", num(fit.slope));
+        s.analysis.emplace_back("Slope standard uncertainty (1σ)", num(fit.slopeUncertainty));
+        s.analysis.emplace_back("Intercept", num(fit.intercept));
+        s.analysis.emplace_back("Intercept standard uncertainty (1σ)", num(fit.interceptUncertainty));
+        s.analysis.emplace_back("R²", num(fit.r2));
+        if (fit.weighted) {
+            s.analysis.emplace_back("χ²", num(fit.chiSquared));
+            if (fit.degreesOfFreedom > 0)
+                s.analysis.emplace_back("Reduced χ²", num(fit.chiSquared / fit.degreesOfFreedom));
+        } else {
+            s.analysis.emplace_back("Residual sum of squares", num(fit.chiSquared));
+            if (fit.degreesOfFreedom > 0)
+                s.analysis.emplace_back("Residual standard error", num(std::sqrt(fit.chiSquared / fit.degreesOfFreedom)));
+        }
+        s.analysis.emplace_back("Degrees of freedom", std::to_string(fit.degreesOfFreedom));
     }
     return s;
 }
 
 DataSeries tirSweep(const RefractionInput& in) {
     DataSeries s{"critical_sweep", "Critical-angle sweep",
-                 in.name1 + " → " + in.name2 + " · n₁ = " + fx(in.n1) + " · n₂ = " + fx(in.n2), "θ₂ is empty where TIR occurs",
-                 {"θ₁ (°)", "θ₂ (°)"}, {}};
+                 in.name1 + " → " + in.name2 + " · n₁ = " + fx(in.n1) + " · n₂ = " + fx(in.n2),
+                 "θ₂ is empty where TIR occurs; σ columns are 1σ standard uncertainties",
+                 {"θ₁ (°)", "θ₂ (°)", "σ θ₂ (°)"}, {}, {}};
+    s.analysis = {{"Input n₁", measured(in.n1, in.sigmaN1)}, {"Input n₂", measured(in.n2, in.sigmaN2)},
+                  {"Input σ(θ₁)", num(in.sigmaTheta1) + "° (1σ)"}};
     for (int a = 0; a <= 90; a += 5) {
+        const std::vector<double> values{in.n1, in.n2, double(a)};
+        const std::vector<double> sigmas{in.sigmaN1, in.sigmaN2, in.sigmaTheta1};
         const double sin2 = in.n1 * std::sin(a * kDeg) / in.n2;
-        s.rows.push_back({double(a), std::fabs(sin2) > 1.0 ? kNaN : std::asin(sin2) / kDeg});
+        const double theta2 = std::fabs(sin2) > 1.0 ? kNaN : std::asin(sin2) / kDeg;
+        const auto sigma = propagateUncertainty(values, sigmas, [](const std::vector<double>& v) {
+            const double z = v[0] * std::sin(v[2] * kDeg) / v[1];
+            return std::fabs(z) <= 1.0 ? std::asin(z) / kDeg : kNaN;
+        });
+        s.rows.push_back({double(a), theta2, sigma.valid ? sigma.standardUncertainty : kNaN});
     }
     return s;
 }
 
-LinearFit linearFit(const std::vector<double>& x, const std::vector<double>& y) {
+LinearFit linearFit(const std::vector<double>& x, const std::vector<double>& y,
+                    const std::vector<double>& yStandardUncertainties) {
     LinearFit f;
     const std::size_t n = x.size();
     if (n < 2 || y.size() != n) return f;
+    for (std::size_t i = 0; i < n; ++i)
+        if (!std::isfinite(x[i]) || !std::isfinite(y[i])) return f;
+
+    if (yStandardUncertainties.size() == n) {
+        double largestSigma = 0.0;
+        bool allValid = true, anyPositive = false;
+        for (double sigma : yStandardUncertainties) {
+            if (!std::isfinite(sigma) || sigma < 0.0) { allValid = false; break; }
+            largestSigma = std::max(largestSigma, sigma);
+            anyPositive = anyPositive || sigma > 0.0;
+        }
+        if (allValid && anyPositive) {
+            std::vector<double> positiveSigmas = yStandardUncertainties;
+            const double floor = largestSigma * 1e-12;
+            for (double& sigma : positiveSigmas) if (sigma == 0.0) sigma = floor;
+            const WeightedLinearFit weighted = weightedLinearFit(x, y, positiveSigmas);
+            if (weighted.ok) {
+                f.slope = weighted.slope;
+                f.intercept = weighted.intercept;
+                f.r2 = weighted.r2;
+                f.slopeUncertainty = weighted.slopeUncertainty;
+                f.interceptUncertainty = weighted.interceptUncertainty;
+                f.chiSquared = weighted.chiSquared;
+                f.degreesOfFreedom = weighted.degreesOfFreedom;
+                f.weighted = true;
+                f.ok = true;
+                return f;
+            }
+        }
+    }
+
     const double count = static_cast<double>(n);
-    double sx = 0, sy = 0, sxx = 0, sxy = 0, syy = 0;
-    for (std::size_t i = 0; i < n; ++i) { sx += x[i]; sy += y[i]; sxx += x[i] * x[i]; sxy += x[i] * y[i]; syy += y[i] * y[i]; }
+    double sx = 0.0, sy = 0.0, sxx = 0.0, sxy = 0.0, syy = 0.0;
+    for (std::size_t i = 0; i < n; ++i) {
+        sx += x[i]; sy += y[i]; sxx += x[i] * x[i]; sxy += x[i] * y[i]; syy += y[i] * y[i];
+    }
     const double den = count * sxx - sx * sx;
-    if (std::fabs(den) < 1e-300) return f;
+    if (!std::isfinite(den) || den <= std::numeric_limits<double>::epsilon() * count * sxx) return f;
     f.slope = (count * sxy - sx * sy) / den;
     f.intercept = (sy - f.slope * sx) / count;
-    const double ssTot = syy - sy * sy / count;
-    double ssRes = 0;
-    for (std::size_t i = 0; i < n; ++i) { const double e = y[i] - (f.slope * x[i] + f.intercept); ssRes += e * e; }
+    const double ssTot = std::max(0.0, syy - sy * sy / count);
+    double ssRes = 0.0;
+    for (std::size_t i = 0; i < n; ++i) {
+        const double residual = y[i] - (f.slope * x[i] + f.intercept);
+        ssRes += residual * residual;
+    }
     f.r2 = ssTot < 1e-300 ? 1.0 : 1.0 - ssRes / ssTot;
-    f.ok = true;
+    f.chiSquared = ssRes;
+    f.degreesOfFreedom = static_cast<int>(n) - 2;
+    if (f.degreesOfFreedom > 0) {
+        const double residualVariance = ssRes / f.degreesOfFreedom;
+        f.slopeUncertainty = std::sqrt(residualVariance * count / den);
+        f.interceptUncertainty = std::sqrt(residualVariance * sxx / den);
+    }
+    f.ok = std::isfinite(f.slope) && std::isfinite(f.intercept) && std::isfinite(f.r2) &&
+           std::isfinite(f.slopeUncertainty) && std::isfinite(f.interceptUncertainty) && std::isfinite(f.chiSquared);
     return f;
 }
 
 // ------------------------------------------------------------------------------ lenses & mirrors
 Report imaging(const ImagingInput& in, const ReportContext& ctx) {
     std::vector<FieldIssue> issues;
-    if (in.f == 0.0) issues.push_back({FieldIds::focalLength, "Enter f ≠ 0.", "f"});
-    if (in.s <= 0.0) issues.push_back({FieldIds::objectDistance, "Enter dₒ > 0.", "dₒ"});
-    if (in.h <= 0.0) issues.push_back({FieldIds::objectHeight, "Enter hₒ > 0.", "hₒ"});
+    if (!std::isfinite(in.f) || in.f == 0.0) issues.push_back({FieldIds::focalLength, "Enter f ≠ 0.", "f"});
+    if (!std::isfinite(in.s) || in.s <= 0.0) issues.push_back({FieldIds::objectDistance, "Enter dₒ > 0.", "dₒ"});
+    if (!std::isfinite(in.h) || in.h <= 0.0) issues.push_back({FieldIds::objectHeight, "Enter hₒ > 0.", "hₒ"});
+    validateSigma(issues, FieldIds::sigmaFocalLength, in.sigmaF, "σ(f)");
+    validateSigma(issues, FieldIds::sigmaObjectDistance, in.sigmaS, "σ(dₒ)");
+    validateSigma(issues, FieldIds::sigmaObjectHeight, in.sigmaH, "σ(hₒ)");
     if (!issues.empty())
         return ReportSupport::pausedReport("E_INPUT_RANGE", issues,
                             {"f = " + num(in.f) + " cm   dₒ = " + num(in.s) + " cm", "hₒ = " + num(in.h) + " cm", "ACTION: " + issues.front().message},
@@ -263,6 +459,21 @@ Report imaging(const ImagingInput& in, const ReportContext& ctx) {
                              "Diagram, chart and retained results show %RUN%, not the current inputs."}, ctx);
 
     const double m = img.magnification;
+    const std::vector<double> values{in.f, in.s, in.h};
+    const std::vector<double> sigmas{in.sigmaF, in.sigmaS, in.sigmaH};
+    const auto imageDistanceEstimate = propagateUncertainty({in.f, in.s}, {in.sigmaF, in.sigmaS}, [](const std::vector<double>& v) {
+        const double denominator = 1.0 / v[0] - 1.0 / v[1];
+        return std::fabs(denominator) > 1e-15 ? 1.0 / denominator : std::numeric_limits<double>::quiet_NaN();
+    });
+    const auto magnificationEstimate = propagateUncertainty({in.f, in.s}, {in.sigmaF, in.sigmaS}, [](const std::vector<double>& v) {
+        const double denominator = 1.0 / v[0] - 1.0 / v[1];
+        return std::fabs(denominator) > 1e-15 ? -1.0 / (denominator * v[1]) : std::numeric_limits<double>::quiet_NaN();
+    });
+    const auto heightEstimate = propagateUncertainty(values, sigmas, [](const std::vector<double>& v) {
+        const double denominator = 1.0 / v[0] - 1.0 / v[1];
+        return std::fabs(denominator) > 1e-15 ? -v[2] / (denominator * v[1]) : std::numeric_limits<double>::quiet_NaN();
+    });
+    const bool uncertain = anyUncertainty({in.sigmaF, in.sigmaS, in.sigmaH});
     Report rep;
     LcdRegister r1;
     const std::string fText = in.f < 0 ? "(" + num(in.f) + ")" : num(in.f);
@@ -281,6 +492,14 @@ Report imaging(const ImagingInput& in, const ReportContext& ctx) {
         r1.resultLabel = "MAGNIFICATION · m = -dᵢ/dₒ";
         r1.resultValue = fx(m);
     }
+    if (uncertain) {
+        if (imageDistanceEstimate.valid) r1.extraLines.push_back("σ(dᵢ) = " + num(imageDistanceEstimate.standardUncertainty) + " cm (1σ)");
+        if (magnificationEstimate.valid) r1.extraLines.push_back("σ(m) = " + num(magnificationEstimate.standardUncertainty) + " (1σ)");
+        if (in.mirrorMode && imageDistanceEstimate.valid)
+            r1.resultValue += " ± " + num(imageDistanceEstimate.standardUncertainty) + " cm";
+        else if (magnificationEstimate.valid)
+            r1.resultValue += " ± " + num(magnificationEstimate.standardUncertainty);
+    }
     rep.registers.push_back(r1);
 
     LcdRegister r2;
@@ -294,6 +513,8 @@ Report imaging(const ImagingInput& in, const ReportContext& ctx) {
         r2.lines = {"hᵢ = m × hₒ", "hᵢ = " + fx(m * in.h) + " cm", std::string("IMAGE: ") + (img.real ? "REAL" : "VIRTUAL"),
                     std::string("ORIENTATION: ") + (img.upright ? "UPRIGHT" : "INVERTED"), "MIRROR: SAME RESULTS"};
     }
+    if (uncertain && heightEstimate.valid)
+        r2.extraLines.push_back("σ(hᵢ) = " + num(heightEstimate.standardUncertainty) + " cm (1σ)");
     rep.registers.push_back(r2);
 
     if (in.mirrorMode) {
@@ -309,24 +530,56 @@ Report imaging(const ImagingInput& in, const ReportContext& ctx) {
                                "Comparison: dₒ = f = " + num(in.f) + " cm. Image at infinity; finite dᵢ and m suppressed. Move the object away from the focal plane to calculate a finite image.", true});
     }
     rep.headline = "dᵢ = " + NF::signedFixed(img.imageDistance) + " cm";
+    if (uncertain && imageDistanceEstimate.valid)
+        rep.headline += " ± " + num(imageDistanceEstimate.standardUncertainty) + " cm";
     rep.statusText = img.real ? "Real image · positive distances" : "Virtual image · negative distances are valid";
+    std::string retainedDi = NF::signedFixed(img.imageDistance) + " cm";
+    std::vector<std::string> retainedExtra{"m = " + fx(m) + " · hᵢ = " + fx(m * in.h) + " cm"};
+    if (uncertain && imageDistanceEstimate.valid) retainedDi += " ± " + num(imageDistanceEstimate.standardUncertainty) + " cm";
+    if (uncertain && magnificationEstimate.valid)
+        retainedExtra.push_back("σ(m) = " + num(magnificationEstimate.standardUncertainty) + " (1σ)");
+    if (uncertain && heightEstimate.valid)
+        retainedExtra.push_back("σ(hᵢ) = " + num(heightEstimate.standardUncertainty) + " cm (1σ)");
     rep.retained = retainedRegister({"f = " + NF::signedFixed(in.f, 2) + " cm · dₒ = " + NF::fixed(in.s, 2) + " cm", "hₒ = " + NF::fixed(in.h, 2) + " cm"},
-                                    "RETAINED IMAGE DISTANCE · dᵢ", NF::signedFixed(img.imageDistance) + " cm",
-                                    {"m = " + fx(m) + " · hᵢ = " + fx(m * in.h) + " cm"});
+                                    "RETAINED IMAGE DISTANCE · dᵢ", retainedDi, std::move(retainedExtra));
     rep.parameters = {{"Element", std::string(in.mirrorMode ? "Mirror" : "Thin lens") + (in.f < 0 ? " (diverging / convex)" : " (converging / concave)")},
-                      {"f", num(in.f) + " cm"}, {"dₒ", num(in.s) + " cm"}, {"hₒ", num(in.h) + " cm"}};
+                      {"f", measured(in.f, in.sigmaF, "cm")}, {"dₒ", measured(in.s, in.sigmaS, "cm")},
+                      {"hₒ", measured(in.h, in.sigmaH, "cm")}};
     return rep;
 }
 
 DataSeries imagingSweep(const ImagingInput& in) {
-    char desc[96];
+    char desc[128];
     std::snprintf(desc, sizeof desc, "f = %s cm · hₒ = %s cm", NF::general(in.f, 5).c_str(), NF::general(in.h, 5).c_str());
-    DataSeries s{"imaging_sweep", in.mirrorMode ? "Spherical mirror sweep" : "Thin lens sweep", desc, "negative dᵢ = virtual image", {"dₒ (cm)", "dᵢ (cm)", "m"}, {}};
+    DataSeries s{"imaging_sweep", in.mirrorMode ? "Spherical mirror sweep" : "Thin lens sweep", desc,
+                 "negative dᵢ = virtual image; σ columns are independent 1σ uncertainties",
+                 {"dₒ (cm)", "dᵢ (cm)", "m", "σ dᵢ (cm)", "σ m"}, {}, {}};
+    s.analysis = {{"Input focal length f", measured(in.f, in.sigmaF, "cm")},
+                  {"Input object distance dₒ", measured(in.s, in.sigmaS, "cm")},
+                  {"Input object height hₒ", measured(in.h, in.sigmaH, "cm")}};
     const double af = std::fabs(in.f);
     for (int k = 0; k < 8; ++k) {
         const double so = af * (1.25 + 0.5 * k);
         const auto img = PC::imageFormation(so, in.f);
-        s.rows.push_back({so, img.atInfinity ? kNaN : img.imageDistance, img.atInfinity ? kNaN : img.magnification});
+        const auto diError = propagateUncertainty({in.f, so}, {in.sigmaF, in.sigmaS}, [](const std::vector<double>& v) {
+            const double denominator = 1.0 / v[0] - 1.0 / v[1];
+            return std::fabs(denominator) > 1e-15 ? 1.0 / denominator : kNaN;
+        });
+        const auto mError = propagateUncertainty({in.f, so}, {in.sigmaF, in.sigmaS}, [](const std::vector<double>& v) {
+            const double denominator = 1.0 / v[0] - 1.0 / v[1];
+            return std::fabs(denominator) > 1e-15 ? -1.0 / (denominator * v[1]) : kNaN;
+        });
+        s.rows.push_back({so, img.atInfinity ? kNaN : img.imageDistance, img.atInfinity ? kNaN : img.magnification,
+                          img.atInfinity || !diError.valid ? kNaN : diError.standardUncertainty,
+                          img.atInfinity || !mError.valid ? kNaN : mError.standardUncertainty});
+    }
+    const auto current = PC::imageFormation(in.s, in.f);
+    if (!current.atInfinity) {
+        const auto diError = propagateUncertainty({in.f, in.s}, {in.sigmaF, in.sigmaS}, [](const std::vector<double>& v) {
+            const double denominator = 1.0 / v[0] - 1.0 / v[1];
+            return std::fabs(denominator) > 1e-15 ? 1.0 / denominator : kNaN;
+        });
+        if (diError.valid) s.analysis.emplace_back("Current image distance dᵢ", measured(current.imageDistance, diError.standardUncertainty, "cm"));
     }
     return s;
 }
@@ -334,9 +587,16 @@ DataSeries imagingSweep(const ImagingInput& in) {
 // ------------------------------------------------------------------------------ prisms
 Report prism(const PrismInput& in, const ReportContext& ctx) {
     std::vector<FieldIssue> issues;
-    if (in.apex <= 0.0 || in.apex >= 180.0) issues.push_back({FieldIds::prismApex, "Enter 0° < A < 180°.", "A"});
-    if (in.incidence < 0.0 || in.incidence >= 90.0) issues.push_back({FieldIds::incidenceAngle, "Enter 0° ≤ i₁ < 90°.", "i₁"});
-    if (in.wavelengthNm <= 0.0) issues.push_back({FieldIds::wavelength, "Enter λ > 0 nm.", "λ"});
+    if (!std::isfinite(in.apex) || in.apex <= 0.0 || in.apex >= 180.0) issues.push_back({FieldIds::prismApex, "Enter 0° < A < 180°.", "A"});
+    if (!std::isfinite(in.incidence) || in.incidence < 0.0 || in.incidence >= 90.0) issues.push_back({FieldIds::incidenceAngle, "Enter 0° ≤ i₁ < 90°.", "i₁"});
+    if (!std::isfinite(in.wavelengthNm) || in.wavelengthNm <= 0.0) issues.push_back({FieldIds::wavelength, "Enter λ > 0 nm.", "λ"});
+    if (!std::isfinite(in.nPrism) || in.nPrism <= 0.0) issues.push_back({FieldIds::prismIndex, "Enter n prism > 0.", "n prism"});
+    if (!std::isfinite(in.nMedium) || in.nMedium <= 0.0) issues.push_back({FieldIds::surroundingIndex, "Enter n medium > 0.", "n medium"});
+    validateSigma(issues, FieldIds::sigmaPrismIndex, in.sigmaNPrism, "σ(n prism)");
+    validateSigma(issues, FieldIds::sigmaMediumIndex, in.sigmaNMedium, "σ(n medium)");
+    validateSigma(issues, FieldIds::sigmaPrismApex, in.sigmaApex, "σ(A)");
+    validateSigma(issues, FieldIds::sigmaPrismIncidence, in.sigmaIncidence, "σ(i₁)");
+    validateSigma(issues, FieldIds::sigmaWavelength, in.sigmaWavelengthNm, "σ(λ)");
     if (!issues.empty())
         return ReportSupport::pausedReport("E_INPUT_RANGE", issues,
                             {"A = " + num(in.apex) + "°   i₁ = " + num(in.incidence) + "°", "λ = " + num(in.wavelengthNm) + " nm", "ACTION: " + issues.front().message},
@@ -345,6 +605,25 @@ Report prism(const PrismInput& in, const ReportContext& ctx) {
                              "Diagram, chart and retained results show %RUN%, not the current inputs."}, ctx);
 
     const double n = in.nPrism / in.nMedium;
+    const double sigmaPrismIndex = std::hypot(in.sigmaNPrism, in.dnPrismDlambda * in.sigmaWavelengthNm);
+    const double sigmaMediumIndex = std::hypot(in.sigmaNMedium, in.dnMediumDlambda * in.sigmaWavelengthNm);
+    const std::vector<double> prismValues{in.nPrism, in.nMedium, in.apex, in.incidence, in.wavelengthNm};
+    const std::vector<double> prismSigmas{in.sigmaNPrism, in.sigmaNMedium, in.sigmaApex, in.sigmaIncidence, in.sigmaWavelengthNm};
+    const bool uncertain = anyUncertainty({sigmaPrismIndex, sigmaMediumIndex, in.sigmaApex, in.sigmaIncidence});
+    const auto deviationEstimate = propagateUncertainty(prismValues, prismSigmas, [&in](const std::vector<double>& v) {
+        const double deltaLambda = v[4] - in.wavelengthNm;
+        const double nPrism = v[0] + in.dnPrismDlambda * deltaLambda;
+        const double nMedium = v[1] + in.dnMediumDlambda * deltaLambda;
+        const auto result = PC::prism(nPrism, nMedium, v[2], v[3]);
+        return result.valid && !result.entryTir && !result.exitTir ? result.deviation : kNaN;
+    });
+    const auto ratioEstimate = propagateUncertainty({in.nPrism, in.nMedium, in.wavelengthNm},
+        {in.sigmaNPrism, in.sigmaNMedium, in.sigmaWavelengthNm}, [&in](const std::vector<double>& v) {
+            const double deltaLambda = v[2] - in.wavelengthNm;
+            const double nPrism = v[0] + in.dnPrismDlambda * deltaLambda;
+            const double nMedium = v[1] + in.dnMediumDlambda * deltaLambda;
+            return nPrism / nMedium;
+        });
     const auto p = PC::prism(in.nPrism, in.nMedium, in.apex, in.incidence);
     const auto dmin = PC::minimumDeviationDeg(in.nPrism, in.nMedium, in.apex);
 
@@ -361,7 +640,13 @@ Report prism(const PrismInput& in, const ReportContext& ctx) {
         rep.headline = "δ = no emergent ray";
         rep.statusText = "Valid outcome: TIR at the exit face";
         rep.retained = retainedRegister({"n = " + fx(n) + " · A = " + NF::fixed(in.apex, 2) + "°", "i₁ = " + fx(in.incidence) + "°"}, "RETAINED OUTCOME", "TIR", {});
-        rep.parameters = {{"Mode", in.dispersion ? "Dispersion" : "Single ray"}, {"n (prism / medium)", fx(n)}, {"Apex A", num(in.apex) + " °"}, {"Incidence i₁", num(in.incidence) + " °"}};
+        rep.parameters = {{"Mode", in.dispersion ? "Dispersion" : "Single ray"},
+                          {"n (prism / medium)", measured(n, ratioEstimate.valid ? ratioEstimate.standardUncertainty : 0.0)},
+                          {"n prism", measured(in.nPrism, sigmaPrismIndex)}, {"n medium", measured(in.nMedium, sigmaMediumIndex)},
+                          {"Apex A", measured(in.apex, in.sigmaApex, "°")},
+                          {"Incidence i₁", measured(in.incidence, in.sigmaIncidence, "°")},
+                          {"Wavelength λ", measured(in.wavelengthNm, in.sigmaWavelengthNm, "nm")}};
+        if (uncertain) rep.parameters.emplace_back("Uncertainty convention", "Independent 1σ inputs; wavelength affects n through the preset dispersion model");
         return rep;
     }
 
@@ -376,6 +661,10 @@ Report prism(const PrismInput& in, const ReportContext& ctx) {
     r.lines.push_back("04  δ = i₁ + i₂ - A");
     r.resultLabel = symmetric ? "MINIMUM DEVIATION · δmin" : "DEVIATION · δ";
     r.resultValue = fx(p.deviation) + "°";
+    if (uncertain && deviationEstimate.valid) {
+        r.resultValue += " ± " + num(deviationEstimate.standardUncertainty) + "°";
+        r.extraLines.push_back("σ(δ) = " + num(deviationEstimate.standardUncertainty) + "° (1σ)");
+    }
     rep.registers.push_back(r);
 
     if (symmetric)
@@ -389,19 +678,62 @@ Report prism(const PrismInput& in, const ReportContext& ctx) {
         rep.footnote = "n = sin[(A + δmin)/2]\n    / sin(A/2)\n  = " + fx(nBack.value_or(n));
     }
     rep.headline = std::string(symmetric ? "δmin" : "δ") + " = " + fx(p.deviation) + "°";
+    if (uncertain && deviationEstimate.valid) rep.headline += " ± " + num(deviationEstimate.standardUncertainty) + "°";
+    std::vector<std::string> retainedExtra{"i₂ = " + fx(p.i2) + "°"};
+    if (uncertain && deviationEstimate.valid)
+        retainedExtra.push_back("σ(δ) = " + num(deviationEstimate.standardUncertainty) + "° (1σ)");
     rep.retained = retainedRegister({"n = " + fx(n) + " · A = " + NF::fixed(in.apex, 2) + "°", "i₁ = " + fx(in.incidence) + "°"},
-                                    "RETAINED DEVIATION · δ", fx(p.deviation) + "°", {"i₂ = " + fx(p.i2) + "°"});
-    rep.parameters = {{"Mode", in.dispersion ? "Dispersion" : "Single ray"}, {"n (prism / medium)", fx(n)}, {"Apex A", num(in.apex) + " °"},
-                      {"Incidence i₁", num(in.incidence) + " °"}, {"Wavelength λ", num(in.wavelengthNm) + " nm"}};
+                                    "RETAINED DEVIATION · δ", r.resultValue, std::move(retainedExtra));
+    rep.parameters = {{"Mode", in.dispersion ? "Dispersion" : "Single ray"},
+                      {"n (prism / medium)", measured(n, ratioEstimate.valid ? ratioEstimate.standardUncertainty : 0.0)},
+                      {"n prism", measured(in.nPrism, sigmaPrismIndex)}, {"n medium", measured(in.nMedium, sigmaMediumIndex)},
+                      {"Apex A", measured(in.apex, in.sigmaApex, "°")},
+                      {"Incidence i₁", measured(in.incidence, in.sigmaIncidence, "°")},
+                      {"Wavelength λ", measured(in.wavelengthNm, in.sigmaWavelengthNm, "nm")}};
+    if (uncertain) rep.parameters.emplace_back("Uncertainty convention", "Independent 1σ inputs; wavelength affects n through the preset dispersion model");
     return rep;
 }
 
 DataSeries prismSweep(const PrismInput& in) {
-    DataSeries s{"prism_sweep", "Prism deviation sweep", "n = " + fx(in.nPrism / in.nMedium) + " · A = " + NF::general(in.apex, 5) + "°", "",
-                 {"i₁ (°)", "δ (°)"}, {}};
+    const double sigmaPrismIndex = std::hypot(in.sigmaNPrism, in.dnPrismDlambda * in.sigmaWavelengthNm);
+    const double sigmaMediumIndex = std::hypot(in.sigmaNMedium, in.dnMediumDlambda * in.sigmaWavelengthNm);
+    DataSeries s{"prism_sweep", "Prism deviation sweep", "n = " + fx(in.nPrism / in.nMedium) + " · A = " + NF::general(in.apex, 5) + "°",
+                 "σ columns are independent 1σ standard uncertainties",
+                 {"i₁ (°)", "δ (°)", "σ i₁ (°)", "σ δ (°)"}, {}, {}};
+    s.analysis = {{"Input n prism", measured(in.nPrism, in.sigmaNPrism)},
+                  {"Input n medium", measured(in.nMedium, in.sigmaNMedium)},
+                  {"Effective σ(n prism)", num(sigmaPrismIndex)}, {"Effective σ(n medium)", num(sigmaMediumIndex)},
+                  {"Input apex A", measured(in.apex, in.sigmaApex, "°")},
+                  {"Input incidence i₁", measured(in.incidence, in.sigmaIncidence, "°")},
+                  {"Input wavelength λ", measured(in.wavelengthNm, in.sigmaWavelengthNm, "nm")}};
     for (int a = 35; a <= 65; a += 5) {
+        const std::vector<double> values{in.nPrism, in.nMedium, in.apex, double(a), in.wavelengthNm};
+        const std::vector<double> sigmas{in.sigmaNPrism, in.sigmaNMedium, in.sigmaApex, in.sigmaIncidence, in.sigmaWavelengthNm};
         const auto p = PC::prism(in.nPrism, in.nMedium, in.apex, a);
-        s.rows.push_back({double(a), (p.exitTir || p.entryTir || !p.valid) ? kNaN : p.deviation});
+        const auto deviationError = propagateUncertainty(values, sigmas, [&in](const std::vector<double>& v) {
+            const double deltaLambda = v[4] - in.wavelengthNm;
+            const double nPrism = v[0] + in.dnPrismDlambda * deltaLambda;
+            const double nMedium = v[1] + in.dnMediumDlambda * deltaLambda;
+            const auto result = PC::prism(nPrism, nMedium, v[2], v[3]);
+            return result.valid && !result.entryTir && !result.exitTir ? result.deviation : kNaN;
+        });
+        const bool valid = p.valid && !p.exitTir && !p.entryTir;
+        s.rows.push_back({double(a), valid ? p.deviation : kNaN, in.sigmaIncidence,
+                          valid && deviationError.valid ? deviationError.standardUncertainty : kNaN});
+    }
+    const auto current = PC::prism(in.nPrism, in.nMedium, in.apex, in.incidence);
+    if (current.valid && !current.entryTir && !current.exitTir) {
+        const auto deviationError = propagateUncertainty(
+            {in.nPrism, in.nMedium, in.apex, in.incidence, in.wavelengthNm},
+            {in.sigmaNPrism, in.sigmaNMedium, in.sigmaApex, in.sigmaIncidence, in.sigmaWavelengthNm},
+            [&in](const std::vector<double>& v) {
+                const double deltaLambda = v[4] - in.wavelengthNm;
+                const double nPrism = v[0] + in.dnPrismDlambda * deltaLambda;
+                const double nMedium = v[1] + in.dnMediumDlambda * deltaLambda;
+                const auto result = PC::prism(nPrism, nMedium, v[2], v[3]);
+                return result.valid && !result.entryTir && !result.exitTir ? result.deviation : kNaN;
+            });
+        if (deviationError.valid) s.analysis.emplace_back("Current deviation δ", measured(current.deviation, deviationError.standardUncertainty, "°"));
     }
     return s;
 }
@@ -409,10 +741,13 @@ DataSeries prismSweep(const PrismInput& in) {
 // ------------------------------------------------------------------------------ double slit
 Report doubleSlit(const SlitInput& in, const ReportContext& ctx) {
     std::vector<FieldIssue> issues;
-    if (in.wavelengthNm <= 0.0) issues.push_back({FieldIds::wavelength, "Enter λ > 0 nm.", "λ"});
-    if (in.separationMm <= 0.0) issues.push_back({FieldIds::slitSeparation, "Enter d > 0 mm.", "d"});
-    if (in.screenM <= 0.0) issues.push_back({FieldIds::screenDistance, "Enter L > 0 m.", "L"});
+    if (!std::isfinite(in.wavelengthNm) || in.wavelengthNm <= 0.0) issues.push_back({FieldIds::wavelength, "Enter λ > 0 nm.", "λ"});
+    if (!std::isfinite(in.separationMm) || in.separationMm <= 0.0) issues.push_back({FieldIds::slitSeparation, "Enter d > 0 mm.", "d"});
+    if (!std::isfinite(in.screenM) || in.screenM <= 0.0) issues.push_back({FieldIds::screenDistance, "Enter L > 0 m.", "L"});
     if (in.order < 0) issues.push_back({FieldIds::order, "Enter m ≥ 0.", "m"});
+    validateSigma(issues, FieldIds::sigmaWavelength, in.sigmaWavelengthNm, "σ(λ)");
+    validateSigma(issues, FieldIds::sigmaSlitSeparation, in.sigmaSeparationMm, "σ(d)");
+    validateSigma(issues, FieldIds::sigmaScreenDistance, in.sigmaScreenM, "σ(L)");
     if (!issues.empty()) {
         std::vector<std::string> lines;
         for (const auto& i : issues) {
@@ -435,12 +770,28 @@ Report doubleSlit(const SlitInput& in, const ReportContext& ctx) {
     const double beta = PC::fringeSpacing(lam, L, d);
     const double ym = PC::fringePosition(in.order, lam, L, d);
     const double intensity = PC::relativeIntensity(ym, lam, L, d);
+    const std::vector<double> slitValues{in.wavelengthNm, in.separationMm, in.screenM};
+    const std::vector<double> slitSigmas{in.sigmaWavelengthNm, in.sigmaSeparationMm, in.sigmaScreenM};
+    const auto betaEstimate = propagateUncertainty(slitValues, slitSigmas, [](const std::vector<double>& v) {
+        return (v[0] * 1e-9 * v[2] / (v[1] * 1e-3)) * 1e3; // β in millimetres
+    });
+    const auto fringeEstimate = propagateUncertainty(slitValues, slitSigmas, [order = in.order](const std::vector<double>& v) {
+        return order * v[0] * 1e-9 * v[2] / (v[1] * 1e-3) * 1e3; // y_m in millimetres
+    });
+    const auto intensityEstimate = propagateUncertainty(slitValues, slitSigmas, [yMm = ym * 1e3](const std::vector<double>& v) {
+        return PC::relativeIntensity(yMm * 1e-3, v[0] * 1e-9, v[2], v[1] * 1e-3);
+    });
+    const bool uncertain = anyUncertainty({in.sigmaWavelengthNm, in.sigmaSeparationMm, in.sigmaScreenM});
 
     Report rep;
     LcdRegister r1;
     r1.lines = {"01  λ = " + NF::scientific(lam) + " m", "02  d = " + NF::scientific(d) + " m", "03  β = λL / d", "    β = " + NF::fixed(beta, 6) + " m"};
     r1.resultLabel = "FRINGE SPACING · β";
     r1.resultValue = fx(beta * 1e3) + " mm";
+    if (uncertain && betaEstimate.valid) {
+        r1.resultValue += " ± " + num(betaEstimate.standardUncertainty) + " mm";
+        r1.extraLines.push_back("σ(β) = " + num(betaEstimate.standardUncertainty) + " mm (1σ)");
+    }
     rep.registers.push_back(r1);
 
     LcdRegister r2;
@@ -450,25 +801,50 @@ Report doubleSlit(const SlitInput& in, const ReportContext& ctx) {
     const std::string yName = in.order < 10 ? std::string("y") + sub[in.order] : "y(m)";
     r2.lines = {"m = " + m, yName + " = mλL / d", yName + " = " + NF::signedFixed(ym * 1e3) + " mm",
                 "Δ = " + m + "λ = " + NF::fixed(in.order * in.wavelengthNm, 1) + " nm", "I(" + yName + ") / I₀ = " + fx(intensity)};
+    if (uncertain && fringeEstimate.valid)
+        r2.extraLines.push_back("σ(" + yName + ") = " + num(fringeEstimate.standardUncertainty) + " mm (1σ)");
+    if (uncertain && intensityEstimate.valid)
+        r2.extraLines.push_back("σ(I/I₀) = " + num(intensityEstimate.standardUncertainty) + " (1σ)");
     rep.registers.push_back(r2);
-    rep.notices.push_back({"Model assumptions", "Equal slit intensities, coherent sources and L ≫ d. The plot shows normalized interference only; no diffraction envelope.", false});
+    rep.notices.push_back({"Model assumptions", "Equal slit intensities, coherent sources and L ≫ d. The plot shows normalized interference only; no diffraction envelope. "
+                           "Entered uncertainties are independent 1σ standard uncertainties.", false});
     rep.headline = "β = " + fx(beta * 1e3) + " mm";
+    if (uncertain && betaEstimate.valid) rep.headline += " ± " + num(betaEstimate.standardUncertainty) + " mm";
+    std::vector<std::string> retainedExtra{"m = " + m + " · " + yName + " = " + NF::signedFixed(ym * 1e3) + " mm"};
+    if (uncertain && fringeEstimate.valid)
+        retainedExtra.push_back("σ(" + yName + ") = " + num(fringeEstimate.standardUncertainty) + " mm (1σ)");
     rep.retained = retainedRegister({"λ = " + NF::fixed(in.wavelengthNm, 1) + " nm", "d = " + NF::fixed(in.separationMm, 3) + " mm · L = " + NF::fixed(in.screenM, 3) + " m"},
-                                    "RETAINED FRINGE SPACING · β", fx(beta * 1e3) + " mm", {"m = " + m + " · " + yName + " = " + NF::signedFixed(ym * 1e3) + " mm"});
-    rep.parameters = {{"Wavelength λ", num(in.wavelengthNm) + " nm"}, {"Slit separation d", NF::general(in.separationMm, 4) + " mm"},
-                      {"Screen distance L", num(in.screenM) + " m"}, {"Fringe order m", m}};
+                                    "RETAINED FRINGE SPACING · β", r1.resultValue, std::move(retainedExtra));
+    rep.parameters = {{"Wavelength λ", measured(in.wavelengthNm, in.sigmaWavelengthNm, "nm")},
+                      {"Slit separation d", measured(in.separationMm, in.sigmaSeparationMm, "mm")},
+                      {"Screen distance L", measured(in.screenM, in.sigmaScreenM, "m")}, {"Fringe order m", m}};
     return rep;
 }
 
 DataSeries doubleSlitSweep(const SlitInput& in) {
     DataSeries s{"double_slit_sweep", "Double-slit intensity",
                  NF::general(in.wavelengthNm, 5) + " nm · d = " + NF::general(in.separationMm, 4) + " mm · L = " + NF::general(in.screenM, 5) + " m",
-                 "ideal coherent sources, no diffraction envelope", {"y (mm)", "I / I₀"}, {}};
+                 "ideal coherent sources; σ(I/I₀) is an independent-input 1σ uncertainty; no diffraction envelope",
+                 {"y (mm)", "I / I₀", "σ(I / I₀)"}, {}, {}};
+    s.analysis = {{"Input wavelength λ", measured(in.wavelengthNm, in.sigmaWavelengthNm, "nm")},
+                  {"Input slit separation d", measured(in.separationMm, in.sigmaSeparationMm, "mm")},
+                  {"Input screen distance L", measured(in.screenM, in.sigmaScreenM, "m")}};
     const double lam = in.wavelengthNm * 1e-9, d = in.separationMm * 1e-3, L = in.screenM;
+    const std::vector<double> values{in.wavelengthNm, in.separationMm, in.screenM};
+    const std::vector<double> sigmas{in.sigmaWavelengthNm, in.sigmaSeparationMm, in.sigmaScreenM};
     for (int k = -10; k <= 10; ++k) {
         const double y = k * 1e-3;
-        s.rows.push_back({double(k), d > 0 ? PC::relativeIntensity(y, lam, L, d) : kNaN});
+        const double intensity = d > 0 ? PC::relativeIntensity(y, lam, L, d) : kNaN;
+        const auto error = propagateUncertainty(values, sigmas, [y](const std::vector<double>& v) {
+            return PC::relativeIntensity(y, v[0] * 1e-9, v[2], v[1] * 1e-3);
+        });
+        s.rows.push_back({double(k), intensity, std::isfinite(intensity) && error.valid ? error.standardUncertainty : kNaN});
     }
+    const double betaMm = PC::fringeSpacing(lam, L, d) * 1e3;
+    const auto betaError = propagateUncertainty(values, sigmas, [](const std::vector<double>& v) {
+        return v[0] * 1e-9 * v[2] / (v[1] * 1e-3) * 1e3;
+    });
+    if (betaError.valid) s.analysis.emplace_back("Fringe spacing β", measured(betaMm, betaError.standardUncertainty, "mm"));
     return s;
 }
 

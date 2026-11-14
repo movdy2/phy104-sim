@@ -29,6 +29,10 @@ std::string seriesPrefix(const DataSeries& s) {
 
 std::string toCsv(const DataSeries& series) {
     std::string out;
+    if (!series.name.empty()) out += "# PHY104 series: " + series.name + "\n";
+    if (!series.description.empty()) out += "# Description: " + series.description + "\n";
+    if (!series.note.empty()) out += "# Note: " + series.note + "\n";
+    for (const auto& [name, value] : series.analysis) out += "# " + name + ": " + value + "\n";
     for (std::size_t i = 0; i < series.headers.size(); ++i) {
         if (i) out.push_back(',');
         out += csvField(series.headers[i]);
@@ -81,6 +85,13 @@ std::vector<XlsxSheet> workbookSheets(const SessionLog& log, const DataSeries& s
             for (double v : row) cells.emplace_back(v);
             s.rows.push_back(cells);
         }
+        sheets.push_back(std::move(s));
+    }
+    if (opt.measurements && !series.analysis.empty()) {
+        XlsxSheet s{"Analysis", {}};
+        s.rows.push_back({XlsxCell("Quantity", true), XlsxCell("Value / method", true)});
+        for (const auto& [name, value] : series.analysis)
+            s.rows.push_back({XlsxCell(name), XlsxCell(value)});
         sheets.push_back(std::move(s));
     }
     if (opt.notes) {

@@ -299,7 +299,12 @@ void ExportPage::refreshPreview() {
         }
         m_table->setRowHeight(r, 26);
     }
-    m_previewFoot->setText(QString("%1 rows × %2 columns · every row shown · full precision retained").arg(rows).arg(cols));
+    QStringList analysis;
+    for (const auto& [name, value] : s.analysis)
+        analysis << QString::fromStdString(name) + " = " + QString::fromStdString(value);
+    QString foot = QString("%1 rows × %2 columns · every row shown · full precision retained").arg(rows).arg(cols);
+    if (!analysis.isEmpty()) foot += "\nAnalysis / uncertainty metadata: " + analysis.join(" · ");
+    m_previewFoot->setText(foot);
 
     // ---- file name + what the export will contain
     const QString base = QString::fromStdString(DataExport::suggestedFileName(s, ""));
@@ -370,9 +375,19 @@ void ExportPage::printTable() {
     if (dialog.exec() != QDialog::Accepted) return;
 
     // the same table as the preview, as simple HTML (no CSS tricks: Qt's rich text engine prints it as it is shown)
-    QString html = "<h2>" + QString::fromStdString(snap->series.name).toHtmlEscaped() + "</h2><p>"
-                 + QString::fromStdString(snap->series.description).toHtmlEscaped() + "</p><table border='1' cellspacing='0' cellpadding='4'><tr>";
-    for (const std::string& h : snap->series.headers) html += "<th>" + QString::fromStdString(h).toHtmlEscaped() + "</th>";
+    const DataSeries& series = snap->series;
+    QString html = "<h2>" + QString::fromStdString(series.name).toHtmlEscaped() + "</h2><p>"
+                 + QString::fromStdString(series.description).toHtmlEscaped() + "</p>";
+    if (!series.note.empty()) html += "<p>" + QString::fromStdString(series.note).toHtmlEscaped() + "</p>";
+    if (!series.analysis.empty()) {
+        html += "<h3>Analysis and uncertainty</h3><table border='1' cellspacing='0' cellpadding='4'>";
+        for (const auto& [name, value] : series.analysis)
+            html += "<tr><th>" + QString::fromStdString(name).toHtmlEscaped() + "</th><td>" +
+                    QString::fromStdString(value).toHtmlEscaped() + "</td></tr>";
+        html += "</table>";
+    }
+    html += "<table border='1' cellspacing='0' cellpadding='4'><tr>";
+    for (const std::string& h : series.headers) html += "<th>" + QString::fromStdString(h).toHtmlEscaped() + "</th>";
     html += "</tr>";
     for (const auto& row : snap->series.rows) {
         html += "<tr>";

@@ -85,6 +85,7 @@ private:
     ModeTabs* m_mode;
     QComboBox *m_med1, *m_med2;
     UnitField *m_n1, *m_n2, *m_theta;
+    UnitField *m_sigmaN1, *m_sigmaN2, *m_sigmaTheta;
     QStackedWidget* m_canvasStack;
     RefractionCanvas* m_canvas;
     TirCanvas* m_tirCanvas;
@@ -114,6 +115,7 @@ private:
     QLabel* m_typeLabel;
     QWidget* m_radiusBlock;
     UnitField *m_f, *m_r, *m_s, *m_h;
+    UnitField *m_sigmaF, *m_sigmaS, *m_sigmaH;
     QStackedWidget* m_centerStack;
     LensCanvas* m_lens;
     MirrorCanvas *m_mirrorSmall, *m_mirrorBig;
@@ -140,6 +142,7 @@ private:
     QComboBox *m_material, *m_surround;
     QLabel *m_materialLabel, *m_surroundLabel;
     UnitField *m_apex, *m_incidence, *m_lambda;
+    UnitField *m_sigmaNPrism, *m_sigmaNMedium, *m_sigmaApex, *m_sigmaIncidence, *m_sigmaLambda;
     PrismCanvas* m_canvas;
     LineChart* m_chart;
     Panel *m_diagram, *m_chartPanel, *m_results;
@@ -162,6 +165,7 @@ private:
 
     QComboBox* m_source;
     UnitField *m_lambda, *m_d, *m_L, *m_order;
+    UnitField *m_sigmaLambda, *m_sigmaD, *m_sigmaL;
     ModeTabs* m_view;
     WaveCanvas* m_canvas;
     LineChart* m_chart;

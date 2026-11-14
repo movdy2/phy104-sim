@@ -6,12 +6,14 @@
 #include "OpticsCanvases.h"
 #include "PhysicsCalculator.h"
 #include "ThemeManager.h"
+#include "Uncertainty.h"
 
 #include <QComboBox>
 #include <QLabel>
 #include <QHBoxLayout>
 #include <QPushButton>
 #include <QStackedWidget>
+#include <QToolButton>
 #include <QVBoxLayout>
 #include <algorithm>
 #include <cmath>
@@ -48,6 +50,40 @@ void niceRange(double lo, double hi, int intervals, double& outLo, double& outHi
     outLo = std::floor(lo / step) * step;
     outHi = outLo + step * intervals;
     while (outHi < hi - 1e-9) { outHi += step; outLo = outHi - step * intervals; }
+}
+
+QWidget* uncertaintyInputs(const std::vector<std::pair<QString, UnitField*>>& inputs) {
+    auto* root = new QWidget;
+    auto* layout = new QVBoxLayout(root);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(5);
+    auto* toggle = new QToolButton;
+    toggle->setObjectName("uncertaintyToggle");
+    toggle->setText("Measurement uncertainties · 1σ");
+    toggle->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    toggle->setArrowType(Qt::RightArrow);
+    toggle->setCheckable(true);
+    auto* editor = new QWidget;
+    editor->setObjectName("uncertaintyInputs");
+    auto* fields = new QVBoxLayout(editor);
+    fields->setContentsMargins(12, 2, 0, 0);
+    fields->setSpacing(6);
+    auto* hint = new QLabel("Independent standard uncertainties; enter 0 when a value is treated as exact.");
+    hint->setObjectName("hint");
+    hint->setWordWrap(true);
+    fields->addWidget(hint);
+    for (const auto& [label, field] : inputs) {
+        field->setToolTip("Standard uncertainty (1σ). Enter 0 to treat this quantity as exact.");
+        fields->addWidget(labeled(label, field));
+    }
+    editor->hide();
+    layout->addWidget(toggle);
+    layout->addWidget(editor);
+    QObject::connect(toggle, &QToolButton::toggled, editor, [toggle, editor](bool open) {
+        toggle->setArrowType(open ? Qt::DownArrow : Qt::RightArrow);
+        editor->setVisible(open);
+    });
+    return root;
 }
 
 } // namespace
@@ -237,7 +273,13 @@ RefractionPage::RefractionPage(AppContext* ctx, QWidget* parent)
     m_n1 = new UnitField;  m_n1->setSpinner(true, 0.01);
     m_n2 = new UnitField;  m_n2->setSpinner(true, 0.01);
     m_theta = new UnitField("°");
+    m_sigmaN1 = new UnitField; m_sigmaN2 = new UnitField; m_sigmaTheta = new UnitField("°");
+    m_sigmaN1->setObjectName(FieldIds::sigmaRefractiveIndex1);
+    m_sigmaN2->setObjectName(FieldIds::sigmaRefractiveIndex2);
+    m_sigmaTheta->setObjectName(FieldIds::sigmaIncidentAngle);
     bind(QString::fromLatin1(FieldIds::refractiveIndex1), m_n1); bind(QString::fromLatin1(FieldIds::refractiveIndex2), m_n2); bind(QString::fromLatin1(FieldIds::incidentAngle), m_theta);
+    bind(QString::fromLatin1(FieldIds::sigmaRefractiveIndex1), m_sigmaN1); bind(QString::fromLatin1(FieldIds::sigmaRefractiveIndex2), m_sigmaN2);
+    bind(QString::fromLatin1(FieldIds::sigmaIncidentAngle), m_sigmaTheta);
     auto* f = controls->body();
     f->addWidget(m_mode);
     f->addWidget(labeled("Incident medium", m_med1));
@@ -245,6 +287,7 @@ RefractionPage::RefractionPage(AppContext* ctx, QWidget* parent)
     f->addWidget(labeled("Transmitted medium", m_med2));
     f->addWidget(labeled("Refractive index · n₂", m_n2));
     f->addWidget(labeled("Incidence angle · θ₁", m_theta));
+    f->addWidget(uncertaintyInputs({{"σ(n₁)", m_sigmaN1}, {"σ(n₂)", m_sigmaN2}, {"σ(θ₁)", m_sigmaTheta}}));
     buildButtons(f, "SI units · angles in degrees");
 
     m_canvasStack = new QStackedWidget;
@@ -278,6 +321,7 @@ RefractionPage::RefractionPage(AppContext* ctx, QWidget* parent)
     connect(m_n1, &UnitField::edited, this, [this] { onIndexEdited(m_med1, m_n1); });
     connect(m_n2, &UnitField::edited, this, [this] { onIndexEdited(m_med2, m_n2); });
     connect(m_theta, &UnitField::edited, this, [this] { apply(false); });
+    for (auto* field : {m_sigmaN1, m_sigmaN2, m_sigmaTheta}) connect(field, &UnitField::edited, this, [this] { apply(false); });
     connect(m_mode, &ModeTabs::currentChanged, this, [this] {
         const bool tir = m_mode->current() == 1;
         if (tir != m_lastModeTir) { m_theta->setValue(tir ? 50.0 : 30.0, 2); m_lastModeTir = tir; }   // the design's default angle per mode
@@ -325,6 +369,7 @@ void RefractionPage::reset() {
     m_n1->setValue(1.5);
     m_n2->setValue(1.0);
     m_theta->setValue(30.0, 2);
+    m_sigmaN1->setValue(0.0, 4); m_sigmaN2->setValue(0.0, 4); m_sigmaTheta->setValue(0.0, 4);
     m_haveLast = false;
     updateModeTexts();
     apply(false);
@@ -334,6 +379,7 @@ void RefractionPage::apply(bool record) {
     if (!readFields()) return;
     RefractionInput in;
     in.n1 = m_n1->value(); in.n2 = m_n2->value(); in.theta1 = m_theta->value();
+    in.sigmaN1 = m_sigmaN1->value(); in.sigmaN2 = m_sigmaN2->value(); in.sigmaTheta1 = m_sigmaTheta->value();
     in.tirMode = m_mode->current() == 1;
     in.name1 = mediumName(m_med1).toStdString();
     in.name2 = mediumName(m_med2).toStdString();
@@ -352,6 +398,10 @@ void RefractionPage::apply(bool record) {
 
     if (in.tirMode) {
         const auto crit = PC::criticalAngleDeg(in.n1, in.n2);
+        const auto critError = propagateUncertainty({in.n1, in.n2}, {in.sigmaN1, in.sigmaN2}, [](const std::vector<double>& v) {
+            const double ratio = v[1] / v[0];
+            return ratio >= 0.0 && ratio < 1.0 ? std::asin(ratio) * 180.0 / std::numbers::pi : kNaN;
+        });
         ChartSeries curve;
         curve.line = true;
         const double top = crit ? *crit : 90.0;
@@ -366,25 +416,42 @@ void RefractionPage::apply(bool record) {
         if (crit) {
             v.prepend({*crit, "θc = " + QString::number(*crit, 'f', 4) + "°", t.sage, true});
             reg << ChartRegion{*crit, 90, t.amber, "TIR / no real θ₂"};
-            pts << ChartPoint{*crit, 90, "", t.sage, false};
+            ChartPoint criticalPoint{*crit, 90, "", t.sage, false};
+            criticalPoint.xUncertainty = critError.valid ? critError.standardUncertainty : 0.0;
+            pts << criticalPoint;
         }
-        m_chart->setAxes(0, 90, 3, 0, "", 0, 90, 2, 0, "θ₂ / degrees");
-        m_chart->setSeries({curve});
+        ChartSeries samples;
+        samples.markers = true;
+        for (const auto& row : ER::tirSweep(in).rows) if (std::isfinite(row[1])) {
+            samples.points << QPointF(row[0], row[1]);
+            samples.xUncertainties << in.sigmaTheta1;
+            samples.yUncertainties << row[2];
+        }
+        m_chart->setAxes(0, 90, 3, 0, "θ₁ / degrees", 0, 90, 2, 0, "θ₂ / degrees");
+        m_chart->setSeries({curve, samples});
         m_chart->setAnnotations(v, {}, reg, pts);
-        m_chart->setLegend({}, "θ₁ (°)   ▬ θ₂ = asin(" + QString::number(in.n1 / in.n2, 'g', 5) + " sin θ₁), 0 ≤ θ₁ ≤ θc only");
+        m_chart->setLegend({"Samples · error bars = 1σ"}, "θ₂ = asin(" + QString::number(in.n1 / in.n2, 'g', 5) + " sin θ₁), 0 ≤ θ₁ ≤ θc only");
     } else {
         const DataSeries sweep = ER::refractionSweep(in);
         ChartSeries samples, fitLine;
-        std::vector<double> xs, ys;
+        std::vector<double> xs, ys, ySigmas;
         for (const auto& row : sweep.rows)
-            if (std::isfinite(row[1])) { xs.push_back(row[2]); ys.push_back(row[3]); samples.points << QPointF(row[2], row[3]); }
+            if (std::isfinite(row[1])) {
+                xs.push_back(row[2]); ys.push_back(row[3]); ySigmas.push_back(row[6]);
+                samples.points << QPointF(row[2], row[3]);
+                samples.xUncertainties << row[5]; samples.yUncertainties << row[6];
+            }
         samples.markers = true;
-        const auto fit = ER::linearFit(xs, ys);
+        const auto fit = ER::linearFit(xs, ys, ySigmas);
         if (fit.ok) { fitLine.line = true; fitLine.points << QPointF(0, fit.intercept) << QPointF(0.6, fit.slope * 0.6 + fit.intercept); }
         m_chart->clearAnnotations();
         m_chart->setAxes(0, 0.6, 4, 2, "sin θ₁", 0, 1.0, 2, 1, "sin θ₂");
         m_chart->setSeries({fitLine, samples});
-        m_chart->setLegend({"Simulated samples"}, fit.ok ? QString("Fit: slope %1   R² = %2").arg(fit.slope, 0, 'f', 4).arg(fit.r2, 0, 'f', 4) : "");
+        const QString fitCaption = fit.ok ? QString("%1 fit (1σ) · m %2 ± %3 · b %4 ± %5 · R² %6")
+            .arg(fit.weighted ? QStringLiteral("Weighted") : QStringLiteral("OLS"))
+            .arg(fit.slope, 0, 'f', 4).arg(fit.slopeUncertainty, 0, 'g', 3)
+            .arg(fit.intercept, 0, 'f', 4).arg(fit.interceptUncertainty, 0, 'g', 3).arg(fit.r2, 0, 'f', 4) : QString();
+        m_chart->setLegend({"Samples · 1σ bars"}, fitCaption);
     }
 
     Snapshot snap{"Refraction & TIR", r.parameters, r.registers, r.headline, in.tirMode ? ER::tirSweep(in) : ER::refractionSweep(in), {}};
@@ -413,7 +480,13 @@ LensesPage::LensesPage(AppContext* ctx, QWidget* parent)
     m_r = new UnitField("cm");  m_r->setShowPlus(true);
     m_s = new UnitField("cm");  m_s->setShowPlus(true);
     m_h = new UnitField("cm");  m_h->setShowPlus(true);
+    m_sigmaF = new UnitField("cm"); m_sigmaS = new UnitField("cm"); m_sigmaH = new UnitField("cm");
+    m_sigmaF->setObjectName(FieldIds::sigmaFocalLength);
+    m_sigmaS->setObjectName(FieldIds::sigmaObjectDistance);
+    m_sigmaH->setObjectName(FieldIds::sigmaObjectHeight);
     bind(QString::fromLatin1(FieldIds::focalLength), m_f); bind(QString::fromLatin1(FieldIds::objectDistance), m_s); bind(QString::fromLatin1(FieldIds::objectHeight), m_h);
+    bind(QString::fromLatin1(FieldIds::sigmaFocalLength), m_sigmaF); bind(QString::fromLatin1(FieldIds::sigmaObjectDistance), m_sigmaS);
+    bind(QString::fromLatin1(FieldIds::sigmaObjectHeight), m_sigmaH);
     m_typeLabel = new QLabel("Lens type");
     m_typeLabel->setObjectName("fieldLabel");
     auto* typeBox = new QWidget;
@@ -430,6 +503,7 @@ LensesPage::LensesPage(AppContext* ctx, QWidget* parent)
     f->addWidget(m_radiusBlock);
     f->addWidget(labeled("Object distance · dₒ", m_s));
     f->addWidget(labeled("Object height · hₒ", m_h));
+    f->addWidget(uncertaintyInputs({{"σ(f)", m_sigmaF}, {"σ(dₒ)", m_sigmaS}, {"σ(hₒ)", m_sigmaH}}));
     buildButtons(f, "Real-is-positive. Distances measured from the optical element.");
 
     // centre: lens mode = lens + mirror comparison, mirror mode = one detailed mirror + chart
@@ -486,7 +560,7 @@ LensesPage::LensesPage(AppContext* ctx, QWidget* parent)
     connect(m_type, &QComboBox::activated, this, [this] { onTypeChosen(); });
     connect(m_f, &UnitField::edited, this, [this] { onFocalEdited(); });
     connect(m_r, &UnitField::edited, this, [this] { onRadiusEdited(); });
-    for (auto* field : {m_s, m_h}) connect(field, &UnitField::edited, this, [this] { apply(false); });
+    for (auto* field : {m_s, m_h, m_sigmaF, m_sigmaS, m_sigmaH}) connect(field, &UnitField::edited, this, [this] { apply(false); });
     reset();
 }
 
@@ -552,6 +626,7 @@ void LensesPage::reset() {
     m_r->setValue(20.0, 2);
     m_s->setValue(30.0, 2);
     m_h->setValue(3.0, 2);
+    m_sigmaF->setValue(0.0, 4); m_sigmaS->setValue(0.0, 4); m_sigmaH->setValue(0.0, 4);
     m_syncing = false;
     m_haveLast = false;
     apply(false);
@@ -561,6 +636,7 @@ void LensesPage::apply(bool record) {
     if (m_syncing || !readFields()) return;
     ImagingInput in;
     in.f = m_f->value(); in.s = m_s->value(); in.h = m_h->value();
+    in.sigmaF = m_sigmaF->value(); in.sigmaS = m_sigmaS->value(); in.sigmaH = m_sigmaH->value();
     in.mirrorMode = m_mode->current() == 1;
 
     const Report r = ER::imaging(in, reportContext());
@@ -613,10 +689,16 @@ void LensesPage::apply(bool record) {
         const Theme& t = ThemeManager::instance().theme();
         m_chart->setAxes(0, 60, 4, 0, "dₒ (cm)", y0, y1, 2, 0, "dᵢ / cm");
         m_chart->setSeries(series);
-        m_chart->setAnnotations({{in.s, "", t.dim, false}}, {{in.f, "f = " + QString::number(in.f, 'g', 5) + " cm", t.dim}}, {},
-                                {{in.s, cur, QString("Current: (%1, %2) cm").arg(signedText(in.s, 0), QString::number(cur, 'g', 4)), t.sage, true}});
+        const auto imageError = propagateUncertainty({in.f, in.s}, {in.sigmaF, in.sigmaS}, [](const std::vector<double>& v) {
+            const double denominator = 1.0 / v[0] - 1.0 / v[1];
+            return std::fabs(denominator) > 1e-15 ? 1.0 / denominator : kNaN;
+        });
+        ChartPoint currentPoint{in.s, cur, QString("Current: (%1, %2) cm").arg(signedText(in.s, 0), QString::number(cur, 'g', 4)), t.sage, true};
+        currentPoint.xUncertainty = in.sigmaS;
+        currentPoint.yUncertainty = imageError.valid ? imageError.standardUncertainty : 0.0;
+        m_chart->setAnnotations({{in.s, "", t.dim, false}}, {{in.f, "f = " + QString::number(in.f, 'g', 5) + " cm", t.dim}}, {}, {currentPoint});
         const QString fText = QString::number(in.f, 'g', 5);
-        m_chart->setLegend({}, QString("▬ dᵢ = %1dₒ/(dₒ %2 %3)   ● Current sample").arg(fText, in.f < 0 ? "+" : "−").arg(QString::number(af, 'g', 5)));
+        m_chart->setLegend({}, QString("▬ dᵢ = %1dₒ/(dₒ %2 %3)   ● Current · error bars = 1σ").arg(fText, in.f < 0 ? "+" : "−").arg(QString::number(af, 'g', 5)));
     }
 
     m_ctx->publish({"Lenses & Mirrors", r.parameters, r.registers, r.headline, ER::imagingSweep(in), {}});
@@ -641,7 +723,17 @@ PrismsPage::PrismsPage(AppContext* ctx, QWidget* parent)
     m_apex = new UnitField("°");
     m_incidence = new UnitField("°");
     m_lambda = new UnitField("nm");
+    m_sigmaNPrism = new UnitField; m_sigmaNMedium = new UnitField;
+    m_sigmaApex = new UnitField("°"); m_sigmaIncidence = new UnitField("°"); m_sigmaLambda = new UnitField("nm");
+    m_sigmaNPrism->setObjectName(FieldIds::sigmaPrismIndex);
+    m_sigmaNMedium->setObjectName(FieldIds::sigmaMediumIndex);
+    m_sigmaApex->setObjectName(FieldIds::sigmaPrismApex);
+    m_sigmaIncidence->setObjectName(FieldIds::sigmaPrismIncidence);
+    m_sigmaLambda->setObjectName(FieldIds::sigmaWavelength);
     bind(QString::fromLatin1(FieldIds::prismApex), m_apex); bind(QString::fromLatin1(FieldIds::incidenceAngle), m_incidence); bind(QString::fromLatin1(FieldIds::wavelength), m_lambda);
+    bind(QString::fromLatin1(FieldIds::sigmaPrismIndex), m_sigmaNPrism); bind(QString::fromLatin1(FieldIds::sigmaMediumIndex), m_sigmaNMedium);
+    bind(QString::fromLatin1(FieldIds::sigmaPrismApex), m_sigmaApex); bind(QString::fromLatin1(FieldIds::sigmaPrismIncidence), m_sigmaIncidence);
+    bind(QString::fromLatin1(FieldIds::sigmaWavelength), m_sigmaLambda);
     m_materialLabel = new QLabel;
     m_materialLabel->setObjectName("fieldLabel");
     m_surroundLabel = new QLabel;
@@ -662,6 +754,8 @@ PrismsPage::PrismsPage(AppContext* ctx, QWidget* parent)
     f->addWidget(labeled("Apex angle · A", m_apex));
     f->addWidget(labeled("Incidence angle · i₁", m_incidence));
     f->addWidget(labeled("Wavelength · λ", m_lambda));
+    f->addWidget(uncertaintyInputs({{"σ(n prism)", m_sigmaNPrism}, {"σ(n medium)", m_sigmaNMedium},
+                                    {"σ(A)", m_sigmaApex}, {"σ(i₁)", m_sigmaIncidence}, {"σ(λ)", m_sigmaLambda}}));
     buildButtons(f, "SI units · angles in degrees");
 
     m_canvas = new PrismCanvas;
@@ -692,7 +786,8 @@ PrismsPage::PrismsPage(AppContext* ctx, QWidget* parent)
     connect(m_mode, &ModeTabs::currentChanged, this, [this] { apply(false); });
     connect(m_material, &QComboBox::activated, this, [this] { apply(false); });
     connect(m_surround, &QComboBox::activated, this, [this] { apply(false); });
-    for (auto* field : {m_apex, m_incidence, m_lambda}) connect(field, &UnitField::edited, this, [this] { apply(false); });
+    for (auto* field : {m_apex, m_incidence, m_lambda, m_sigmaNPrism, m_sigmaNMedium, m_sigmaApex, m_sigmaIncidence, m_sigmaLambda})
+        connect(field, &UnitField::edited, this, [this] { apply(false); });
     reset();
 }
 
@@ -709,6 +804,8 @@ void PrismsPage::reset() {
     m_apex->setValue(60.0, 2);
     m_incidence->setValue(48.5904, 4);
     m_lambda->setValue(589.3, 1);
+    m_sigmaNPrism->setValue(0.0, 5); m_sigmaNMedium->setValue(0.0, 5);
+    m_sigmaApex->setValue(0.0, 4); m_sigmaIncidence->setValue(0.0, 4); m_sigmaLambda->setValue(0.0, 4);
     m_haveLast = false;
     apply(false);
 }
@@ -717,9 +814,19 @@ void PrismsPage::apply(bool record) {
     if (!readFields()) return;
     PrismInput in;
     in.apex = m_apex->value(); in.incidence = m_incidence->value(); in.wavelengthNm = m_lambda->value();
+    in.sigmaNPrism = m_sigmaNPrism->value(); in.sigmaNMedium = m_sigmaNMedium->value();
+    in.sigmaApex = m_sigmaApex->value(); in.sigmaIncidence = m_sigmaIncidence->value(); in.sigmaWavelengthNm = m_sigmaLambda->value();
     in.dispersion = m_mode->current() == 1;
-    in.nPrism = indexOf(m_material, std::max(1.0, in.wavelengthNm));
-    in.nMedium = indexOf(m_surround, std::max(1.0, in.wavelengthNm));
+    const double lambda = std::max(1.0, in.wavelengthNm);
+    in.nPrism = indexOf(m_material, lambda);
+    in.nMedium = indexOf(m_surround, lambda);
+    auto wavelengthSlope = [this, lambda](QComboBox* combo) {
+        const auto* medium = m_ctx->presets.findMedium(combo->currentData().toString().toStdString());
+        if (!medium || medium->cauchyB == 0.0) return 0.0;
+        return -2.0 * medium->cauchyB * 1e6 / (lambda * lambda * lambda);
+    };
+    in.dnPrismDlambda = wavelengthSlope(m_material);
+    in.dnMediumDlambda = wavelengthSlope(m_surround);
     m_materialLabel->setText(QString("Prism material · n = %1").arg(in.nPrism, 0, 'f', 3));
     m_surroundLabel->setText(QString("Surrounding medium · n = %1").arg(in.nMedium, 0, 'f', 3));
     m_diagram->setTitle(in.dispersion ? "Prism ray path · visible spectrum" : "Prism ray path");
@@ -769,15 +876,21 @@ void PrismsPage::apply(bool record) {
         hi = std::max(hi, p.deviation);
     }
     curve.line = true;
+    ChartSeries samples;
+    samples.markers = true;
+    for (const auto& row : ER::prismSweep(in).rows) if (std::isfinite(row[1])) {
+        samples.points << QPointF(row[0], row[1]);
+        samples.xUncertainties << row[2]; samples.yUncertainties << row[3];
+    }
     if (!curve.points.isEmpty()) {
         int y0 = int(std::floor(lo)) - 1, y1 = int(std::ceil(hi)) + 1;
         y1 = y0 + static_cast<int>(std::ceil((y1 - y0) / 4.0)) * 4;
         m_chart->setAxes(35, 65, 4, 1, "i₁ (°)", y0, y1, 2, 0, "δ (°)");
     }
-    m_chart->setSeries({curve});
+    m_chart->setSeries({curve, samples});
     const auto imin = PC::minimumDeviationIncidenceDeg(in.nPrism, in.nMedium, in.apex);
     m_chart->setMarkerX(imin.value_or(0), imin.has_value());
-    m_chart->setLegend({}, imin ? QString("Ray-traced deviation · minimum at %1°").arg(*imin, 0, 'f', 2) : "");
+    m_chart->setLegend({"Sweep samples · error bars = 1σ"}, imin ? QString("Ray-traced deviation · minimum at %1°").arg(*imin, 0, 'f', 2) : "");
 
     m_ctx->publish({"Prisms", r.parameters, r.registers, r.headline, ER::prismSweep(in), {}});
     if (record) {
@@ -801,7 +914,13 @@ WavePage::WavePage(AppContext* ctx, QWidget* parent)
     m_d = new UnitField("mm");
     m_L = new UnitField("m");
     m_order = new UnitField;  m_order->setSpinner(true, 1.0);
+    m_sigmaLambda = new UnitField("nm"); m_sigmaD = new UnitField("mm"); m_sigmaL = new UnitField("m");
+    m_sigmaLambda->setObjectName(FieldIds::sigmaWavelength);
+    m_sigmaD->setObjectName(FieldIds::sigmaSlitSeparation);
+    m_sigmaL->setObjectName(FieldIds::sigmaScreenDistance);
     bind(QString::fromLatin1(FieldIds::wavelength), m_lambda); bind(QString::fromLatin1(FieldIds::slitSeparation), m_d); bind(QString::fromLatin1(FieldIds::screenDistance), m_L); bind(QString::fromLatin1(FieldIds::order), m_order);
+    bind(QString::fromLatin1(FieldIds::sigmaWavelength), m_sigmaLambda); bind(QString::fromLatin1(FieldIds::sigmaSlitSeparation), m_sigmaD);
+    bind(QString::fromLatin1(FieldIds::sigmaScreenDistance), m_sigmaL);
     m_view = new ModeTabs({"Intensity", "Wavefronts"});
     auto* f = controls->body();
     f->addWidget(labeled("Source preset", m_source));
@@ -809,6 +928,7 @@ WavePage::WavePage(AppContext* ctx, QWidget* parent)
     f->addWidget(labeled("Slit separation · d", m_d));
     f->addWidget(labeled("Screen distance · L", m_L));
     f->addWidget(labeled("Fringe order · m", m_order));
+    f->addWidget(uncertaintyInputs({{"σ(λ)", m_sigmaLambda}, {"σ(d)", m_sigmaD}, {"σ(L)", m_sigmaL}}));
     f->addWidget(m_view);
     buildButtons(f, "Small angles: y ≈ Lθ. Ideal narrow slits.");
 
@@ -836,7 +956,8 @@ WavePage::WavePage(AppContext* ctx, QWidget* parent)
 
     connect(m_source, &QComboBox::activated, this, [this] { onPresetChosen(); });
     connect(m_lambda, &UnitField::edited, this, [this] { onWavelengthEdited(); });
-    for (auto* field : {m_d, m_L, m_order}) connect(field, &UnitField::edited, this, [this] { apply(false); });
+    for (auto* field : {m_d, m_L, m_order, m_sigmaLambda, m_sigmaD, m_sigmaL})
+        connect(field, &UnitField::edited, this, [this] { apply(false); });
     connect(m_view, &ModeTabs::currentChanged, this, [this] { apply(false); });
     reset();
 }
@@ -860,6 +981,7 @@ void WavePage::reset() {
     m_d->setValue(0.25, 3);
     m_L->setValue(1.5, 3);
     m_order->setValue(2, 0);
+    m_sigmaLambda->setValue(0.0, 4); m_sigmaD->setValue(0.0, 4); m_sigmaL->setValue(0.0, 4);
     m_view->setCurrent(0);
     m_haveLast = false;
     apply(false);
@@ -869,6 +991,7 @@ void WavePage::apply(bool record) {
     if (!readFields()) return;
     SlitInput in;
     in.wavelengthNm = m_lambda->value(); in.separationMm = m_d->value(); in.screenM = m_L->value();
+    in.sigmaWavelengthNm = m_sigmaLambda->value(); in.sigmaSeparationMm = m_sigmaD->value(); in.sigmaScreenM = m_sigmaL->value();
     in.order = static_cast<int>(std::lround(m_order->value()));
 
     const Report r = ER::doubleSlit(in, reportContext());
@@ -889,9 +1012,15 @@ void WavePage::apply(bool record) {
         curve.points << QPointF(y, PC::relativeIntensity(y * 1e-3, lam, in.screenM, d));
     }
     curve.line = true;
-    m_chart->setAxes(-10, 10, 4, 0, "mm", 0, 1.0, 2, 1, "I / I₀");
-    m_chart->setSeries({curve});
-    m_chart->setLegend({}, QString("cos²(πdy / λL) · ideal coherent sources · d = %1 mm").arg(QString::number(in.separationMm, 'f', 3)));
+    ChartSeries errorSamples;
+    errorSamples.markers = true;
+    for (const auto& row : ER::doubleSlitSweep(in).rows) if (std::isfinite(row[1])) {
+        errorSamples.points << QPointF(row[0], row[1]);
+        errorSamples.xUncertainties << 0.0; errorSamples.yUncertainties << row[2];
+    }
+    m_chart->setAxes(-10, 10, 4, 0, "y (mm)", 0, 1.0, 2, 1, "I / I₀");
+    m_chart->setSeries({curve, errorSamples});
+    m_chart->setLegend({"Samples · error bars = 1σ"}, QString("cos²(πdy / λL) · d = %1 mm").arg(QString::number(in.separationMm, 'f', 3)));
 
     m_ctx->publish({"Wave Interference", r.parameters, r.registers, r.headline, ER::doubleSlitSweep(in), {}});
     if (record) {

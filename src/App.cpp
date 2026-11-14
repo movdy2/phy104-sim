@@ -20,6 +20,8 @@
 #include "ui/StudyHubPage.h"
 #include "ui/ThickLensPage.h"
 
+#include <QFileInfo>
+
 namespace phy104 {
 
 App::App(const Paths& paths) {
@@ -75,7 +77,8 @@ App::App(const Paths& paths) {
     equationLab = new EquationLabPage(m_context.get(), keyboardRepo.scientific());
     m_window->addPage("Equation Lab", "square-function", equationLab, 1);
     diagrams = new DiagramsPage;
-    studyHub = new StudyHubPage(studyHubRepo.loadAll(), m_context.get(), diagrams);
+    const QString studyHubNotes = QFileInfo(paths.sessionFile).absolutePath() + "/study_hub_notes.json";
+    studyHub = new StudyHubPage(studyHubRepo.loadAll(), m_context.get(), diagrams, studyHubNotes);
     m_window->addPage("Study Hub", "book-open", studyHub, 1);                                // chapters, notes, setups
     solver = new SolverPage(m_engine, m_manager, m_solver, m_context.get());
     m_window->addPage("Formula Solver", "sigma", solver, 1);

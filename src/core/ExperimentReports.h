@@ -56,21 +56,27 @@ struct DataSeries {
     std::string note;                   // "sin θ is dimensionless"
     std::vector<std::string> headers;
     std::vector<std::vector<double>> rows;
+    /// Dataset-level fit/uncertainty metadata, included in workbook and CSV exports.
+    std::vector<std::pair<std::string, std::string>> analysis{};
 };
 
 constexpr double kNaN = std::numeric_limits<double>::quiet_NaN();
 
 struct RefractionInput {
     double n1 = 1.5, n2 = 1.0, theta1 = 30.0;
+    double sigmaN1 = 0.0, sigmaN2 = 0.0, sigmaTheta1 = 0.0;  // independent 1σ measurement uncertainties
     bool tirMode = false;               // true: the single-case TIR screen
     std::string name1 = "Crown glass", name2 = "Air";
 };
 struct ImagingInput {
     double f = 10.0, s = 30.0, h = 3.0; // cm. f is SIGNED: + converging lens / concave mirror, - diverging / convex
+    double sigmaF = 0.0, sigmaS = 0.0, sigmaH = 0.0;        // independent 1σ measurement uncertainties
     bool mirrorMode = false;
 };
 struct PrismInput {
     double nPrism = 1.5, nMedium = 1.0, apex = 60.0, incidence = 48.5904, wavelengthNm = 589.3;
+    double sigmaNPrism = 0.0, sigmaNMedium = 0.0, sigmaApex = 0.0, sigmaIncidence = 0.0, sigmaWavelengthNm = 0.0;
+    double dnPrismDlambda = 0.0, dnMediumDlambda = 0.0;    // preset material dispersion, per nanometre
     bool dispersion = false;
 };
 /// Thick lens: a real glass element with two radii, a centre thickness and a finite aperture.
@@ -81,6 +87,7 @@ struct ThickLensInput {
 };
 struct SlitInput {
     double wavelengthNm = 532.0, separationMm = 0.25, screenM = 1.5;
+    double sigmaWavelengthNm = 0.0, sigmaSeparationMm = 0.0, sigmaScreenM = 0.0;
     int order = 2;
 };
 
@@ -109,8 +116,18 @@ DataSeries prismSweep(const PrismInput& in);                // i₁ 35..65°, δ
 DataSeries doubleSlitSweep(const SlitInput& in);            // y (mm), I/I₀
 DataSeries thickLensSweep(const ThickLensInput& in);        // dₒ, dᵢ, m (principal planes)
 
-struct LinearFit { double slope = 0, intercept = 0, r2 = 0; bool ok = false; };
-LinearFit linearFit(const std::vector<double>& x, const std::vector<double>& y);
+struct LinearFit {
+    double slope = 0, intercept = 0, r2 = 0;
+    double slopeUncertainty = 0, interceptUncertainty = 0, chiSquared = 0; // OLS stores the residual sum of squares
+    int degreesOfFreedom = 0;
+    bool weighted = false;
+    bool ok = false;
+};
+/// With finite non-negative y uncertainties and at least one positive value, perform weighted
+/// least squares (zero-uncertainty points use a tiny limiting σ); otherwise use OLS and estimate
+/// parameter uncertainties from the residual scatter.
+LinearFit linearFit(const std::vector<double>& x, const std::vector<double>& y,
+                    const std::vector<double>& yStandardUncertainties = {});
 
 /// "DIMINISHED (¼×)", "ENLARGED (2.5×)", "SAME SIZE (1×)"
 std::string sizeDescription(double magnification);

@@ -21,13 +21,21 @@ struct ChartSeries {
     bool line = false;
     bool markers = false;
     QColor color;                 // invalid colour = theme amber for lines, sage for markers
+    QList<double> xUncertainties{};  // per-point independent 1σ error bars
+    QList<double> yUncertainties{};
 };
 
 /// Overlays of the design: dotted vertical marker, horizontal asymptote, shaded region, highlighted sample.
 struct ChartVLine { double x = 0; QString label; QColor color; bool labelAtTop = true; };
 struct ChartHLine { double y = 0; QString label; QColor color; };
 struct ChartRegion { double x0 = 0, x1 = 0; QColor color; QString label; };
-struct ChartPoint { double x = 0, y = 0; QString label; QColor color; bool crosshair = false; };
+struct ChartPoint {
+    double x = 0, y = 0;
+    QString label;
+    QColor color;
+    bool crosshair = false;
+    double xUncertainty = 0, yUncertainty = 0;
+};
 
 /// Simple line / scatter chart (ticks, grid, legend) drawn with QPainter.
 class LineChart : public QWidget {

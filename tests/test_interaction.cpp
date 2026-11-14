@@ -32,6 +32,8 @@
 #include <QDate>
 #include <QComboBox>
 #include <QImage>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -42,6 +44,7 @@
 #include <QListWidget>
 #include <QMenu>
 #include <QPalette>
+#include <QPlainTextEdit>
 #include <QPushButton>
 #include <QStandardPaths>
 #include <QTableWidget>
@@ -1159,7 +1162,7 @@ private slots:
         QVERIFY2(!m_app->studyHub->summaryLabel()->text().isEmpty(), "the second chapter has no summary on screen");
 
         m_app->studyHub->selectSection(1);
-        QVERIFY2(m_app->studyHub->notesWorkspace() && m_app->studyHub->notesWorkspace()->isVisibleTo(&win()), "the shared Notes tab is missing");
+        QVERIFY2(m_app->studyHub->notesEditor() && m_app->studyHub->notesEditor()->isVisibleTo(&win()), "the chapter JSON notes editor is missing");
         m_app->studyHub->selectSection(2);
         auto* diagrams = m_app->diagrams->findChild<QListWidget*>("diagramList");
         QVERIFY2(diagrams && diagrams->count() >= 6, "the Optical Setups gallery is missing from Study Hub");
@@ -1168,28 +1171,43 @@ private slots:
         m_app->studyHub->selectSection(0);
     }
 
-    void studyHubNotesStaySharedWithTheSidebarPage() {
-        const QString originalStored = QString::fromStdString(m_app->context().log.notes());
-        const QString starter = MarkdownWorkspace::starterNotes();
-        auto* hubNotes = m_app->studyHub->notesWorkspace();
+    void studyHubNotesArePerChapterJsonAndSeparateFromMarkdownNotes() {
+        const QString sessionNotes = QString::fromStdString(m_app->context().log.notes());
+        auto* hubNotes = m_app->studyHub->notesEditor();
+        auto* chapter = m_app->studyHub->findChild<QComboBox*>("studyHubNoteChapter");
         auto* sidebarNotes = m_app->notes->findChild<MarkdownWorkspace*>();
-        QVERIFY(hubNotes && sidebarNotes);
+        QVERIFY(hubNotes && chapter && sidebarNotes);
+        const QString sidebarText = sidebarNotes->markdown();
 
-        hubNotes->editor()->setPlainText("# Edited in Study Hub");
-        hubNotes->flush();
-        QCOMPARE(QString::fromStdString(m_app->context().log.notes()), QString("# Edited in Study Hub"));
-        QCOMPARE(sidebarNotes->markdown(), QString("# Edited in Study Hub"));
+        const QString firstKey = chapter->currentData().toString();
+        hubNotes->setPlainText("Refraction chapter notes");
+        m_app->studyHub->flushStudyNotes();
+        QVERIFY(QFile::exists(m_app->studyHub->notesFilePath()));
+        QCOMPARE(QString::fromStdString(m_app->context().log.notes()), sessionNotes);
+        QCOMPARE(sidebarNotes->markdown(), sidebarText);
 
-        sidebarNotes->editor()->setPlainText("# Edited from Notes shortcut");
-        sidebarNotes->flush();
-        QCOMPARE(QString::fromStdString(m_app->context().log.notes()), QString("# Edited from Notes shortcut"));
-        QCOMPARE(hubNotes->markdown(), QString("# Edited from Notes shortcut"));
+        QFile file(m_app->studyHub->notesFilePath());
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        const QJsonObject root = QJsonDocument::fromJson(file.readAll()).object();
+        QCOMPARE(root.value("format").toString(), QString("phy104-study-hub-notes"));
+        QCOMPARE(root.value("notes").toObject().value(firstKey).toString(), QString("Refraction chapter notes"));
+        file.close();
 
-        m_app->context().setNotes(originalStored);
-        if (originalStored.isEmpty()) {
-            hubNotes->setMarkdown(starter);             // restore the first-run display without persisting the template
-            sidebarNotes->setMarkdown(starter);
-        }
+        QVERIFY(chapter->count() > 1);
+        chapter->setCurrentIndex(1);
+        QCOMPARE(hubNotes->toPlainText(), QString());       // switching chapters must not copy the prior editor text
+        const QString secondKey = chapter->currentData().toString();
+        hubNotes->setPlainText("Second chapter notes");
+        m_app->studyHub->flushStudyNotes();
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        const QJsonObject bothNotes = QJsonDocument::fromJson(file.readAll()).object().value("notes").toObject();
+        QCOMPARE(bothNotes.value(firstKey).toString(), QString("Refraction chapter notes"));
+        QCOMPARE(bothNotes.value(secondKey).toString(), QString("Second chapter notes"));
+        file.close();
+        chapter->setCurrentIndex(0);
+        QCOMPARE(hubNotes->toPlainText(), QString("Refraction chapter notes"));
+
+        QFile::remove(m_app->studyHub->notesFilePath());      // keep this isolated test from affecting later cases
     }
 
     void calculatorKeepsTheUsefulMathKeypadOnly() {

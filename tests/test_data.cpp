@@ -61,6 +61,20 @@ int main() {
             }
         }
 
+        // ---- user-authored Study Hub notes use an independent, chapter-keyed JSON file ----
+        {
+            const QString path = QDir::tempPath() + "/phy104_study_hub_notes_test.json";
+            QFile::remove(path);
+            QMap<QString, QString> notes{{"refraction", "Snell's law notes"}, {"prisms", "δ = i₁ + i₂ − A"}};
+            QString error;
+            auto expectNotes = [&](bool ok, const std::string& what) {
+                if (!ok) { ++failures; std::cerr << "FAIL: " << what << "\n"; }
+            };
+            expectNotes(saveStudyHubNotes(path, notes, &error) && error.isEmpty(), "Study Hub notes JSON saves atomically");
+            expectNotes(loadStudyHubNotes(path) == notes, "Study Hub chapter notes round-trip through JSON");
+            QFile::remove(path);
+        }
+
         // ---- chapters + FormulaManager on the real data ----
         auto expect = [&](bool ok, const std::string& what) { if (!ok) { ++failures; std::cerr << "FAIL: " << what << "\n"; } };
         JsonChapterRepository chapterRepo(dir + "/chapters.json");
@@ -106,6 +120,7 @@ int main() {
             first.series.name = "Prism sweep";
             first.series.headers = {"d_o (mm)", "d_i (mm)"};
             first.series.rows = {{10, 15.2}, {20, 12.4}, {30, kNaN}};      // a gap survives the round trip
+            first.series.analysis = {{"Fit", "Weighted least squares"}, {"Slope uncertainty (1σ)", "0.015"}};
             log.addRun("Wave Interference", "532 nm", "β = 3.1920 mm", false);
             log.setNotes("# Notes\nunicode: θ₂ ≥ θc");
             LcdRegister reg; reg.title = "CALCULATION REGISTER"; reg.lines = {"01  n₁ sin θ₁ = n₂ sin θ₂"}; reg.resultLabel = "θ₂"; reg.resultValue = "48.5904°";
@@ -132,6 +147,8 @@ int main() {
             const RunRecord& kept = back.runs()[0];
             expect(kept.series.id == "prism_sweep" && kept.series.headers.size() == 2 && kept.series.rows.size() == 3,
                    "the sweep of a saved run survives the .phy file (version 6)");
+            expect(kept.series.analysis == first.series.analysis,
+                   "fit and uncertainty metadata survive the saved-series JSON round trip");
             expect(kept.series.rows[2][1] != kept.series.rows[2][1], "a missing cell comes back as NaN, not 0");
             expect(back.runs()[1].series.rows.empty(), "a run without a sweep stays empty");
             const Snapshot* snap = back.snapshot("Refraction & TIR");
