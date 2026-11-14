@@ -156,6 +156,7 @@ int main() {
             first.series.headers = {"d_o (mm)", "d_i (mm)"};
             first.series.rows = {{10, 15.2}, {20, 12.4}, {30, kNaN}};      // a gap survives the round trip
             first.series.analysis = {{"Fit", "Weighted least squares"}, {"Slope uncertainty (1σ)", "0.015"}};
+            const auto expectedAnalysis = first.series.analysis;
             log.addRun("Wave Interference", "532 nm", "β = 3.1920 mm", false);
             log.setNotes("# Notes\nunicode: θ₂ ≥ θc");
             LcdRegister reg; reg.title = "CALCULATION REGISTER"; reg.lines = {"01  n₁ sin θ₁ = n₂ sin θ₂"}; reg.resultLabel = "θ₂"; reg.resultValue = "48.5904°";
@@ -182,7 +183,7 @@ int main() {
             const RunRecord& kept = back.runs()[0];
             expect(kept.series.id == "prism_sweep" && kept.series.headers.size() == 2 && kept.series.rows.size() == 3,
                    "the sweep of a saved run survives the .phy file (version 6)");
-            expect(kept.series.analysis == first.series.analysis,
+            expect(kept.series.analysis == expectedAnalysis,
                    "fit and uncertainty metadata survive the saved-series JSON round trip");
             expect(kept.series.rows[2][1] != kept.series.rows[2][1], "a missing cell comes back as NaN, not 0");
             expect(back.runs()[1].series.rows.empty(), "a run without a sweep stays empty");
