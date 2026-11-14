@@ -1,5 +1,4 @@
 #pragma once
-#include "Drawing.h"
 #include "ExperimentReports.h"
 #include <map>
 #include <string>
@@ -15,6 +14,7 @@ struct RunRecord {
     std::string description;    // "Glass → air / 30°"
     std::string result;         // "θ₂ = 48.5904°"
     bool valid = true;
+    DataSeries series;          // the sweep the page published for this run (empty in old sessions)
 };
 
 /// What an experiment page is currently showing (used for export and the dashboard cards).
@@ -25,6 +25,17 @@ struct Snapshot {
     std::string headline;
     DataSeries series;          // measurement table for export
     std::string notesContent;   // the study notes (Markdown) carried with this snapshot
+};
+
+/// The last file the Export page wrote ("recent export" card). Remembered in the .phy session,
+/// so it is still there after a restart.
+struct ExportRecord {
+    std::string path;           // full path of the file
+    std::string format;         // "Excel (.xlsx)" or "CSV (.csv)"
+    std::string series;         // id of the exported DataSeries, e.g. "refraction"
+    std::string when;           // "13 Nov 2026 · 01:42"
+    int rows = 0;
+    int columns = 0;
 };
 
 /// In-memory state of the lab session: saved runs, session notes and the latest snapshot
@@ -40,6 +51,8 @@ public:
     /// Newest first, at most `count` entries.
     std::vector<RunRecord> recent(std::size_t count) const;
     void restoreRuns(std::vector<RunRecord> runs);
+    /// Drops one saved calculation (the dashboard's "delete run"); false when the id is unknown.
+    bool removeRun(int id);
 
     /// Stores the snapshot; its `notesContent` is stamped with the current notes.
     void setSnapshot(const Snapshot& snapshot);
@@ -57,9 +70,10 @@ public:
     const std::vector<std::string>& equations() const { return m_equations; }
     void setEquations(std::vector<std::string> list) { m_equations = std::move(list); }
 
-    /// Draw Space: the sketch of the session.
-    const Drawing& drawing() const { return m_drawing; }
-    void setDrawing(Drawing d) { m_drawing = std::move(d); }
+    /// Latest export across all formats (empty path = nothing exported yet).
+    const ExportRecord& lastExport() const { return m_lastExport; }
+    bool hasExport() const { return !m_lastExport.path.empty(); }
+    void setLastExport(ExportRecord record) { m_lastExport = std::move(record); }
 
     int sessionNumber() const { return m_sessionNumber; }
     void setSessionNumber(int n) { m_sessionNumber = n; }
@@ -72,7 +86,7 @@ private:
     std::map<std::string, Snapshot> m_snapshots;
     std::string m_notes;
     std::vector<std::string> m_equations;
-    Drawing m_drawing;
+    ExportRecord m_lastExport;
     int m_sessionNumber = 7;
 };
 

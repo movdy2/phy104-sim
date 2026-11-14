@@ -1,0 +1,1431 @@
+// Drives the REAL application with simulated mouse clicks and key presses (QtTest) and checks
+// that every control does something. This is the regression test for "a button does not work".
+#include "App.h"
+#include "ui/AppContext.h"
+#include "ui/Components.h"
+#include "ui/DashboardPage.h"
+#include "ui/DiagramsPage.h"
+#include "ui/ExperimentPages.h"
+#include "ui/MainWindow.h"
+#include "ui/EquationLabPage.h"
+#include "ui/ExportPage.h"
+#include "ui/ExportService.h"
+#include "ui/RecentExportPanel.h"
+#include "ui/MarkdownHighlighter.h"
+#include "ui/LatexRenderer.h"
+#include "ui/ModelExperimentPages.h"
+#include "ui/ScientificKeyboard.h"
+#include "ui/MarkdownWorkspace.h"
+#include "ui/MathSolverPage.h"
+#include "ui/NotesPage.h"
+#include "ui/OpticsCanvases.h"
+#include "ui/ReportPage.h"
+#include "ui/SolverPage.h"
+#include "ui/StudyHubPage.h"
+#include "ui/ThickLensPage.h"
+#include "ui/ThemeManager.h"
+#include "ui/VirtualKeyboard.h"
+
+#include <QApplication>
+#include <QColor>
+#include <QCheckBox>
+#include <QDate>
+#include <QComboBox>
+#include <QImage>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QLabel>
+#include <QLineEdit>
+#include <QKeySequence>
+#include <QSignalSpy>
+#include <QListWidget>
+#include <QMenu>
+#include <QPalette>
+#include <QPlainTextEdit>
+#include <QPushButton>
+#include <QStandardPaths>
+#include <QTableWidget>
+#include <QTemporaryDir>
+#include <QTest>
+#include <QTextBlock>
+#include <QTextCursor>
+#include <QTextBrowser>
+#include <QTextEdit>
+#include <QTextFragment>
+#include <QToolButton>
+#include <cstdlib>
+#include <algorithm>
+
+using namespace phy104;
+
+namespace {
+
+QPushButton* findButton(QWidget* root, const QString& text) {
+    for (auto* b : root->findChildren<QPushButton*>())
+        if (b->text().trimmed() == text && b->isVisibleTo(root->window())) return b;
+    return nullptr;
+}
+
+void click(QWidget* w) {
+    QVERIFY2(w, "widget to click not found");
+    QVERIFY2(w->isVisibleTo(w->window()), qPrintable(w->metaObject()->className() + QString(" is not visible")));
+    QVERIFY2(w->isEnabled(), qPrintable(w->metaObject()->className() + QString(" is disabled")));
+    QTest::mouseClick(w, Qt::LeftButton, Qt::NoModifier, w->rect().center());
+}
+
+/// Types text like a keyboard does, including characters outside Latin-1 (QTest::keyClicks cannot send θ or ₁).
+void typeText(QWidget* w, const QString& text) {
+    for (const QChar ch : text) {
+        if (ch.unicode() < 128) QTest::keyClick(w, ch.toLatin1());
+        else QTest::sendKeyEvent(QTest::Click, w, Qt::Key_unknown, QString(ch), Qt::NoModifier);
+    }
+}
+
+/// Click into the field, replace its text by typing (no Enter!).
+void typeInto(UnitField* f, const QString& text) {
+    QTest::mouseClick(f->edit(), Qt::LeftButton);
+    f->edit()->selectAll();
+    QTest::keyClicks(f->edit(), text);
+}
+
+QStringList allLabelTexts(QWidget* root) {
+    QApplication::processEvents();                              // newly created labels are shown by the event loop
+    QStringList out;
+    for (auto* l : root->findChildren<QLabel*>()) if (l->isVisibleTo(root->window())) out << l->text();
+    return out;
+}
+
+QString bigValue(QWidget* page, int index = 0) {
+    QApplication::processEvents();
+    QList<QLabel*> bigs;
+    for (auto* l : page->findChildren<QLabel*>("lcdBig")) if (l->isVisibleTo(page->window())) bigs << l;
+    return index < bigs.size() ? bigs[index]->text() : QString();
+}
+
+/// The real tab buttons inside a ModeTabs strip (objectName "modeTab").
+QPushButton* modeTab(QWidget* page, const QString& label) {
+    for (auto* b : page->findChildren<QPushButton*>(QStringLiteral("modeTab")))
+        if (b->text() == label) return b;
+    return nullptr;
+}
+
+QComboBox* comboWith(QWidget* page, const QString& itemText) {
+    for (auto* c : page->findChildren<QComboBox*>())
+        for (int i = 0; i < c->count(); ++i)
+            if (c->itemText(i) == itemText) return c;
+    return nullptr;
+}
+
+/// Picks an item the way the pages listen to it: `activated` is only emitted for user choices.
+void chooseItem(QComboBox* c, int index) {
+    QVERIFY2(c, "combo not found");
+    c->setCurrentIndex(index);
+    c->activated(index);
+}
+
+} // namespace
+
+class InteractionTest : public QObject {
+    Q_OBJECT
+    QTemporaryDir m_tmp;
+    std::unique_ptr<App> m_app;
+
+    MainWindow& win() { return m_app->window(); }
+    void go(int page) { win().setCurrentPage(page); QApplication::processEvents(); }
+    int idx(QWidget* w) { return win().indexOf(w); }
+    void goTo(QWidget* w) { go(idx(w)); }
+
+private slots:
+    void initTestCase() {
+        QStandardPaths::setTestModeEnabled(true);
+        ThemeManager::loadFonts();
+        ThemeManager::instance().apply(*qApp, true);
+        m_app = std::make_unique<App>(App::Paths{DATA_DIR, m_tmp.path() + "/session.phy"});
+        win().resize(1280, 800);
+        win().show();
+        QVERIFY(QTest::qWaitForWindowExposed(&win()));
+    }
+    void cleanupTestCase() { m_app.reset(); }
+
+    // ------------------------------------------------------------------ navigation
+    void sidebarButtonsOpenTheirPages() {
+        const auto buttons = win().navButtons();
+        QVERIFY(buttons.size() >= 10);
+        for (QPushButton* b : buttons) {
+            click(b);
+            QVERIFY2(b->isChecked(), qPrintable("nav button not checked: " + b->text()));
+        }
+        click(buttons[1]);
+        QCOMPARE(win().currentPage(), 1);
+        click(buttons[4]);
+        QCOMPARE(win().currentPage(), 4);
+        click(buttons[0]);
+        QCOMPARE(win().currentPage(), 0);
+    }
+    void dashboardCardsAndButtonsNavigate() {
+        go(0);
+        const auto cards = m_app->dashboard->findChildren<QFrame*>("cardHot");
+        QCOMPARE(cards.size(), 4);
+        for (int i = 0; i < 4; ++i) {
+            go(0);
+            click(cards[i]);
+            QCOMPARE(win().currentPage(), i + 1);
+        }
+        go(0);
+        click(findButton(m_app->dashboard, "Open notes"));
+        QCOMPARE(win().currentPage(), idx(m_app->notes));
+        go(0);
+        click(findButton(m_app->dashboard, "Export data"));
+        QCOMPARE(win().currentPage(), idx(m_app->exportPage));
+        auto* exportModes = m_app->exportPage->findChild<ModeTabs*>("exportModeTabs");
+        QVERIFY(exportModes);
+        QCOMPARE(exportModes->current(), 0);
+    }
+    void dashboardBrowseListsAllElevenExperiments() {
+        go(0);
+        auto* browse = m_app->dashboard->findChild<QToolButton*>("browseExperiments");
+        QVERIFY2(browse && browse->menu(), "the dashboard has no Browse all menu");
+        const auto actions = browse->menu()->actions();
+        QCOMPARE(actions.size(), 11);
+        QVERIFY(actions.back()->text().contains("Thick Lens & Aberration"));
+        auto* count = m_app->dashboard->findChild<QLabel*>("experimentCount");
+        QVERIFY(count);
+        QCOMPARE(count->text(), QString("11"));
+        QVERIFY(allLabelTexts(m_app->dashboard).contains("EXPERIMENTS"));
+        actions.back()->trigger();
+        QCOMPARE(win().currentPage(), idx(m_app->thickLens));
+    }
+    void dashboardComparesAndDeletesSavedRuns() {
+        AppContext& ctx = m_app->context();
+        const int before = ctx.log.savedCalculations();
+        for (int i = 0; i < 2; ++i) {
+            Snapshot snap;
+            snap.experiment = "Prism sweep";
+            snap.series.name = i == 0 ? "Sweep A" : "Sweep B";
+            snap.series.headers = {"d_o (mm)", "d_i (mm)"};
+            snap.series.rows = {{10.0, 15.0 + i}, {20.0, 12.0 + i}, {30.0, 10.0 + i}};
+            ctx.publish(snap);
+            ctx.recordRun(QStringLiteral("Prism sweep"), i == 0 ? "first setting" : "second setting", "n = 1.5", true);
+        }
+        QCOMPARE(ctx.log.savedCalculations(), before + 2);
+        const int newest = ctx.log.runs().back().id;
+        QVERIFY(ctx.log.runs().back().id > 0 && ctx.log.runs().back().series.rows.size() == 3);   // the sweep travelled with the run
+        go(0);
+
+        // the "Compare" tab overlays two saved sweeps on one chart
+        click(modeTab(m_app->dashboard, "Compare"));
+        QComboBox* pickA = nullptr;
+        QComboBox* pickB = nullptr;
+        for (auto* c : m_app->dashboard->findChildren<QComboBox*>()) {
+            if (c->count() >= 2 && c->itemData(0).isValid()) (pickA ? pickB : pickA) = c;
+        }
+        QVERIFY2(pickA && pickB, "the compare tab has two run pickers");
+        chooseItem(pickA, pickA->count() - 2);
+        chooseItem(pickB, pickB->count() - 1);
+        QApplication::processEvents();
+        bool summary = false;
+        for (auto* l : m_app->dashboard->findChildren<QLabel*>())
+            if (l->text().contains(" vs ") && l->text().contains("points")) summary = true;
+        QVERIFY2(summary, "the compare tab reports both runs");
+        click(modeTab(m_app->dashboard, "Recent"));
+
+        // "Delete selected run" drops the newest run and autosaves the session
+        QTableWidget* table = nullptr;
+        for (auto* t : m_app->dashboard->findChildren<QTableWidget*>())
+            if (t->columnCount() == 4) table = t;
+        QVERIFY(table);
+        int row = -1;
+        for (int i = 0; i < table->rowCount(); ++i)
+            if (table->item(i, 0) && table->item(i, 0)->data(Qt::UserRole).toInt() == newest) row = i;
+        QVERIFY2(row >= 0, "the newest run is listed");
+        table->setCurrentCell(row, 0);
+        QApplication::processEvents();
+        QPushButton* del = findButton(m_app->dashboard, "Delete selected run");
+        QVERIFY(del && del->isEnabled());
+        click(del);
+        QApplication::processEvents();
+        QCOMPARE(ctx.log.savedCalculations(), before + 1);
+        QVERIFY(ctx.log.runs().back().id < newest);
+        QVERIFY(QFile::exists(m_tmp.path() + "/session.phy"));       // the deletion was written to the .phy file
+    }
+    void pagesFillTheWindowInsteadOfACentredColumn() {
+        win().resize(1920, 1000);                                          // wider than the old 1500 px cap
+        QApplication::processEvents();
+        go(0);
+        auto* inner = m_app->dashboard->findChild<QWidget*>("pageInner");
+        QVERIFY2(inner, "the page container is missing");
+        QVERIFY2(inner->width() >= 1500 && inner->width() >= m_app->dashboard->width() - 2,
+                 qPrintable(QString("page content is %1 px wide in a %2 px page").arg(inner->width()).arg(m_app->dashboard->width())));
+        win().resize(1280, 800);
+        QApplication::processEvents();
+    }
+    void keyboardShortcutsAreInstalled() {
+        const QStringList keys = win().shortcutKeys();
+        for (const char* sequence : {"Ctrl+S", "Ctrl+P", "Ctrl+Return", "Ctrl+1", "Ctrl+9", "Ctrl+Tab"}) {
+            const QString expected = QKeySequence(sequence).toString(QKeySequence::NativeText);
+            QVERIFY2(keys.contains(expected), qPrintable("missing shortcut: " + QString(sequence)));
+        }
+    }
+    void ctrlEnterCalculatesAndCtrlPOpensTheReport() {
+        go(1);                                                             // Refraction & TIR
+        const int runs = m_app->context().log.savedCalculations();
+        win().triggerPrimaryAction();                                      // what Ctrl+Enter does
+        QCOMPARE(m_app->context().log.savedCalculations(), runs + 1);
+        win().openReportPage();                                            // what Ctrl+P does
+        QCOMPARE(win().currentPage(), idx(m_app->exportPage));
+        QVERIFY(m_app->reportPage->isVisibleTo(&win()));
+    }
+    void exportIsOneSidebarDestinationWithAFormatMenu() {
+        int exportEntries = 0, pdfEntries = 0;
+        for (QPushButton* button : win().navButtons()) {
+            exportEntries += button->accessibleName() == "Export";
+            pdfEntries += button->accessibleName() == "PDF Report";
+        }
+        QCOMPARE(exportEntries, 1);
+        QCOMPARE(pdfEntries, 0);
+        goTo(m_app->exportPage);
+        auto* button = m_app->exportPage->findChild<QToolButton*>("exportMenu");
+        QVERIFY2(button && button->menu() && button->isVisibleTo(&win()), "the unified Export page has no visible format menu");
+        QVERIFY(m_app->reportPage->findChild<QToolButton*>("exportMenu") == nullptr);
+        goTo(m_app->prisms);                                     // experiment screens share the same menu
+        button = m_app->prisms->findChild<QToolButton*>("exportMenu");
+        QVERIFY(button && button->isVisibleTo(&win()));
+    }
+    void theChosenThemeIsRemembered() {
+        ThemeManager::instance().apply(*qApp, false);
+        QCOMPARE(ThemeManager::storedDarkTheme(), false);
+        ThemeManager::instance().apply(*qApp, true);
+        QCOMPARE(ThemeManager::storedDarkTheme(), true);
+    }
+    void themeButtonTogglesRepeatedly() {
+        const bool start = ThemeManager::instance().isDark();
+        for (int i = 0; i < 4; ++i) click(win().themeButton());
+        QCOMPARE(ThemeManager::instance().isDark(), start);          // four toggles: back where we began
+        QApplication::processEvents();
+    }
+    void saveSessionButtonWritesTheFile() {
+        go(1);
+        QFile::remove(m_tmp.path() + "/session.phy");
+        click(findButton(m_app->refraction, "Save"));
+        QVERIFY(QFile::exists(m_tmp.path() + "/session.phy"));
+    }
+
+    // ------------------------------------------------------------------ experiments
+    void refractionUpdatesWhileTyping() {
+        go(1);
+        auto fields = m_app->refraction->findChildren<UnitField*>();
+        QVERIFY(fields.size() >= 3);
+        const QString before = bigValue(m_app->refraction);
+        typeInto(fields[2], "40");                                       // θ₁ = 40°, NO Enter / focus change
+        QTest::qWait(700);
+        const QString after = bigValue(m_app->refraction);
+        QVERIFY2(after != before, qPrintable("register did not update while typing: " + before + " -> " + after));
+        QVERIFY2(after.startsWith("74."), qPrintable(after));
+    }
+    void calculateButtonSavesARun() {
+        go(1);
+        const int runs = m_app->context().log.savedCalculations();
+        click(findButton(m_app->refraction, "Calculate && Simulate"));
+        QCOMPARE(m_app->context().log.savedCalculations(), runs + 1);
+    }
+    void resetButtonRestoresDefaults() {
+        go(1);
+        click(findButton(m_app->refraction, "Reset parameters"));
+        auto fields = m_app->refraction->findChildren<UnitField*>();
+        QCOMPARE(fields[2]->text(), QString("30.00"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->refraction), QString("48.5904°"), 1500);
+    }
+    void spinnerArrowsStepTheValue() {
+        go(1);
+        auto fields = m_app->refraction->findChildren<UnitField*>();
+        const double before = fields[0]->value();
+        QTest::mouseClick(fields[0]->edit(), Qt::LeftButton);
+        QTest::keyClick(fields[0]->edit(), Qt::Key_Up);
+        QVERIFY(fields[0]->value() > before);
+        auto* up = fields[0]->findChild<QWidget*>("spinUp");             // the clickable ▲ of the ↕ control
+        QVERIFY2(up, "spinner has no clickable arrows");
+        const double mid = fields[0]->value();
+        click(up);
+        QVERIFY(fields[0]->value() > mid);
+    }
+    void modeTabsSwitchTheExperimentView() {
+        go(1);
+        click(findButton(m_app->refraction, "TIR"));
+        QTest::qWait(50);
+        QVERIFY2(allLabelTexts(m_app->refraction).join("|").contains("TIR", Qt::CaseSensitive), "TIR tab shows nothing");
+        click(findButton(m_app->refraction, "Refraction"));
+        go(2);
+        click(findButton(m_app->lenses, "Mirror"));
+        QTest::qWait(50);
+        click(findButton(m_app->lenses, "Thin lens"));
+    }
+    void invalidInputPausesAndRestoreButtonWorks() {
+        go(4);
+        auto fields = m_app->wave->findChildren<UnitField*>();             // λ, d, L, m
+        typeInto(fields[1], "0");
+        QTest::qWait(700);
+        auto* calc = findButton(m_app->wave, "Calculate && Simulate");
+        QVERIFY(calc);
+        QVERIFY2(!calc->isEnabled(), "Calculate must be disabled while the input is invalid");
+        auto* restore = findButton(m_app->wave, "Restore d = 0.250 mm");
+        QVERIFY2(restore, "no Restore button in the invalid state");
+        click(restore);
+        QTest::qWait(100);
+        QCOMPARE(fields[1]->text(), QString("0.250"));
+        QVERIFY(findButton(m_app->wave, "Calculate && Simulate")->isEnabled());
+    }
+
+    void prismDispersionShowsSevenWavelengthDependentColours() {
+        goTo(m_app->prisms);
+        click(findButton(m_app->prisms, "Reset parameters"));
+        auto* canvas = m_app->prisms->findChild<PrismCanvas*>();
+        QVERIFY(canvas);
+        QCOMPARE(canvas->spectrumPaths().size(), qsizetype(0));
+
+        QComboBox* surrounding = nullptr;
+        for (QComboBox* combo : m_app->prisms->findChildren<QComboBox*>())
+            if (combo->findData(QStringLiteral("air")) >= 0) { surrounding = combo; break; }
+        QVERIFY(surrounding);
+        const int water = surrounding->findData(QStringLiteral("water"));
+        QVERIFY(water >= 0);
+        chooseItem(surrounding, water);                          // test dispersion in both media
+        const QString singleRayResult = bigValue(m_app->prisms);
+        QVERIFY(!singleRayResult.isEmpty());
+
+        click(modeTab(m_app->prisms, "Dispersion"));
+        const auto& paths = canvas->spectrumPaths();
+        QCOMPARE(paths.size(), qsizetype(7));
+        const double wavelengths[] = {700.0, 620.0, 580.0, 540.0, 490.0, 450.0, 400.0};
+        const QColor colours[] = {QColor("#e53935"), QColor("#fb8c00"), QColor("#fdd835"),
+                                   QColor("#43a047"), QColor("#1e88e5"), QColor("#3f51b5"), QColor("#8e24aa")};
+        double previousPrismIndex = 0.0;
+        double previousMediumIndex = 0.0;
+        for (int i = 0; i < 7; ++i) {
+            QCOMPARE(paths[i].wavelengthNm, wavelengths[i]);
+            QCOMPARE(paths[i].color, colours[i]);
+            QVERIFY(paths[i].nPrism > previousPrismIndex);
+            QVERIFY(paths[i].nMedium > previousMediumIndex);
+            previousPrismIndex = paths[i].nPrism;
+            previousMediumIndex = paths[i].nMedium;
+        }
+        QApplication::processEvents();
+        QImage rendered(canvas->size(), QImage::Format_ARGB32_Premultiplied);
+        rendered.fill(Qt::transparent);
+        canvas->render(&rendered);
+        for (const QColor& expected : colours) {
+            bool visible = false;
+            for (int y = 0; y < rendered.height() && !visible; ++y) {
+                for (int x = 0; x < rendered.width(); ++x) {
+                    const QColor actual = rendered.pixelColor(x, y);
+                    if (std::abs(actual.red() - expected.red()) <= 24 &&
+                        std::abs(actual.green() - expected.green()) <= 24 &&
+                        std::abs(actual.blue() - expected.blue()) <= 24) {
+                        visible = true;
+                        break;
+                    }
+                }
+            }
+            QVERIFY2(visible, qPrintable(QString("spectrum colour %1 is not painted").arg(expected.name())));
+        }
+
+        click(modeTab(m_app->prisms, "Single ray"));
+        QCOMPARE(canvas->spectrumPaths().size(), qsizetype(0));
+        QCOMPARE(bigValue(m_app->prisms), singleRayResult);      // dispersion does not alter the single-ray calculation
+        click(findButton(m_app->prisms, "Reset parameters"));
+    }
+
+    // ------------------------------------------------------------------ calculator
+    void calculatorEnterEqualsAndKeypad() {
+        goTo(m_app->calculator);
+        auto* input = m_app->calculator->findChild<QLineEdit*>("lcdInput");
+        QVERIFY(input);
+        click(input);
+        input->clear();
+        QTest::keyClicks(input, "2+3*4");
+        QTest::keyClick(input, Qt::Key_Return);
+        QCOMPARE(m_app->calculator->findChild<QLabel*>("lcdResult")->text(), QString("14"));
+
+        input->clear();
+        // on-screen keypad (same theme): 7 + 8 = 15
+        for (const char* key : {"7", "+", "8"}) click(findButton(m_app->calculator, key));
+        QCOMPARE(input->text(), QString("7+8"));
+        click(findButton(m_app->calculator, "="));
+        QCOMPARE(m_app->calculator->findChild<QLabel*>("lcdResult")->text(), QString("15"));
+        click(findButton(m_app->calculator, "AC"));
+        QVERIFY(input->text().isEmpty());
+        click(findButton(m_app->calculator, "sin"));
+        QVERIFY(input->text().startsWith("sin("));
+        click(findButton(m_app->calculator, "DEL"));
+        QVERIFY(!input->text().endsWith("("));
+    }
+
+    void casioSegmentFontsCoverEveryLcdSurface() {
+        auto family = [](const QWidget* widget) {
+            const QStringList families = widget->font().families();
+            return families.isEmpty() ? QString() : families.front();
+        };
+        goTo(m_app->calculator);
+        auto* calculatorInput = m_app->calculator->findChild<QLineEdit*>("lcdInput");
+        auto* calculatorResult = m_app->calculator->findChild<QLabel*>("lcdResult");
+        auto* calculatorHistory = m_app->calculator->findChild<QTextBrowser*>("lcdScreen");
+        QVERIFY(calculatorInput && calculatorResult && calculatorHistory);
+        QCOMPARE(family(calculatorInput), QString("DSEG14 Classic"));
+        QCOMPARE(family(calculatorResult), QString("DSEG14 Classic"));
+        QCOMPARE(family(calculatorHistory), QString("DSEG14 Classic"));
+
+        goTo(m_app->solver);
+        auto* solverInput = m_app->solver->findChild<QLineEdit*>("lcdInput");
+        auto* solverScreen = m_app->solver->findChild<QTextBrowser*>("lcdScreen");
+        QVERIFY(solverInput && solverScreen);
+        QCOMPARE(family(solverInput), QString("DSEG14 Classic"));
+        QCOMPARE(family(solverScreen), QString("DSEG14 Classic"));
+        const auto formulaDisplays = m_app->solver->findChildren<LatexWidget*>();
+        QVERIFY(!formulaDisplays.isEmpty());
+        for (const auto* formula : formulaDisplays)
+            QCOMPARE(family(formula), QString("DSEG14 Classic"));
+
+        goTo(m_app->refraction);
+        for (const char* objectName : {"lcdTitle", "lcdLine", "lcdCaption", "lcdFoot"}) {
+            auto* label = m_app->refraction->findChild<QLabel*>(objectName);
+            QVERIFY(label);
+            QCOMPARE(family(label), QString("DSEG14 Classic"));
+        }
+        auto* registerValue = m_app->refraction->findChild<QLabel*>("lcdBig");
+        QVERIFY(registerValue);
+        QCOMPARE(family(registerValue), QString("DSEG14 Classic"));
+
+        auto* scientificKeyboard = m_app->notes->findChild<ScientificKeyboard*>();
+        QVERIFY(scientificKeyboard);
+        for (const char* objectName : {"lcdKeyDisplay", "lcdCaption"}) {
+            auto* label = scientificKeyboard->findChild<QLabel*>(objectName);
+            QVERIFY(label);
+            QCOMPARE(family(label), QString("DSEG14 Classic"));
+        }
+    }
+
+    // ------------------------------------------------------------------ formula solver, constants
+    void formulaSolverSolvesFromTheUi() {
+        goTo(m_app->solver);
+        m_app->solver->selectFormula("snell_law");
+        auto edits = m_app->solver->findChildren<QLineEdit*>("lcdInput");
+        QVERIFY(edits.size() >= 4);
+        edits[0]->setText("1"); edits[1]->setText("30"); edits[2]->setText("1.5"); edits[3]->clear();
+        click(findButton(m_app->solver, "Solve"));
+        const QString all = allLabelTexts(m_app->solver).join("|");
+        QVERIFY2(all.contains("Solved"), "Solve showed no success status");
+    }
+    // ------------------------------------------------------------------ keyboard
+    void virtualKeyboardInsertsIntoTheFocusedField() {
+        goTo(m_app->solver);
+        click(win().keyboardButton());
+        QVERIFY(win().keyboard()->isVisible());
+        QCOMPARE(win().keyboard()->findChildren<QPushButton*>().size(), 49);
+        QVERIFY(!findButton(win().keyboard(), "n_a"));
+        auto edits = m_app->solver->findChildren<QLineEdit*>("lcdInput");
+        click(edits[0]);
+        edits[0]->clear();
+        click(findButton(win().keyboard(), "π"));
+        QCOMPARE(edits[0]->text(), QString("π"));
+        click(findButton(win().keyboard(), "sin("));
+        QCOMPARE(edits[0]->text(), QString("πsin("));
+        click(win().keyboardButton());
+        QVERIFY(!win().keyboard()->isVisible());
+    }
+    void keyboardWorksEvenBeforeAnyFieldWasClicked() {
+        goTo(m_app->calculator);
+        auto* input = m_app->calculator->findChild<QLineEdit*>("lcdInput");
+        input->clearFocus();
+        input->clear();
+        click(win().keyboardButton());
+        click(findButton(win().keyboard(), "π"));
+        QVERIFY2(!input->text().isEmpty(), "keyboard pressed with no focused field inserted nothing");
+        click(win().keyboardButton());
+    }
+
+    // ------------------------------------------------------------------ study workspace (Markdown notes)
+    MarkdownWorkspace* workspace() { goTo(m_app->notes); return m_app->notes->findChild<MarkdownWorkspace*>(); }
+    QToolButton* tool(MarkdownWorkspace* w, const QString& text) {
+        for (auto* b : w->findChildren<QToolButton*>()) if (b->text() == text && b->isVisibleTo(w->window())) return b;
+        return nullptr;
+    }
+    void clickTool(MarkdownWorkspace* w, const QString& text) {
+        QToolButton* b = tool(w, text);
+        QVERIFY2(b, qPrintable("toolbar button not found: " + text));
+        click(b);
+    }
+    void workspaceHasSnippetToolbar() {
+        auto* w = workspace();
+        QVERIFY(w);
+        w->setMode(MarkdownWorkspace::Split);
+        for (const char* label : {"θ", "λ", "δ", "n₁", "n₂", "sin", "arcsin", "$ $", "H1", "H2", "H3", "H4 ⚠", "•", "Problem template", "Formulas ▾"})
+            QVERIFY2(tool(w, label), label);
+    }
+    void snippetButtonsInsertAtTheCursor() {
+        auto* w = workspace();
+        w->setMarkdown("");
+        w->editor()->setFocus();
+        clickTool(w, "θ");
+        clickTool(w, "n₁");
+        QCOMPARE(w->markdown(), QString("θn₁"));
+        w->setMarkdown("");
+        clickTool(w, "sin");
+        QCOMPARE(w->markdown(), QString("sin()"));
+        QCOMPARE(w->editor()->textCursor().position(), 4);                  // cursor between the brackets
+        typeText(w->editor(), QString::fromUtf8("θ"));
+        QCOMPARE(w->markdown(), QString("sin(θ)"));
+        w->setMarkdown("n1 sin t1");
+        QTextCursor c = w->editor()->textCursor();
+        c.select(QTextCursor::Document);
+        w->editor()->setTextCursor(c);
+        clickTool(w, "$ $");
+        QCOMPARE(w->markdown(), QString("$n1 sin t1$"));                    // wraps the selection
+        clickTool(w, "arcsin");
+        QVERIFY(w->markdown().contains("arcsin("));
+    }
+    void headingButtonsSetAndToggleTheLevel() {
+        auto* w = workspace();
+        w->setMarkdown("Snell's law");
+        w->editor()->setFocus();
+        clickTool(w, "H3");
+        QCOMPARE(w->markdown(), QString("### Snell's law"));
+        clickTool(w, "H1");
+        QCOMPARE(w->markdown(), QString("# Snell's law"));
+        clickTool(w, "H1");
+        QCOMPARE(w->markdown(), QString("Snell's law"));                    // same level again removes it
+        clickTool(w, "H4 ⚠");
+        QCOMPARE(w->markdown(), QString("#### Snell's law"));
+        clickTool(w, "•");
+        clickTool(w, "•");
+    }
+    void problemTemplateInsertsTheThreeSections() {
+        auto* w = workspace();
+        w->setMarkdown("");
+        w->editor()->setFocus();
+        clickTool(w, "Problem template");
+        const QString text = w->markdown();
+        QVERIFY(text.contains("### Given:") && text.contains("### Formula:") && text.contains("### Substitution & Solution:"));
+        QVERIFY(text.indexOf("### Given:") < text.indexOf("### Formula:") && text.indexOf("### Formula:") < text.indexOf("### Substitution & Solution:"));
+        QCOMPARE(w->editor()->textCursor().block().text(), QString("- "));        // ready to type the first given value
+        typeText(w->editor(), QString::fromUtf8("n₁ = 1.5"));
+        QVERIFY(w->markdown().contains("- n₁ = 1.5"));
+        click(tool(w, "Problem template"));                                       // a second one starts on its own line
+        QCOMPARE(w->markdown().count("### Given:"), 2);
+    }
+    void enterContinuesAndEndsBulletLists() {
+        auto* w = workspace();
+        w->setMarkdown("");
+        w->editor()->setFocus();
+        typeText(w->editor(), QString::fromUtf8("- first"));
+        QTest::keyClick(w->editor(), Qt::Key_Return);
+        QCOMPARE(w->markdown(), QString("- first\n- "));
+        typeText(w->editor(), QString::fromUtf8("second"));
+        QTest::keyClick(w->editor(), Qt::Key_Return);
+        QTest::keyClick(w->editor(), Qt::Key_Return);                             // empty item ends the list
+        QCOMPARE(w->markdown(), QString("- first\n- second\n"));
+    }
+    void editorIsColourCoded() {
+        auto* w = workspace();
+        w->setMarkdown("# Title\n## Chapter\n### Section\n#### Warning\n- item with $x$\n");
+        QApplication::processEvents();
+        auto* doc = w->editor()->document();
+        auto colorOf = [&](int block, int column = 0) {
+            const auto formats = doc->findBlockByNumber(block).layout()->formats();
+            for (const auto& r : formats) if (r.start <= column && column < r.start + r.length) return r.format.foreground().color();
+            return QColor();
+        };
+        QCOMPARE(colorOf(0), QColor("#d79921"));
+        QCOMPARE(colorOf(1), QColor("#e78a4e"));
+        QCOMPARE(colorOf(2), QColor("#a9b665"));
+        QCOMPARE(colorOf(3), QColor("#ea696c"));
+        QCOMPARE(colorOf(4, 2), QColor("#ebdbb2"));                                  // bullet text
+        QCOMPARE(colorOf(4, 14), QColor("#83a598"));                                 // the formula inside the bullet
+    }
+    void previewShowsHeadingsAndFormulas() {
+        auto* w = workspace();
+        w->setMarkdown("# Optics notes\n\n- see $n₁ sin θ₁ = n₂ sin θ₂$\n");
+        click(findButton(w, "Preview"));
+        QVERIFY(w->preview()->isVisible() && !w->editor()->isVisible());
+        QTextBlock heading = w->preview()->document()->begin();
+        QCOMPARE(heading.blockFormat().headingLevel(), 1);
+        QCOMPARE(heading.begin().fragment().charFormat().foreground().color(), QColor("#d79921"));
+        QCOMPARE(heading.begin().fragment().charFormat().fontPointSize(), 18.0);
+        bool formulaImage = false;                                                   // the formula is a LaTeX image, not code text
+        for (QTextBlock b = w->preview()->document()->begin(); b.isValid(); b = b.next())
+            for (auto it = b.begin(); !it.atEnd(); ++it)
+                if (it.fragment().charFormat().isImageFormat()) {
+                    const QString name = it.fragment().charFormat().toImageFormat().name();
+                    const QVariant res = w->preview()->document()->resource(QTextDocument::ImageResource, QUrl(name));
+                    formulaImage = formulaImage || (res.isValid() && !res.value<QPixmap>().isNull());
+                }
+        QVERIFY2(formulaImage, "formula in the preview is not rendered as a LaTeX image");
+        click(findButton(w, "Split"));
+        QVERIFY(w->preview()->isVisible() && w->editor()->isVisible());
+        click(findButton(w, "Edit"));
+        QVERIFY(w->editor()->isVisible() && !w->preview()->isVisible());
+        click(findButton(w, "Split"));
+    }
+    void previewKeepsImagesWithoutAltText() {
+        auto* w = workspace();
+        w->setMode(MarkdownWorkspace::Preview);
+        w->setMarkdown("![](file:///tmp/phy104-diagram.png)");
+        int images = 0;                                                       // Qt drops ![](...), so the preview must rescue it
+        for (QTextBlock b = w->preview()->document()->begin(); b.isValid(); b = b.next())
+            for (auto it = b.begin(); !it.atEnd(); ++it)
+                if (it.fragment().charFormat().isImageFormat()) ++images;
+        QCOMPARE(images, 1);
+        w->setMarkdown("```\n![](not-an-image-in-a-fence.png)\n```");
+        int fenced = 0;                                                       // code blocks keep their text untouched
+        for (QTextBlock b = w->preview()->document()->begin(); b.isValid(); b = b.next())
+            for (auto it = b.begin(); !it.atEnd(); ++it)
+                if (it.fragment().charFormat().isImageFormat()) ++fenced;
+        QCOMPARE(fenced, 0);
+        QVERIFY(w->preview()->toPlainText().contains("![](not-an-image-in-a-fence.png)"));
+        w->setMarkdown("");
+        w->setMode(MarkdownWorkspace::Split);
+    }
+    void toolbarFromPreviewModeSwitchesToSplit() {
+        auto* w = workspace();
+        w->setMode(MarkdownWorkspace::Preview);
+        clickTool(w, "θ");
+        QCOMPARE(w->mode(), MarkdownWorkspace::Split);
+        QVERIFY(w->markdown().contains("θ"));
+        w->setMarkdown("");
+    }
+
+    // ------------------------------------------------------------------ notes <-> session snapshot <-> .phy file
+    void typingAutosavesIntoTheSessionAndEverySnapshot() {
+        auto* w = workspace();
+        w->setMarkdown("");
+        w->editor()->setFocus();
+        QSignalSpy spy(w, &MarkdownWorkspace::contentChanged);
+        typeText(w->editor(), QString::fromUtf8("# Study notes"));
+        const QString typedNotes = w->markdown();
+        QVERIFY2(typedNotes == "# Study notes", qPrintable(QString("editor text mismatch after typing: '%1'").arg(typedNotes)));
+        QVERIFY2(spy.count() == 0, qPrintable(QString("autosave fired before debounce: %1 signal(s)").arg(spy.count())));
+        QTRY_VERIFY_WITH_TIMEOUT(spy.count() == 1, 2500);
+        const QString savedNotes = QString::fromStdString(m_app->context().log.notes());
+        QVERIFY2(savedNotes == "# Study notes", qPrintable(QString("saved notes mismatch: '%1'").arg(savedNotes)));
+        for (const char* name : {"Refraction & TIR", "Lenses & Mirrors", "Prisms", "Wave Interference"}) {
+            const Snapshot* snap = m_app->context().log.snapshot(name);
+            QVERIFY2(snap, name);
+            const QString snapshotNotes = QString::fromStdString(snap->notesContent);
+            QVERIFY2(snapshotNotes == "# Study notes",
+                     qPrintable(QString("snapshot '%1' notes mismatch: '%2'").arg(QString::fromUtf8(name), snapshotNotes)));
+        }
+    }
+    void loadingTextDoesNotTriggerAnAutosave() {
+        auto* w = workspace();
+        QSignalSpy spy(w, &MarkdownWorkspace::contentChanged);
+        w->setMarkdown("## loaded, not typed");
+        QTest::qWait(900);
+        QCOMPARE(spy.count(), 0);
+    }
+    void flushSavesImmediately() {
+        auto* w = workspace();
+        w->setMarkdown("");
+        w->editor()->setFocus();
+        typeText(w->editor(), QString::fromUtf8("last edit before quitting"));
+        w->flush();                                                                 // what aboutToQuit does
+        QCOMPARE(QString::fromStdString(m_app->context().log.notes()), QString("last edit before quitting"));
+    }
+    void notesSurviveARestartTogetherWithTheSnapshots() {
+        auto* w = workspace();
+        w->setMarkdown("");
+        w->editor()->setFocus();
+        typeText(w->editor(), QString::fromUtf8("### Snell's law"));
+        QTest::keyClick(w->editor(), Qt::Key_Return);
+        typeText(w->editor(), QString::fromUtf8("- $n₁ sin θ₁ = n₂ sin θ₂$"));
+        w->flush();
+        click(findButton(m_app->notes, "Save"));                                   // the button of the page that is showing
+        QVERIFY(QFile::exists(m_tmp.path() + "/session.phy"));
+
+        App second(App::Paths{DATA_DIR, m_tmp.path() + "/session.phy"});           // a fresh start reading the same file
+        auto* w2 = second.notes->findChild<MarkdownWorkspace*>();
+        QCOMPARE(w2->markdown(), QString("### Snell's law\n- $n₁ sin θ₁ = n₂ sin θ₂$"));
+        const Snapshot* snap = second.context().log.snapshot("Refraction & TIR");
+        QVERIFY(snap && !snap->registers.empty() && !snap->parameters.empty());      // parameters + calculator registers are in the snapshot
+        QCOMPARE(QString::fromStdString(snap->notesContent), w2->markdown());
+        QVERIFY(!snap->headline.empty());
+    }
+
+
+    // ------------------------------------------------------------------ the six screens of the second Figma batch
+    QString calcText() { return "Calculate &&\nSimulate"; }
+    void newScreensShowTheNumbersOfTheDesign() {
+        struct Case { QWidget* page; const char* big; };
+        const Case cases[] = {{m_app->newton, "1.5492 mm"}, {m_app->thinFilm, "1.0000"}, {m_app->grating, "+17.4576°"},
+                              {m_app->singleSlit, "0.2865°"}, {m_app->polarization, "12.5000 W/m²"}, {m_app->michelson, "+2.3704"}};
+        for (const Case& c : cases) {
+            goTo(c.page);
+            QTRY_COMPARE_WITH_TIMEOUT(bigValue(c.page, 0), QString::fromUtf8(c.big), 1500);
+        }
+        goTo(m_app->grating);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->grating, 1), QString("7 orders"), 1500);
+        goTo(m_app->singleSlit);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->singleSlit, 1), QString("10.0001 mm"), 1500);
+        goTo(m_app->newton);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->newton, 1), QString("3.0984 mm"), 1500);
+    }
+    void secondTabsAndDropdownsDriveTheDiagram() {
+        // --- thin film: the Transmission tab flips to the complementary intensity and re-captions both panels
+        goTo(m_app->thinFilm);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->thinFilm), QString("1.0000"), 1500);
+        click(modeTab(m_app->thinFilm, "Transmission"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->thinFilm), QString("0.0000"), 1500);          // t = 100 nm is dark in transmission
+        QVERIFY2(allLabelTexts(m_app->thinFilm).contains("Film layers / transmitted beam"), "diagram title did not follow the tab");
+        QVERIFY(allLabelTexts(m_app->thinFilm).contains("Transmitted intensity vs thickness"));
+        click(modeTab(m_app->thinFilm, "Reflection"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->thinFilm), QString("1.0000"), 1500);
+        QVERIFY(allLabelTexts(m_app->thinFilm).contains("Film layers / two reflected rays"));
+
+        // --- Michelson: the Fringes tab shows the pattern numbers instead of the displacement numbers
+        goTo(m_app->michelson);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->michelson), QString("+2.3704"), 1500);
+        click(modeTab(m_app->michelson, "Fringes"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->michelson), QString("316.4000 nm"), 1500);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->michelson, 1), QString("12.6422 fringes"), 1500);
+        QVERIFY2(allLabelTexts(m_app->michelson).contains("Optical bench / fringe pattern"), "bench title did not follow the tab");
+        // beam balance sets the contrast, not the fringe spacing
+        chooseItem(comboWith(m_app->michelson, "Unequal beams · V = 0.60"), 1);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->michelson), QString("316.4000 nm"), 1500);
+        QTRY_VERIFY_WITH_TIMEOUT(allLabelTexts(m_app->michelson).join(QStringLiteral(" ")).contains("contrast V = 0.60"), 1500);
+        // reference-arm dropdown: M1 on a piezo, and the diagram says so
+        chooseItem(comboWith(m_app->michelson, "M1 on a piezo (static)"), 1);
+        QTRY_VERIFY_WITH_TIMEOUT(allLabelTexts(m_app->michelson).contains("Optical bench / piezo scan of M1"), 1500);
+        click(modeTab(m_app->michelson, "Displacement"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->michelson), QString("+2.3704"), 1500);
+        click(findButton(m_app->michelson, "Reset parameters"));                                  // back to the defaults for later tests
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->michelson), QString("+2.3704"), 1500);
+
+        // --- Newton's rings: the viewing-mode dropdown now reaches the physics and the diagram
+        goTo(m_app->newton);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->newton), QString("1.5492 mm"), 1500);
+        chooseItem(comboWith(m_app->newton, "Transmitted light"), 1);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->newton), QString("1.6432 mm"), 1500);
+        QVERIFY(allLabelTexts(m_app->newton).contains("Lens on plate / transmitted rings"));
+        chooseItem(comboWith(m_app->newton, "Reflected light"), 0);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->newton), QString("1.5492 mm"), 1500);
+    }
+    // ------------------------------------------------------------------ v2.8 experiment extras
+    void thickLensScreenShowsThePrincipalPlanesAndTheAberration() {
+        goTo(m_app->thickLens);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->thickLens), QString("+10.3448 cm"), 1500);   // the focal length register
+        // the magnification register (the second LCD card of the page, the first invisible one is skipped)
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->thickLens, 1), QString("-0.5085"), 1500);    // the magnification register
+        QVERIFY2(allLabelTexts(m_app->thickLens).contains("Thick element / principal planes"), "the diagram title is missing");
+        QVERIFY2(m_app->thickLens->elementName() == "Biconvex (converging)", "the element type is wrong");
+
+        // a bigger aperture makes the spherical aberration grow (△SA ∝ D²) and the notice says so
+        auto fields = m_app->thickLens->findChildren<UnitField*>();                            // R₁, R₂, n, n₀, t, D, dₒ
+        QVERIFY2(fields.size() >= 7, "the thick-lens fields are missing");
+        const QString smallSa = allLabelTexts(m_app->thickLens).join(" ");                      // carries the D = 5 cm aberration
+        typeInto(fields[5], "10");                                                             // D: 5 cm -> 10 cm
+        QTest::qWait(700);
+        const QString bigSa = allLabelTexts(m_app->thickLens).join(" ");
+        QVERIFY(bigSa.contains("1.0417"));
+        QVERIFY2(bigSa != smallSa, qPrintable(bigSa));                                          // four times the D = 5 cm value
+        typeInto(fields[5], "5");
+        QTest::qWait(700);
+
+        // the Spectrum tab: one element, three colours
+        click(modeTab(m_app->thickLens, "Spectrum"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->thickLens), QString("0.1510 cm"), 1500);     // red-to-blue focal spread
+        QVERIFY(allLabelTexts(m_app->thickLens).join(" ").contains("+10.0628"));              // red focus at 656 nm
+        QVERIFY2(allLabelTexts(m_app->thickLens).contains("Thick element / three colours"), "the spectrum title is missing");
+        click(modeTab(m_app->thickLens, "Thick lens"));
+        click(findButton(m_app->thickLens, "Reset parameters"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->thickLens), QString("+10.3448 cm"), 1500);
+    }
+    void filmColoursTabPaintsTheSwatchOfThePhysics() {
+        goTo(m_app->thinFilm);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->thinFilm), QString("1.0000"), 1500);
+        click(modeTab(m_app->thinFilm, "Colours"));
+        QTRY_VERIFY_WITH_TIMEOUT(allLabelTexts(m_app->thinFilm).contains("Film layers / colour by thickness"), 1500);
+        QString swatch = m_app->thinFilm->colourSwatch();
+        QVERIFY2(swatch.startsWith('#') && swatch.size() == 7, "no swatch colour for the film");
+        QTRY_VERIFY_WITH_TIMEOUT(allLabelTexts(m_app->thinFilm).join(" ").contains("600 nm dominant"), 1500);
+        click(findButton(m_app->thinFilm, "Reset parameters"));                              // back to the reflection tab
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->thinFilm), QString("1.0000"), 1500);
+        QVERIFY(m_app->thinFilm->colourSwatch().isEmpty());
+    }
+    void envelopeAndResolutionTabsCompleteTheWaveScreens() {
+        // single slit: two slits of finite width put fringes inside the envelope
+        goTo(m_app->singleSlit);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->singleSlit), QString("0.2865°"), 1500);
+        click(modeTab(m_app->singleSlit, "Envelope"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->singleSlit, 1), QString("7 bright"), 1500);     // second register: fringe count
+        QVERIFY2(allLabelTexts(m_app->singleSlit).contains("Two slits / fringes inside the envelope"), "envelope title missing");
+        click(findButton(m_app->singleSlit, "Reset parameters"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->singleSlit), QString("0.2865°"), 1500);
+
+        // grating: the Resolution tab resolves 600 nm / (1 × 120 lines) in the first order
+        goTo(m_app->grating);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->grating), QString("+17.4576°"), 1500);
+        click(modeTab(m_app->grating, "Resolution"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->grating), QString("30 nm"), 1500);           // δλ = 600 / (1 × 20 illuminated lines)
+        QVERIFY2(allLabelTexts(m_app->grating).contains("Grating / two lines one Rayleigh step apart"), "resolution title missing");
+        click(findButton(m_app->grating, "Reset parameters"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->grating), QString("+17.4576°"), 1500);
+    }
+
+    void remainingSecondTabsShowTheirOwnNumbers() {
+        // grating: the Orders tab lists every peak instead of one selected order
+        goTo(m_app->grating);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->grating), QString("+17.4576°"), 1500);
+        click(modeTab(m_app->grating, "Orders"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->grating), QString("7 orders"), 1500);
+        QVERIFY2(allLabelTexts(m_app->grating).contains("Grating / every propagating order"), "orders title missing");
+        click(modeTab(m_app->grating, "Transmission"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->grating), QString("+17.4576°"), 1500);
+
+        // single slit: Geometry puts the minima on the screen
+        goTo(m_app->singleSlit);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->singleSlit), QString("0.2865°"), 1500);
+        click(modeTab(m_app->singleSlit, "Geometry"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->singleSlit), QString("5.0001 mm"), 1500);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->singleSlit, 1), QString("7.1501 mm"), 1500);
+        QVERIFY(allLabelTexts(m_app->singleSlit).contains("Slit / where the minima land"));
+        click(modeTab(m_app->singleSlit, "Intensity"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->singleSlit), QString("0.2865°"), 1500);
+
+        // polarization: the Brewster tab replaces Malus' law with the Fresnel reflectances
+        goTo(m_app->polarization);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->polarization), QString("12.5000 W/m²"), 1500);
+        click(modeTab(m_app->polarization, "Brewster"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->polarization), QString("56.3099°"), 1500);
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->polarization, 1), QString("0.1479"), 1500);
+        QVERIFY(allLabelTexts(m_app->polarization).contains("Interface at Brewster / reflected beam s-polarized"));
+        auto fields = m_app->polarization->findChildren<UnitField*>();                       // Iᵢₙ, θ, n₁, n₂
+        QCOMPARE(fields.size(), 4);
+        typeInto(fields[3], "1.333");                                                        // water instead of glass
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->polarization), QString("53.1232°"), 1500);
+        click(findButton(m_app->polarization, "Reset parameters"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->polarization), QString("12.5000 W/m²"), 1500);
+    }
+    void newScreensHaveTheSaveExportHeader() {
+        for (QWidget* page : QList<QWidget*>{m_app->newton, m_app->michelson, m_app->thinFilm, m_app->grating, m_app->singleSlit, m_app->polarization}) {
+            goTo(page);
+            QVERIFY2(findButton(page, "Save"), "missing Save");
+            QVERIFY2(!findButton(page, "Save session"), "old header still shown");
+            auto* exportButton = page->findChild<QToolButton*>("exportMenu");
+            QVERIFY2(exportButton && exportButton->menu() && exportButton->menu()->actions().size() == 3,
+                     "missing the export icon with PDF / Excel / CSV");
+            QCOMPARE(exportButton->text(), QString("Export"));                 // the icon is labelled
+        }
+    }
+    void mainPagesShareSaveExportHeaderWithoutUnitsTag() {
+        const QList<QWidget*> pages = {m_app->dashboard, m_app->refraction, m_app->lenses, m_app->prisms, m_app->wave,
+                                       m_app->polarization, m_app->singleSlit, m_app->grating, m_app->thinFilm, m_app->michelson,
+                                       m_app->newton, m_app->thickLens, m_app->notes, m_app->equationLab, m_app->studyHub,
+                                       m_app->solver, m_app->calculator, m_app->exportPage};
+        for (QWidget* page : pages) {
+            goTo(page);
+            QVERIFY2(findButton(page, "Save"), "a main page is missing the shared Save action");
+            QVERIFY2(!findButton(page, "Save session"), "the old Save session label remains");
+            QVERIFY2(!page->findChild<QLabel*>("unitsTag"), "the shared header still shows a units tag");
+            auto* exportButton = page->findChild<QToolButton*>("exportMenu");
+            QVERIFY2(exportButton && exportButton->menu() && exportButton->menu()->actions().size() == 3,
+                     "a main page is missing the single PDF / Excel / CSV export menu");
+        }
+    }
+    void calculatorExportMenuRoutesAllFormats() {
+        goTo(m_app->calculator);
+        auto* exportButton = m_app->calculator->findChild<QToolButton*>("exportMenu");
+        QVERIFY(exportButton && exportButton->menu());
+        const auto actions = exportButton->menu()->actions();
+        QCOMPARE(actions.size(), 3);
+
+        actions[0]->trigger();
+        QCOMPARE(win().currentPage(), idx(m_app->exportPage));
+        QVERIFY(m_app->reportPage->isVisibleTo(&win()));             // PDF report pane of the same page
+        actions[1]->trigger();
+        QCOMPARE(win().currentPage(), idx(m_app->exportPage));
+        auto* formatTabs = m_app->exportPage->findChild<ModeTabs*>("seriesFormatTabs");
+        auto* paneTabs = m_app->exportPage->findChild<ModeTabs*>("exportModeTabs");
+        QVERIFY(formatTabs && paneTabs);
+        QCOMPARE(paneTabs->current(), 0);
+        QCOMPARE(formatTabs->current(), 0);                         // Excel selected before the destination opens
+        actions[2]->trigger();
+        QCOMPARE(win().currentPage(), idx(m_app->exportPage));
+        QCOMPARE(paneTabs->current(), 0);
+        QCOMPARE(formatTabs->current(), 1);                         // CSV selected before the destination opens
+    }
+
+    void newScreensCalculateAndSendToNotes() {
+        goTo(m_app->newton);
+        const int runs = m_app->context().log.savedCalculations();
+        click(findButton(m_app->newton, calcText()));
+        QCOMPARE(m_app->context().log.savedCalculations(), runs + 1);
+        QCOMPARE(QString::fromStdString(m_app->context().log.runs().back().experiment), QString("Newton's Rings"));
+        auto* w = workspace();
+        w->setMarkdown("");
+        m_app->context().setNotes("");
+        goTo(m_app->newton);
+        click(findButton(m_app->newton, "Send to\nNotes"));
+        const QString notes = QString::fromStdString(m_app->context().log.notes());
+        QVERIFY2(notes.contains("### Newton's Rings"), qPrintable(notes));
+        QVERIFY(notes.contains("1.5492 mm") && notes.contains("λ = 600 nm"));
+        QCOMPARE(workspace()->markdown(), notes);                                  // the notes page reloaded the appended text
+    }
+    void newScreensPauseOnInvalidInputAndRestore() {
+        goTo(m_app->newton);
+        auto fields = m_app->newton->findChildren<UnitField*>();                    // λ, R, m
+        typeInto(fields[2], "2.5");                                                  // order must be an integer
+        QTRY_VERIFY_WITH_TIMEOUT(!findButton(m_app->newton, calcText())->isEnabled(), 1500);
+        QVERIFY2(findButton(m_app->newton, "Restore m = 4"), "no Restore button");
+        QVERIFY(m_app->newton->isPaused());
+        QCOMPARE(win().engineLabel()->text(), QString("● CALCULATION PAUSED"));
+        click(findButton(m_app->newton, "Restore m = 4"));
+        QTRY_VERIFY_WITH_TIMEOUT(findButton(m_app->newton, calcText())->isEnabled(), 1500);
+        QCOMPARE(fields[2]->text(), QString("4"));
+        QCOMPARE(win().engineLabel()->text(), QString("● ENGINE READY"));
+
+        goTo(m_app->grating);
+        auto g = m_app->grating->findChildren<UnitField*>();                        // N, λ, m, M
+        typeInto(g[2], "4");                                                         // order 4 has no real angle
+        QTRY_VERIFY_WITH_TIMEOUT(m_app->grating->isPaused(), 1500);
+        click(findButton(m_app->grating, "Restore m = +1"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->grating, 0), QString("+17.4576°"), 1500);
+    }
+    void gratingSpinnerSteps() {
+        goTo(m_app->grating);
+        auto g = m_app->grating->findChildren<UnitField*>();
+        click(g[2]->findChild<QWidget*>("spinUp"));
+        QCOMPARE(g[2]->text(), QString("+2"));
+        QTRY_COMPARE_WITH_TIMEOUT(bigValue(m_app->grating, 0), QString("+36.8699°"), 1500);
+        click(g[2]->findChild<QWidget*>("spinDown"));
+        click(m_app->grating->findChild<QPushButton*>());                            // harmless: any button
+    }
+
+    // ------------------------------------------------------------------ scientific keyboard + Equation Lab
+    QPushButton* sciKey(ScientificKeyboard* k, const QString& legend) {
+        for (auto* b : k->findChildren<QPushButton*>())
+            if (b->property("legend").toString() == legend && b->isVisibleTo(k->window())) return b;
+        return nullptr;
+    }
+    void equationLabEvaluatesTheDesignExample() {
+        goTo(m_app->equationLab);
+        auto* lab = m_app->equationLab;
+        lab->source()->setPlainText("r_m = \\sqrt{\\frac{m\\lambda R}{n}}");
+        QTRY_COMPARE_WITH_TIMEOUT(lab->resultText(), QString("r_m = 1.5492 mm"), 2000);
+        QCOMPARE(lab->variablesTable()->rowCount(), 5);                              // r_m, m, lambda, R, n
+        auto* m = lab->variablesTable()->item(1, 1);
+        QCOMPARE(lab->variablesTable()->item(1, 0)->text(), QString("m"));
+        m->setText("9");                                                              // edit a known value
+        QTRY_COMPARE_WITH_TIMEOUT(lab->resultText(), QString("r_m = 2.3238 mm"), 2000);
+        lab->source()->setPlainText("\\frac{1}{s} + \\frac{1}{s'} = \\frac{1}{f}");
+        QTRY_VERIFY_WITH_TIMEOUT(lab->parsed(), 2000);
+        lab->source()->setPlainText("\\frac{1}");
+        QTRY_VERIFY_WITH_TIMEOUT(!lab->parsed(), 2000);                              // syntax error is reported, not a crash
+    }
+    void scientificKeyboardWorksLikeTheDesign() {
+        goTo(m_app->equationLab);
+        auto* lab = m_app->equationLab;
+        auto* kb = lab->keyboard();
+        QToolButton* toggle = nullptr;
+        for (auto* b : lab->findChildren<QToolButton*>("fmtAccent")) toggle = b;
+        QVERIFY(toggle);
+        click(toggle);
+        QVERIFY(kb->isVisible());
+        lab->source()->setPlainText("");
+        QApplication::processEvents();
+        click(sciKey(kb, "λ"));                                                       // Greek page is first
+        QCOMPARE(kb->pending(), QString("\\lambda"));
+        QCOMPARE(lab->source()->toPlainText(), QString());                            // nothing is inserted until INSERT
+        click(findButton(kb, "INSERT / ENTER  ↵"));
+        QCOMPARE(lab->source()->toPlainText(), QString("\\lambda"));
+        QVERIFY(kb->pending().isEmpty());
+        QVERIFY2(lab->source()->hasFocus(), "focus must stay in the source editor");
+
+        click(findButton(kb, "Math operators"));                                      // braces place the caret inside
+        click(sciKey(kb, "√"));
+        click(findButton(kb, "INSERT / ENTER  ↵"));
+        QCOMPARE(lab->source()->toPlainText(), QString("\\lambda\\sqrt{}"));
+        QCOMPARE(lab->source()->textCursor().position(), lab->source()->toPlainText().size() - 1);
+        QTest::keyClick(lab->source(), 'x');
+        QCOMPARE(lab->source()->toPlainText(), QString("\\lambda\\sqrt{x}"));
+        click(sciKey(kb, "/"));                                                       // fraction: caret in the numerator
+        QCOMPARE(kb->pending(), QString("\\frac{}{}"));
+        click(findButton(kb, "AC"));
+        QVERIFY2(kb->pending().isEmpty() && lab->source()->toPlainText() == "\\lambda\\sqrt{x}", "AC clears the buffer, not the equation");
+
+        click(sciKey(kb, "2"));
+        click(sciKey(kb, "xʸ"));
+        QCOMPARE(kb->pending(), QString("2^{}"));
+        click(findButton(kb, "⌫"));                                                   // removes the last pending token
+        QCOMPARE(kb->pending(), QString("2"));
+        click(findButton(kb, "⌫"));
+        QVERIFY(kb->pending().isEmpty());
+        const int before = lab->source()->toPlainText().size();
+        click(findButton(kb, "⌫"));                                                   // empty buffer: deletes in the source
+        QCOMPARE(lab->source()->toPlainText().size(), before - 1);
+
+        const int pos = lab->source()->textCursor().position();
+        click(findButton(kb, "←"));
+        QCOMPARE(lab->source()->textCursor().position(), pos - 1);
+        click(findButton(kb, "→"));
+        QCOMPARE(lab->source()->textCursor().position(), pos);
+
+        click(findButton(kb, "Greek symbols"));                                       // SHIFT latches capital Greek
+        click(findButton(kb, "SHIFT"));
+        QVERIFY(kb->shiftLatched());
+        QVERIFY2(sciKey(kb, "δ") && sciKey(kb, "δ")->text() == "Δ", "SHIFT shows capital legends");
+        click(sciKey(kb, "δ"));
+        QCOMPARE(kb->pending(), QString::fromUtf8("Δ"));
+        click(findButton(kb, "SHIFT"));
+        click(findButton(kb, "AC"));
+
+        click(findButton(kb, "Functions"));
+        click(sciKey(kb, "sin"));
+        QCOMPARE(kb->pending(), QString("\\sin()"));
+        click(findButton(kb, "AC"));
+        click(findButton(kb, "Variables"));                                            // all variables of variables.json
+        int variableKeys = 0;
+        for (auto* b : kb->findChildren<QPushButton*>("rkey")) if (!b->icon().isNull()) ++variableKeys;
+        QVERIFY2(variableKeys >= 55, qPrintable(QString::number(variableKeys)));
+
+        kb->setFocus();
+        QTest::keyClick(kb, Qt::Key_Escape);                                           // Esc closes without inserting
+        QVERIFY(!kb->isVisible() && !toggle->isChecked());
+    }
+
+    // ------------------------------------------------------------------ the export icon of the header (PDF / Excel / CSV)
+    void exportIconOpensTheChosenFormat() {
+        goTo(m_app->prisms);
+        auto* button = m_app->prisms->findChild<QToolButton*>("exportMenu");
+        QVERIFY2(button && button->menu(), "the header has no export icon");
+        auto actions = button->menu()->actions();
+        QCOMPARE(actions.size(), 3);
+        QCOMPARE(actions[0]->text(), QString("PDF report…"));
+        QCOMPARE(actions[1]->text(), QString("Excel (.xlsx)…"));
+        QCOMPARE(actions[2]->text(), QString("CSV (.csv)…"));
+
+        actions[1]->trigger();                                              // Excel
+        QCOMPARE(win().currentPage(), idx(m_app->exportPage));
+        QVERIFY(findButton(m_app->exportPage, "Export workbook"));
+        goTo(m_app->prisms);
+        actions[2]->trigger();                                              // CSV
+        QCOMPARE(win().currentPage(), idx(m_app->exportPage));
+        QVERIFY(findButton(m_app->exportPage, "Export CSV"));               // the format was preselected
+        goTo(m_app->prisms);
+        actions[0]->trigger();                                              // PDF report pane of the same Export page
+        QCOMPARE(win().currentPage(), idx(m_app->exportPage));
+        auto* panes = m_app->exportPage->findChild<ModeTabs*>("exportModeTabs");
+        QVERIFY(panes);
+        QCOMPARE(panes->current(), 1);
+        QVERIFY(m_app->reportPage->isVisibleTo(&win()));
+    }
+    void exportPageCanPrintTheTable() {
+        goTo(m_app->exportPage);
+        m_app->exportPage->showDataExport();
+        QVERIFY2(findButton(m_app->exportPage, "Print…"), "no Print button on the series-export pane");
+    }
+    // ------------------------------------------------------------------ Study Hub (JSON array -> page)
+    void studyHubKeepsChapterConstantsAndRemovesGlobalConstantsTab() {
+        bool hasHub = false, hasNotes = false, hasConstants = false, hasSetups = false;
+        for (auto* b : win().navButtons()) {
+            const QString name = b->accessibleName();
+            hasHub |= name == "Study Hub";
+            hasNotes |= name == "Notes";
+            hasConstants |= name == "Constants";
+            hasSetups |= name == "Optical Setups";
+        }
+        QVERIFY2(hasHub && hasNotes, "Study Hub or the Notes shortcut is missing from the sidebar");
+        QVERIFY2(!hasConstants && !hasSetups, "Constants and Optical Setups should be accessed through Study Hub");
+
+        goTo(m_app->studyHub);
+        auto* sectionTabs = m_app->studyHub->findChild<QWidget*>("studyHubTabs");
+        QVERIFY(sectionTabs);
+        const auto tabs = sectionTabs->findChildren<QPushButton*>("modeTab");
+        QCOMPARE(tabs.size(), 3);
+        QCOMPARE(tabs[0]->text(), QString("Chapters"));
+        QCOMPARE(tabs[1]->text(), QString("Notes"));
+        QCOMPARE(tabs[2]->text(), QString("Optical Setups"));
+
+        m_app->studyHub->selectSection(0);
+        auto* list = m_app->studyHub->topicList();
+        QCOMPARE(list->count(), m_app->studyHub->topicCount());
+        QVERIFY2(list->count() >= 8, "the Study Hub chapter list is empty");
+        QVERIFY(!m_app->studyHub->summaryLabel()->text().isEmpty());
+        QVERIFY2(m_app->studyHub->constantTable()->rowCount() > 0, "no constants for the first chapter");
+        bool hasRules = false, hasChapterConstants = false;
+        for (auto* label : m_app->studyHub->findChildren<QLabel*>()) {
+            hasRules |= label->text().startsWith("Rules · ");
+            hasChapterConstants |= label->text() == "Constants";
+        }
+        QVERIFY2(hasRules && hasChapterConstants, "the chapter Rules or Constants panel is missing");
+
+        list->setCurrentRow(1);
+        QCOMPARE(list->currentRow(), 1);
+        QVERIFY2(!m_app->studyHub->summaryLabel()->text().isEmpty(), "the second chapter has no summary on screen");
+
+        m_app->studyHub->selectSection(1);
+        QVERIFY2(m_app->studyHub->notesEditor() && m_app->studyHub->notesEditor()->isVisibleTo(&win()), "the chapter JSON notes editor is missing");
+        m_app->studyHub->selectSection(2);
+        auto* diagrams = m_app->diagrams->findChild<QListWidget*>("diagramList");
+        QVERIFY2(diagrams && diagrams->count() >= 6, "the Optical Setups gallery is missing from Study Hub");
+        m_app->studyHub->selectSection(3);                                  // removed global Constants tab is ignored
+        QCOMPARE(m_app->studyHub->currentSection(), 2);
+        m_app->studyHub->selectSection(0);
+    }
+
+    void studyHubNotesArePerChapterJsonAndSeparateFromMarkdownNotes() {
+        const QString sessionNotes = QString::fromStdString(m_app->context().log.notes());
+        auto* hubNotes = m_app->studyHub->notesEditor();
+        auto* hubSummary = m_app->studyHub->noteSummaryEditor();
+        auto* summarizeButton = m_app->studyHub->summarizeNoteButton();
+        auto* chapter = m_app->studyHub->findChild<QComboBox*>("studyHubNoteChapter");
+        auto* sidebarNotes = m_app->notes->findChild<MarkdownWorkspace*>();
+        QVERIFY(hubNotes && hubSummary && summarizeButton && chapter && sidebarNotes);
+        const QString sidebarText = sidebarNotes->markdown();
+
+        const QString firstKey = chapter->currentData().toString();
+        const QString originalNote = "Snell's law relates angles to refractive indices. Angles are measured from the normal. A higher refractive index bends light toward the normal.";
+        hubNotes->setPlainText(originalNote);
+        summarizeButton->click();                     // creates a local extractive draft; the user can edit it
+        QVERIFY(!hubSummary->toPlainText().isEmpty());
+        const QString firstSummary = "Snell's law links angles and refractive indices.";
+        hubSummary->setPlainText(firstSummary);
+        m_app->studyHub->flushStudyNotes();
+        QVERIFY(QFile::exists(m_app->studyHub->notesFilePath()));
+        QCOMPARE(QString::fromStdString(m_app->context().log.notes()), sessionNotes);
+        QCOMPARE(sidebarNotes->markdown(), sidebarText);
+
+        QFile file(m_app->studyHub->notesFilePath());
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        const QJsonObject root = QJsonDocument::fromJson(file.readAll()).object();
+        QCOMPARE(root.value("format").toString(), QString("phy104-study-hub-notes"));
+        QCOMPARE(root.value("version").toInt(), 2);
+        const QJsonObject firstRecord = root.value("notes").toObject().value(firstKey).toObject();
+        QCOMPARE(firstRecord.value("text").toString(), originalNote);
+        QCOMPARE(firstRecord.value("summary").toString(), firstSummary);
+        file.close();
+
+        QVERIFY(chapter->count() > 1);
+        chapter->setCurrentIndex(1);
+        QCOMPARE(hubNotes->toPlainText(), QString());       // switching chapters must not copy the prior editor text
+        QCOMPARE(hubSummary->toPlainText(), QString());
+        QVERIFY(!summarizeButton->isEnabled());             // a blank note cannot produce a draft
+        const QString secondKey = chapter->currentData().toString();
+        hubNotes->setPlainText("Second chapter notes");
+        QVERIFY(summarizeButton->isEnabled());
+        hubSummary->setPlainText("A separate recap for chapter two.");
+        m_app->studyHub->flushStudyNotes();
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        const QJsonObject bothNotes = QJsonDocument::fromJson(file.readAll()).object().value("notes").toObject();
+        QCOMPARE(bothNotes.value(firstKey).toObject().value("text").toString(), originalNote);
+        QCOMPARE(bothNotes.value(firstKey).toObject().value("summary").toString(), firstSummary);
+        QCOMPARE(bothNotes.value(secondKey).toObject().value("text").toString(), QString("Second chapter notes"));
+        QCOMPARE(bothNotes.value(secondKey).toObject().value("summary").toString(), QString("A separate recap for chapter two."));
+        file.close();
+        chapter->setCurrentIndex(0);
+        QCOMPARE(hubNotes->toPlainText(), originalNote);
+        QCOMPARE(hubSummary->toPlainText(), firstSummary);
+
+        QFile::remove(m_app->studyHub->notesFilePath());      // keep this isolated test from affecting later cases
+    }
+
+    void calculatorKeepsTheUsefulMathKeypadOnly() {
+        goTo(m_app->calculator);
+        auto* input = m_app->calculator->findChild<QLineEdit*>("lcdInput");
+        QVERIFY(input);
+        QVERIFY(m_app->calculator->findChild<QLabel*>("lcdResult"));
+        const QColor expectedPlaceholder = ThemeManager::instance().theme().dark
+                                               ? QColor(Qt::white) : ThemeManager::instance().theme().text;
+        QCOMPARE(input->palette().color(QPalette::PlaceholderText), expectedPlaceholder);
+        auto* angle = findButton(m_app->calculator, "DEG");
+        QVERIFY(angle);
+        click(angle);
+        QCOMPARE(angle->text(), QString("RAD"));
+        click(angle);
+        QCOMPARE(angle->text(), QString("DEG"));
+        QVERIFY2(!m_app->calculator->findChild<QComboBox*>("keysCombo"), "the extra physics-symbol browser is still on Calculator");
+        QVERIFY2(findButton(m_app->calculator, "sin") && findButton(m_app->calculator, "π") &&
+                 findButton(m_app->calculator, "Ans") && findButton(m_app->calculator, "=") &&
+                 findButton(m_app->calculator, "AC") && findButton(m_app->calculator, "DEL"),
+                 "a required math key is missing");
+        QVERIFY2(!findButton(m_app->calculator, "abs") && !findButton(m_app->calculator, "x²"),
+                 "redundant or rarely used keypad keys were not removed");
+        auto* keypad = m_app->calculator->findChild<CalculatorKeypad*>("calculatorKeypad");
+        QVERIFY(keypad);
+        QCOMPARE(keypad->findChildren<QPushButton*>().size(), 33);
+        const QString labels = allLabelTexts(m_app->calculator).join(" ");
+        QVERIFY(!labels.contains("SCIENTIFIC KEYS") && !labels.contains("History lines"));
+        input->clear();
+        click(findButton(m_app->calculator, "sin"));
+        QVERIFY2(input->text().startsWith("sin("), "the math key did not insert a plain-text function");
+        QVERIFY2(input->text().indexOf('$') < 0 && !input->text().contains('\\'), "the calculator must insert plain text, not LaTeX");
+        input->clear();
+    }
+
+    void notesPageHasTheScientificKeyboard() {
+        goTo(m_app->notes);
+        auto* toggle = m_app->notes->findChild<QToolButton*>("notesKeyboard");
+        QVERIFY2(toggle, "no keyboard toggle on the notes page");
+        auto* keyboard = m_app->notes->findChild<ScientificKeyboard*>();
+        QVERIFY2(keyboard && !keyboard->isVisibleTo(&win()), "the keyboard starts closed");
+        auto* workspace = m_app->notes->findChild<MarkdownWorkspace*>();
+        workspace->editor()->moveCursor(QTextCursor::End);                 // no selection: the snippet only inserts
+        const int before = workspace->markdown().size();
+        click(toggle);
+        QApplication::processEvents();
+        QVERIFY2(keyboard->isVisibleTo(&win()), "the keyboard did not open");
+        // opening the keyboard puts the caret inside a formula:  $…$
+        QCOMPARE(workspace->markdown().size(), before + 2);
+        click(toggle);
+        QVERIFY2(!keyboard->isVisibleTo(&win()), "the keyboard did not close");
+    }
+    void scientificKeyboardSharesItsControlsAndTrimsDuplicateKeys() {
+        goTo(m_app->notes);
+        auto* keyboard = m_app->notes->findChild<ScientificKeyboard*>();
+        auto* toggle = m_app->notes->findChild<QToolButton*>("notesKeyboard");
+        QVERIFY(keyboard && toggle);
+        QCOMPARE(keyboard->findChildren<QPushButton*>("rkey").size(), 119);
+        QCOMPARE(keyboard->findChildren<QPushButton*>("rkeyCtl").size(), 5);
+
+        click(toggle);
+        click(findButton(keyboard, "SHIFT"));
+        click(findButton(keyboard, QString::fromUtf8("Α")));
+        QCOMPARE(keyboard->pending(), QString::fromUtf8("Α"));
+        click(findButton(keyboard, "AC"));
+        QVERIFY(keyboard->pending().isEmpty());
+        click(findButton(keyboard, "SHIFT"));
+        click(toggle);
+    }
+
+    void notesPageIsOnlyTheMarkdownWorkspace() {
+        goTo(m_app->notes);
+        QVERIFY(m_app->notes->findChild<MarkdownWorkspace*>());
+        QVERIFY2(!findButton(m_app->notes, "Export workbook"), "the export GUI is still on the notes page");
+        QStringList texts;
+        for (auto* l : m_app->notes->findChildren<QLabel*>()) texts << l->text();
+        QVERIFY2(!texts.contains("Formula reference"), "the formula reference is still on the notes page");
+        QVERIFY2(!texts.contains("Export preview"), "the export preview is still on the notes page");
+        QVERIFY2(m_app->notes->findChildren<RecentExportPanel*>().isEmpty(), "an export-history panel is still on the notes page");
+        QVERIFY2(m_app->notes->findChildren<QTableWidget*>().isEmpty(), "an export table is still on the notes page");
+    }
+
+    void unifiedExportKeepsRecentHistoryInBothModes() {
+        // The data and report panes each present the same session-backed latest export record.
+        QCOMPARE(m_app->exportPage->findChildren<RecentExportPanel*>().size(), 2);
+        QCOMPARE(m_app->reportPage->findChildren<RecentExportPanel*>().size(), 1);
+        QCOMPARE(ExportService::fileStem("PHY104_refraction.CSV", "fallback"), QString("PHY104_refraction"));
+        QCOMPARE(ExportService::outputPath("exports", "report.pdf", "fallback", ".pdf"),
+                 QDir("exports").filePath("report.pdf"));
+    }
+
+    // ------------------------------------------------------------------ unified Export page: series data and report panes
+    const Snapshot* selectedSeries() {
+        auto* list = m_app->exportPage->seriesList();
+        if (!list || !list->currentItem()) return nullptr;
+        return m_app->context().log.snapshot(list->currentItem()->data(Qt::UserRole).toString().toStdString());
+    }
+    void exportPageListsEverySeriesAndDescribesIt() {
+        goTo(m_app->exportPage);
+        m_app->exportPage->showDataExport();
+        auto* list = m_app->exportPage->seriesList();
+        QVERIFY(list && list->count() > 0);
+        int withRows = 0;                                                       // every published series that has rows
+        for (const auto& entry : m_app->context().log.snapshots()) if (!entry.second.series.rows.empty()) ++withRows;
+        QCOMPARE(list->count(), withRows);
+        for (int i = 0; i < list->count(); ++i) {
+            list->setCurrentRow(i);
+            QApplication::processEvents();
+            const Snapshot* snap = selectedSeries();
+            QVERIFY2(snap && !snap->series.rows.empty(), "series without data in the list");
+            const QStringList texts = allLabelTexts(m_app->exportPage);
+            QVERIFY2(texts.contains(QString::fromStdString(snap->series.name)), "series name not described");
+            QVERIFY2(texts.contains(QString::fromStdString(snap->series.description)), "series description missing");
+        }
+    }
+    void exportPageShowsEveryRowOfTheChosenSeries() {
+        goTo(m_app->exportPage);
+        m_app->exportPage->showDataExport();
+        auto* list = m_app->exportPage->seriesList();
+        QVERIFY(list && list->count() > 0);
+        int mostRows = 0;
+        for (int i = 0; i < list->count(); ++i) {
+            list->setCurrentRow(i);
+            QApplication::processEvents();
+            const Snapshot* snap = selectedSeries();
+            QVERIFY(snap);
+            QCOMPARE(m_app->exportPage->previewTable()->rowCount(), static_cast<int>(snap->series.rows.size()));
+            QCOMPARE(m_app->exportPage->previewTable()->columnCount(), static_cast<int>(snap->series.headers.size()));
+            mostRows = std::max(mostRows, m_app->exportPage->previewTable()->rowCount());
+        }
+        QVERIFY2(mostRows > 7, "the dedicated page must show every row, not the 7-row sample of the Notes page");
+    }
+    void exportPageWritesBothFormatsAndRemembersTheFile() {
+        goTo(m_app->exportPage);
+        m_app->exportPage->setFormat(true);                        // the icon test above left the CSV format selected
+        const Snapshot* snap = selectedSeries();
+        QVERIFY(snap);
+        const QString base = "PHY104_" + QString::fromStdString(snap->series.id).section('_', 0, 0);
+        const QString dir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/PHY104";
+        QDir(dir).removeRecursively();
+
+        click(findButton(m_app->exportPage, "Export workbook"));
+        QVERIFY2(QFile::exists(dir + "/" + base + ".xlsx"), qPrintable("no workbook in " + dir));
+        QCOMPARE(QString::fromStdString(m_app->context().log.lastExport().path), dir + "/" + base + ".xlsx");
+        QCOMPARE(QString::fromStdString(m_app->context().log.lastExport().format), QString("Excel (.xlsx)"));
+        QVERIFY(allLabelTexts(m_app->exportPage).contains(base + ".xlsx"));      // the recent-export card
+
+        click(findButton(m_app->exportPage, "Export as CSV instead"));
+        QVERIFY2(QFile::exists(dir + "/" + base + ".csv"), qPrintable("no CSV in " + dir));
+        QCOMPARE(QString::fromStdString(m_app->context().log.lastExport().format), QString("CSV (.csv)"));
+        QVERIFY(allLabelTexts(m_app->exportPage).contains(base + ".csv"));
+    }
+    void recentExportSurvivesARestart() {
+        QVERIFY(m_app->context().log.hasExport());                              // written by the test above
+        const QString path = QString::fromStdString(m_app->context().log.lastExport().path);
+        App second(App::Paths{DATA_DIR, m_tmp.path() + "/session.phy"});
+        QVERIFY(second.context().log.hasExport());
+        QCOMPARE(QString::fromStdString(second.context().log.lastExport().path), path);
+        QStringList texts;
+        for (auto* l : second.exportPage->findChildren<QLabel*>()) texts << l->text();
+        QVERIFY2(texts.contains(QFileInfo(path).fileName()), "the recent-export card forgot the file");
+    }
+
+    // ------------------------------------------------------------------ the PDF report pane of the unified Export page
+    void reportPageCapturesEveryScreenAndWritesAPdf() {
+        goTo(m_app->exportPage);
+        m_app->exportPage->showPdfReport();
+        QApplication::processEvents();
+        auto* page = m_app->reportPage;
+        QTRY_VERIFY_WITH_TIMEOUT(page->sectionCount() >= 6, 2000);
+        QVERIFY(page->html().contains("PHY104 Laboratory Report"));
+        QVERIFY2(page->html().contains("img://diagram-"), "the diagrams were not captured");
+        QVERIFY(page->html().contains("img://chart-"));
+        QVERIFY(page->html().contains("Thin-Film Interference"));
+
+        // a section that is unticked leaves the document immediately
+        QCheckBox* diagrams = nullptr;
+        for (auto* c : page->findChildren<QCheckBox*>())
+            if (c->text().startsWith("Diagrams")) diagrams = c;
+        QVERIFY2(diagrams, "no diagrams checkbox");
+        click(diagrams);
+        QVERIFY(!page->html().contains("img://diagram-"));
+        click(diagrams);
+        QVERIFY(page->html().contains("img://diagram-"));
+
+        // the file really is a PDF, and the recent-export card remembers it
+        const QString dir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/PHY104";
+        QDir(dir).removeRecursively();
+        click(page->saveButton());
+        const QString path = dir + "/PHY104_report_" + QDate::currentDate().toString("yyyy-MM-dd") + ".pdf";
+        QVERIFY2(QFile::exists(path), qPrintable("no PDF at " + path));
+        QVERIFY(QFileInfo(path).size() > 2000);
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        QCOMPARE(file.read(5), QByteArray("%PDF-"));
+        file.close();
+        QCOMPARE(QString::fromStdString(m_app->context().log.lastExport().format), QString("PDF report"));
+        QVERIFY(allLabelTexts(page).contains(QFileInfo(path).fileName()));
+    }
+};
+
+QTEST_MAIN(InteractionTest)
+#include "test_interaction.moc"

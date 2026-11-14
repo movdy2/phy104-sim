@@ -1,47 +1,88 @@
-#include "NumberFormat.h"
+#include "FormulaManager.h"
 
-#include <cmath>
-#include <cstdio>
-#include <cstdlib>
+#include <algorithm>
+#include <cctype>
+#include <limits>
+#include <sstream>
 
-using std::string;
-using std::to_string;
-using std::abs;
+namespace phy104 {
 
-namespace phy104::NumberFormat {
-
-/// تنسيق رقم بعدد محدد من المنازل العشرية (بدون "-0.0000").
-string fixed(double value, int decimals) {
-    char buffer[64];
-    std::snprintf(buffer, sizeof buffer, "%.*f", decimals, value == 0.0 ? 0.0 : value);   // بدون "-0.0000"
-    string text = buffer;
-    if (text.rfind("-0.", 0) == 0 && text.find_first_not_of("-0.") == string::npos) text.erase(0, 1);
-    return text;
+FormulaManager::FormulaManager(const FormulaEngine& engine, std::vector<Chapter> chapters)
+    : m_engine(engine), m_chapters(std::move(chapters)) {
+    std::stable_sort(m_chapters.begin(), m_chapters.end(),
+                     [](const Chapter& a, const Chapter& b) { return a.order < b.order; });
 }
 
-/// نفس `fixed` لكن يضيف "+" إذا كان الرقم موجباً.
-string signedFixed(double value, int decimals) {
-    const string text = fixed(value, decimals);
-    return (text[0] == '-') ? text : "+" + text;
+std::string FormulaManager::normalize(const std::string& text) {
+    std::string out;
+    bool lastSpace = true;
+    for (unsigned char ch : text) {
+        const char c = (ch == '_' || ch == '-') ? ' ' : static_cast<char>(std::tolower(ch));
+        if (std::isspace(static_cast<unsigned char>(c))) {
+            if (!lastSpace) out += ' ';
+            lastSpace = true;
+        } else {
+            out += c;
+            lastSpace = false;
+        }
+    }
+    if (!out.empty() && out.back() == ' ') out.pop_back();
+    return out;
 }
 
-/// تنسيق عام (أقصى دقة ممكنة، بدون أصفار زائدة).
-string general(double value, int digits) {
-    char buffer[64];
-    std::snprintf(buffer, sizeof buffer, "%.*g", digits, value == 0.0 ? 0.0 : value);
-    return buffer;
+int FormulaManager::chapterOrder(const std::string& chapterId) const {
+    for (const auto& c : m_chapters)
+        if (c.id == chapterId) return c.order;
+    return std::numeric_limits<int>::max();            // unknown chapters go last
 }
 
-/// تنسيق علمي باستخدام الرموز العلوية (مثل 5.320 × 10⁻⁷).
-string scientific(double value, int decimals) {
-    if (value == 0.0) return fixed(0.0, decimals);
-    int exponent = static_cast<int>(std::floor(std::log10(std::fabs(value))));
-    double mantissa = value / std::pow(10.0, exponent);
-    if (std::fabs(std::stod(fixed(mantissa, decimals))) >= 10.0) { mantissa /= 10.0; ++exponent; }
-    static const char* superscript[] = {"⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"};
-    string exp = exponent < 0 ? "⁻" : "";
-    for (char ch : to_string(abs(exponent))) exp += superscript[ch - '0'];
-    return fixed(mantissa, decimals) + " × 10" + exp;
+std::string FormulaManager::chapterTitle(const std::string& chapterId) const {
+    for (const auto& c : m_chapters)
+        if (c.id == chapterId) return c.title;
+    return chapterId;
 }
 
-} // namespace phy104::NumberFormat
+std::vector<const Formula*> FormulaManager::search(const std::string& query,
+                                                   const std::string& chapterId) const {
+    std::vector<std::string> words;
+    {
+        std::istringstream in(normalize(query));
+        for (std::string w; in >> w;) words.push_back(w);
+    }
+
+    std::vector<const Formula*> result;
+    for (const auto& f : m_engine.formulas()) {
+        if (!chapterId.empty() && f.chapter != chapterId) continue;
+        const std::string haystack = normalize(f.name) + " " + normalize(f.id);
+        const bool all = std::all_of(words.begin(), words.end(), [&](const std::string& w) {
+            return haystack.find(w) != std::string::npos;
+        });
+        if (all) result.push_back(&f);
+    }
+    std::stable_sort(result.begin(), result.end(), [&](const Formula* a, const Formula* b) {
+        const int oa = chapterOrder(a->chapter), ob = chapterOrder(b->chapter);
+        if (oa != ob) return oa < ob;
+        return normalize(a->name) < normalize(b->name);
+    });
+    return result;
+}
+
+std::map<std::string, int> FormulaManager::countByChapter(const std::string& query) const {
+    std::map<std::string, int> counts;
+    for (const Formula* f : search(query)) ++counts[f->chapter];
+    return counts;
+}
+
+FormulaPage FormulaManager::paginate(const std::vector<const Formula*>& results, int pageIndex, int pageSize) {
+    FormulaPage page;
+    pageSize = std::max(1, pageSize);
+    page.total = results.size();
+    page.pageCount = std::max(1, static_cast<int>((results.size() + pageSize - 1) / pageSize));
+    page.pageIndex = std::clamp(pageIndex, 0, page.pageCount - 1);
+    const std::size_t begin = static_cast<std::size_t>(page.pageIndex) * pageSize;
+    const std::size_t end = std::min(results.size(), begin + pageSize);
+    for (std::size_t i = begin; i < end; ++i) page.items.push_back(results[i]);
+    return page;
+}
+
+} // namespace phy104

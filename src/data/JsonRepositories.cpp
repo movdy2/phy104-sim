@@ -2,59 +2,39 @@
 #include "JsonLoader.h"
 
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QJsonValue>
+#include <QJsonParseError>
 #include <QSaveFile>
-#include <stdexcept>
-
-using std::string;
-using std::vector;
-using std::runtime_error;
+#include <cmath>
+#include <utility>
 
 namespace phy104 {
 namespace {
 
-// يقرأ حقل نصي. يرمي خطأ إذا كان الحقل مفقوداً أو ليس نصاً.
-string str(const QJsonObject& o, const char* key, bool required = true) {
+// Reads a string field; throws a readable error if the key is missing (helps find typos in JSON).
+std::string str(const QJsonObject& o, const char* key, bool required = true) {
     if (!o.contains(key)) {
-        if (required) throw runtime_error(string("Missing key \"") + key + "\" in JSON object");
+        if (required) throw std::runtime_error(std::string("Missing key \"") + key + "\" in JSON object");
         return {};
     }
-    const QJsonValue val = o.value(key);
-    if (!val.isString()) {
-        if (required) throw runtime_error(string("Key \"") + key + "\" is not a string in JSON object");
-        return {};
-    }
-    return val.toString().toStdString();
+    return o.value(key).toString().toStdString();
 }
 
-vector<string> strList(const QJsonValue& v) {
-    vector<string> out;
-    if (!v.isArray()) return out;
-    for (const auto& item : v.toArray()) {
-        if (item.isString()) out.push_back(item.toString().toStdString());
-    }
+std::vector<std::string> strList(const QJsonValue& v) {
+    std::vector<std::string> out;
+    for (const auto& item : v.toArray()) out.push_back(item.toString().toStdString());
     return out;
-}
-
-QJsonArray requireArray(const QJsonObject& root, const char* key) {
-    if (!root.contains(key) || !root.value(key).isArray()) {
-        throw runtime_error(string("Missing or invalid array \"") + key + "\" in JSON root");
-    }
-    return root.value(key).toArray();
 }
 
 } // namespace
 
-vector<Formula> JsonFormulaRepository::loadAll() const {
-    const QJsonObject root = JsonLoader::loadObject(m_path);
-    const QJsonArray arr = requireArray(root, "formulas");
-    vector<Formula> result;
-    result.reserve(static_cast<size_t>(arr.size()));
-    for (const auto& item : arr) {
+std::vector<Formula> JsonFormulaRepository::loadAll() const {
+    std::vector<Formula> result;
+    for (const auto& item : JsonLoader::loadObject(m_path).value("formulas").toArray()) {
         const QJsonObject o = item.toObject();
         Formula f;
         f.id = str(o, "id");
@@ -64,20 +44,16 @@ vector<Formula> JsonFormulaRepository::loadAll() const {
         f.chapter = str(o, "chapter");
         f.noSolutionHint = str(o, "noSolutionHint", false);
         const QJsonObject units = o.value("units").toObject();
-        for (auto it = units.begin(); it != units.end(); ++it) {
+        for (auto it = units.begin(); it != units.end(); ++it)
             f.unitOverrides[it.key().toStdString()] = it.value().toString().toStdString();
-        }
         result.push_back(std::move(f));
     }
     return result;
 }
 
-vector<Variable> JsonVariableRepository::loadAll() const {
-    const QJsonObject root = JsonLoader::loadObject(m_path);
-    const QJsonArray arr = requireArray(root, "variables");
-    vector<Variable> result;
-    result.reserve(static_cast<size_t>(arr.size()));
-    for (const auto& item : arr) {
+std::vector<Variable> JsonVariableRepository::loadAll() const {
+    std::vector<Variable> result;
+    for (const auto& item : JsonLoader::loadObject(m_path).value("variables").toArray()) {
         const QJsonObject o = item.toObject();
         Variable v;
         v.id = str(o, "id");
@@ -91,34 +67,24 @@ vector<Variable> JsonVariableRepository::loadAll() const {
     return result;
 }
 
-vector<Chapter> JsonChapterRepository::loadAll() const {
-    const QJsonObject root = JsonLoader::loadObject(m_path);
-    const QJsonArray arr = requireArray(root, "chapters");
-    vector<Chapter> result;
-    result.reserve(static_cast<size_t>(arr.size()));
-    for (const auto& item : arr) {
+std::vector<Chapter> JsonChapterRepository::loadAll() const {
+    std::vector<Chapter> result;
+    for (const auto& item : JsonLoader::loadObject(m_path).value("chapters").toArray()) {
         const QJsonObject o = item.toObject();
-        Chapter c;
-        c.id = str(o, "id");
-        c.title = str(o, "title");
-        c.order = o.value("order").toInt();
-        result.push_back(std::move(c));
+        result.push_back({str(o, "id"), str(o, "title"), o.value("order").toInt()});
     }
     return result;
 }
 
-vector<PhysicsConstant> JsonConstantsRepository::loadAll() const {
-    const QJsonObject root = JsonLoader::loadObject(m_path);
-    const QJsonArray arr = requireArray(root, "constants");
-    vector<PhysicsConstant> result;
-    result.reserve(static_cast<size_t>(arr.size()));
-    for (const auto& item : arr) {
+std::vector<PhysicsConstant> JsonConstantsRepository::loadAll() const {
+    std::vector<PhysicsConstant> result;
+    for (const auto& item : JsonLoader::loadObject(m_path).value("constants").toArray()) {
         const QJsonObject o = item.toObject();
         PhysicsConstant c;
         c.id = str(o, "id");
         c.symbol = str(o, "symbol");
         c.name = str(o, "name");
-        c.value = o.value("value").toDouble();
+        c.value = o.value("value").toDouble();          // numbers in JSON, not strings
         c.unit = str(o, "unit", false);
         c.description = str(o, "description", false);
         result.push_back(std::move(c));
@@ -141,106 +107,248 @@ OpticsPresets JsonPresetsRepository::load() const {
     return presets;
 }
 
-vector<ReferenceTopic> JsonReferenceRepository::loadAll() const {
-    const QJsonObject root = JsonLoader::loadObject(m_path);
-    const QJsonArray arr = requireArray(root, "topics");
-    vector<ReferenceTopic> result;
-    result.reserve(static_cast<size_t>(arr.size()));
-    for (const auto& item : arr) {
+std::vector<ReferenceTopic> JsonReferenceRepository::loadAll() const {
+    std::vector<ReferenceTopic> result;
+    for (const auto& item : JsonLoader::loadObject(m_path).value("topics").toArray()) {
         const QJsonObject o = item.toObject();
-        ReferenceTopic t;
-        t.title = str(o, "title");
-        t.equations = strList(o.value("equations"));
-        t.note = str(o, "note", false);
-        result.push_back(std::move(t));
+        result.push_back({str(o, "title"), strList(o.value("equations")), str(o, "note", false)});
     }
     return result;
 }
 
-string JsonReferenceRepository::unitDiscipline() const {
-    const QJsonObject root = JsonLoader::loadObject(m_path);
-    const QJsonObject o = root.value("unitDiscipline").toObject();
+std::vector<StudyTopic> JsonStudyHubRepository::loadAll() const {
+    std::vector<StudyTopic> topics;
+    for (const auto& item : JsonLoader::loadArray(m_path)) {
+        const QJsonObject o = item.toObject();
+        StudyTopic topic;
+        topic.id = str(o, "id", false);
+        topic.title = str(o, "title");
+        topic.chapter = str(o, "chapter", false);
+        topic.summary = str(o, "summary");
+        for (const auto& r : o.value("rules").toArray()) {
+            const QJsonObject rule = r.toObject();
+            topic.rules.push_back({str(rule, "formula"), str(rule, "explain", false)});
+        }
+        for (const auto& c : o.value("constants").toArray()) {
+            const QJsonObject constant = c.toObject();
+            topic.constants.push_back({str(constant, "name"), str(constant, "value")});
+        }
+        topics.push_back(std::move(topic));
+    }
+    return topics;
+}
+
+bool loadStudyHubNotes(const QString& path, QMap<QString, StudyHubNote>& notes, QString* error) {
+    const QFileInfo info(path);
+    if (!info.exists()) {
+        notes.clear();
+        if (error) error->clear();
+        return true;
+    }
+
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        if (error) *error = file.errorString();
+        return false;
+    }
+    QJsonParseError parseError;
+    const QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &parseError);
+    if (parseError.error != QJsonParseError::NoError) {
+        if (error) *error = "Could not parse Study Hub notes JSON: " + parseError.errorString();
+        return false;
+    }
+    if (!doc.isObject()) {
+        if (error) *error = "Study Hub notes file must contain a JSON object.";
+        return false;
+    }
+    const QJsonObject root = doc.object();
+    if (root.value("format").toString() != "phy104-study-hub-notes") {
+        if (error) *error = "Study Hub notes file has an unknown format.";
+        return false;
+    }
+    const QJsonValue versionValue = root.value("version");
+    if (!versionValue.isUndefined() && !versionValue.isDouble()) {
+        if (error) *error = "Study Hub notes version must be a number.";
+        return false;
+    }
+    const double versionNumber = versionValue.isUndefined() ? 1.0 : versionValue.toDouble();
+    if (versionNumber != 1.0 && versionNumber != 2.0) {
+        if (error) *error = "Unsupported Study Hub notes version: " + QString::number(versionNumber);
+        return false;
+    }
+    const int version = static_cast<int>(versionNumber);
+    if (!root.value("notes").isObject()) {
+        if (error) *error = "Study Hub notes file is missing its notes object.";
+        return false;
+    }
+
+    QMap<QString, StudyHubNote> loaded;
+    const QJsonObject stored = root.value("notes").toObject();
+    for (auto it = stored.begin(); it != stored.end(); ++it) {
+        StudyHubNote note;
+        if (version == 1 && it.value().isString()) {  // version 1: a chapter stored only its note text
+            note.text = it.value().toString().toStdString();
+        } else if (version == 2 && it.value().isObject()) { // version 2: note text and summary are separate
+            const QJsonObject entry = it.value().toObject();
+            if ((entry.contains("text") && !entry.value("text").isString()) ||
+                (entry.contains("summary") && !entry.value("summary").isString())) {
+                if (error) *error = "A Study Hub note has an invalid text or summary field.";
+                return false;
+            }
+            note.text = entry.value("text").toString().toStdString();
+            note.summary = entry.value("summary").toString().toStdString();
+        } else {
+            if (error) *error = "A Study Hub note entry does not match its declared version.";
+            return false;
+        }
+        if (!note.text.empty() || !note.summary.empty()) loaded.insert(it.key(), std::move(note));
+    }
+    notes = std::move(loaded);
+    if (error) error->clear();
+    return true;
+}
+
+bool saveStudyHubNotes(const QString& path, const QMap<QString, StudyHubNote>& notes, QString* error) {
+    QMap<QString, StudyHubNote> previous;
+    if (!loadStudyHubNotes(path, previous, error)) return false;
+    QJsonObject stored;
+    for (auto it = notes.begin(); it != notes.end(); ++it) {
+        const StudyHubNote& note = it.value();
+        stored.insert(it.key(), QJsonObject{{"text", QString::fromStdString(note.text)},
+                                            {"summary", QString::fromStdString(note.summary)}});
+    }
+    const QJsonObject root{{"format", "phy104-study-hub-notes"}, {"version", 2}, {"notes", stored}};
+    const QByteArray bytes = QJsonDocument(root).toJson(QJsonDocument::Indented);
+    QDir().mkpath(QFileInfo(path).absolutePath());
+    QSaveFile file(path);
+    if (!file.open(QIODevice::WriteOnly)) {
+        if (error) *error = file.errorString();
+        return false;
+    }
+    if (file.write(bytes) != bytes.size()) {
+        if (error) *error = file.errorString();
+        file.cancelWriting();
+        return false;
+    }
+    if (!file.commit()) {
+        if (error) *error = file.errorString();
+        return false;
+    }
+    if (error) error->clear();
+    return true;
+}
+
+std::string JsonReferenceRepository::unitDiscipline() const {
+    const QJsonObject o = JsonLoader::loadObject(m_path).value("unitDiscipline").toObject();
     return str(o, "title", false) + "\n" + str(o, "text", false);
 }
 
-vector<NoteEntry> JsonSummaryRepository::loadAll() const {
-    const QJsonObject root = JsonLoader::loadObject(m_path);
-    const QJsonArray arr = requireArray(root, "notes");
-    vector<NoteEntry> result;
-    result.reserve(static_cast<size_t>(arr.size()));
-    for (const auto& item : arr) {
-        const QJsonObject o = item.toObject();
-        NoteEntry n;
-        n.id = str(o, "id");
-        n.chapter = str(o, "chapter");
-        n.type = str(o, "type");
-        n.title = str(o, "title");
-        n.content = strList(o.value("content"));
-        n.equations = strList(o.value("equations"));
-        result.push_back(std::move(n));
-    }
-    return result;
+namespace {
+
+QJsonObject registerToJson(const LcdRegister& r) {
+    auto list = [](const std::vector<std::string>& v) { QJsonArray a; for (const auto& s : v) a.append(QString::fromStdString(s)); return a; };
+    return {{"title", QString::fromStdString(r.title)}, {"mode", QString::fromStdString(r.mode)}, {"resultFirst", r.resultFirst},
+            {"lines", list(r.lines)}, {"resultLabel", QString::fromStdString(r.resultLabel)}, {"resultValue", QString::fromStdString(r.resultValue)},
+            {"extraLines", list(r.extraLines)}, {"footer", QString::fromStdString(r.footer)}, {"isError", r.isError}};
 }
 
-vector<KeyboardGroup> JsonKeyboardRepository::loadAll() const {
-    const QJsonObject root = JsonLoader::loadObject(m_path);
-    const QJsonArray arr = requireArray(root, "groups");
-    vector<KeyboardGroup> result;
-    result.reserve(static_cast<size_t>(arr.size()));
-    for (const auto& item : arr) {
-        const QJsonObject o = item.toObject();
-        KeyboardGroup g;
-        g.name = str(o, "name");
-        g.keys = strList(o.value("keys"));
-        result.push_back(std::move(g));
-    }
-    return result;
+LcdRegister registerFromJson(const QJsonObject& o) {
+    LcdRegister r;
+    r.title = o.value("title").toString().toStdString();
+    r.mode = o.value("mode").toString("DEG").toStdString();
+    r.resultFirst = o.value("resultFirst").toBool();
+    r.lines = strList(o.value("lines"));
+    r.resultLabel = o.value("resultLabel").toString().toStdString();
+    r.resultValue = o.value("resultValue").toString().toStdString();
+    r.extraLines = strList(o.value("extraLines"));
+    r.footer = o.value("footer").toString().toStdString();
+    r.isError = o.value("isError").toBool();
+    return r;
 }
+
+QJsonObject snapshotToJson(const Snapshot& s) {
+    QJsonArray params, regs;
+    for (const auto& [k, v] : s.parameters) params.append(QJsonObject{{"name", QString::fromStdString(k)}, {"value", QString::fromStdString(v)}});
+    for (const LcdRegister& r : s.registers) regs.append(registerToJson(r));
+    return {{"experiment", QString::fromStdString(s.experiment)}, {"headline", QString::fromStdString(s.headline)},
+            {"parameters", params}, {"registers", regs}, {"notesContent", QString::fromStdString(s.notesContent)}};
+}
+
+/// A saved run keeps the sweep it produced, so two runs can be overlaid later.
+QJsonObject seriesToJson(const DataSeries& s) {
+    QJsonArray headers, rows, analysis;
+    for (const auto& h : s.headers) headers.append(QString::fromStdString(h));
+    for (const auto& [name, value] : s.analysis)
+        analysis.append(QJsonObject{{"name", QString::fromStdString(name)}, {"value", QString::fromStdString(value)}});
+    for (const auto& row : s.rows) {
+        QJsonArray cells;
+        for (double v : row) cells.append(std::isfinite(v) ? QJsonValue(v) : QJsonValue(QJsonValue::Null));
+        rows.append(cells);
+    }
+    return {{"id", QString::fromStdString(s.id)}, {"name", QString::fromStdString(s.name)},
+            {"description", QString::fromStdString(s.description)}, {"note", QString::fromStdString(s.note)},
+            {"headers", headers}, {"rows", rows}, {"analysis", analysis}};
+}
+
+DataSeries seriesFromJson(const QJsonObject& o) {
+    DataSeries s;
+    s.id = o.value("id").toString().toStdString();
+    s.name = o.value("name").toString().toStdString();
+    s.description = o.value("description").toString().toStdString();
+    s.note = o.value("note").toString().toStdString();
+    for (const auto& v : o.value("analysis").toArray()) {
+        const QJsonObject item = v.toObject();
+        s.analysis.emplace_back(item.value("name").toString().toStdString(), item.value("value").toString().toStdString());
+    }
+    for (const auto& h : o.value("headers").toArray()) s.headers.push_back(h.toString().toStdString());
+    for (const auto& rv : o.value("rows").toArray()) {
+        std::vector<double> row;
+        for (const auto& cell : rv.toArray()) row.push_back(cell.isNull() ? kNaN : cell.toDouble());
+        s.rows.push_back(std::move(row));
+    }
+    return s;
+}
+
+Snapshot snapshotFromJson(const QJsonObject& o) {
+    Snapshot s;
+    s.experiment = o.value("experiment").toString().toStdString();
+    s.headline = o.value("headline").toString().toStdString();
+    for (const auto& v : o.value("parameters").toArray()) {
+        const QJsonObject p = v.toObject();
+        s.parameters.emplace_back(p.value("name").toString().toStdString(), p.value("value").toString().toStdString());
+    }
+    for (const auto& v : o.value("registers").toArray()) s.registers.push_back(registerFromJson(v.toObject()));
+    s.notesContent = o.value("notesContent").toString().toStdString();
+    return s;
+}
+
+} // namespace
 
 bool JsonSessionStore::save(const SessionLog& log) const {
     QJsonArray runs;
     for (const RunRecord& r : log.runs()) {
-        runs.append(QJsonObject{
-            {"id", r.id},
-            {"experiment", QString::fromStdString(r.experiment)},
-            {"description", QString::fromStdString(r.description)},
-            {"result", QString::fromStdString(r.result)},
-            {"valid", r.valid}
-        });
+        QJsonObject run{{"id", r.id}, {"experiment", QString::fromStdString(r.experiment)},
+                        {"description", QString::fromStdString(r.description)},
+                        {"result", QString::fromStdString(r.result)}, {"valid", r.valid}};
+        if (!r.series.rows.empty() || !r.series.headers.empty()) run.insert("series", seriesToJson(r.series));
+        runs.append(run);
     }
-
     QJsonArray equations;
-    for (const string& e : log.equations()) {
-        equations.append(QString::fromStdString(e));
-    }
-
+    for (const std::string& e : log.equations()) equations.append(QString::fromStdString(e));
     QJsonArray snapshots;
-    for (const auto& [name, snap] : log.snapshots()) {
-        QJsonArray params, regs;
-        for (const auto& [k, v] : snap.parameters) {
-            params.append(QJsonObject{{"name", QString::fromStdString(k)}, {"value", QString::fromStdString(v)}});
-        }
-        QJsonObject snapObj{
-            {"experiment", QString::fromStdString(snap.experiment)},
-            {"headline", QString::fromStdString(snap.headline)},
-            {"parameters", params},
-            {"notesContent", QString::fromStdString(snap.notesContent)}
-        };
-        snapshots.append(snapObj);
+    for (const auto& [name, snap] : log.snapshots()) snapshots.append(snapshotToJson(snap));
+    QJsonObject recentExport;                                  // the "recent export" card of the Export page
+    if (log.hasExport()) {
+        const ExportRecord& e = log.lastExport();
+        recentExport = {{"path", QString::fromStdString(e.path)}, {"format", QString::fromStdString(e.format)},
+                        {"series", QString::fromStdString(e.series)}, {"when", QString::fromStdString(e.when)},
+                        {"rows", e.rows}, {"columns", e.columns}};
     }
-
-    const QJsonObject root{
-        {"format", "phy104-session"},
-        {"version", 4},
-        {"session", log.sessionNumber()},
-        {"notes", QString::fromStdString(log.notes())},
-        {"runs", runs},
-        {"snapshots", snapshots},
-        {"equations", equations}
-    };
-
+    const QJsonObject root{{"format", "phy104-session"}, {"version", 6}, {"session", log.sessionNumber()},
+                           {"notes", QString::fromStdString(log.notes())}, {"runs", runs}, {"snapshots", snapshots},
+                           {"equations", equations}, {"recentExport", recentExport}};
     QDir().mkpath(QFileInfo(m_path).absolutePath());
-    QSaveFile file(m_path);
+    QSaveFile file(m_path);                                   // atomic: never leaves a half-written file
     if (!file.open(QIODevice::WriteOnly)) return false;
     file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
     return file.commit();
@@ -251,46 +359,81 @@ bool JsonSessionStore::load(SessionLog& log) const {
     if (!file.open(QIODevice::ReadOnly)) return false;
     const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
     if (!doc.isObject() || doc.object().value("format").toString() != "phy104-session") return false;
-
     const QJsonObject root = doc.object();
-
-    vector<RunRecord> runs;
+    std::vector<RunRecord> runs;
     for (const auto& item : root.value("runs").toArray()) {
         const QJsonObject o = item.toObject();
-        RunRecord r;
-        r.id = o.value("id").toInt();
-        r.experiment = str(o, "experiment", false);
-        r.description = str(o, "description", false);
-        r.result = str(o, "result", false);
-        r.valid = o.value("valid").toBool(true);
-        runs.push_back(std::move(r));
+        RunRecord run;
+        run.id = o.value("id").toInt();
+        run.experiment = str(o, "experiment", false);
+        run.description = str(o, "description", false);
+        run.result = str(o, "result", false);
+        run.valid = o.value("valid").toBool(true);
+        if (o.contains("series")) run.series = seriesFromJson(o.value("series").toObject());   // version 5
+        runs.push_back(std::move(run));
     }
     log.restoreRuns(std::move(runs));
     log.setNotes(root.value("notes").toString().toStdString());
-
-    std::map<string, Snapshot> snapshots;
+    std::map<std::string, Snapshot> snapshots;
     for (const auto& v : root.value("snapshots").toArray()) {
-        const QJsonObject o = v.toObject();
-        Snapshot s;
-        s.experiment = str(o, "experiment", false);
-        s.headline = str(o, "headline", false);
-        for (const auto& p : o.value("parameters").toArray()) {
-            const QJsonObject po = p.toObject();
-            s.parameters.emplace_back(str(po, "name", false), str(po, "value", false));
-        }
-        s.notesContent = str(o, "notesContent", false);
-        snapshots[s.experiment] = std::move(s);
+        Snapshot snap = snapshotFromJson(v.toObject());
+        snapshots[snap.experiment] = std::move(snap);
     }
-    log.restoreSnapshots(std::move(snapshots));
+    log.restoreSnapshots(std::move(snapshots));                // re-stamped with the loaded notes
     log.setSessionNumber(root.value("session").toInt(log.sessionNumber()));
-
-    vector<string> equations;
-    for (const auto& e : root.value("equations").toArray()) {
-        equations.push_back(e.toString().toStdString());
-    }
+    std::vector<std::string> equations;
+    for (const auto& e : root.value("equations").toArray()) equations.push_back(e.toString().toStdString());
     log.setEquations(std::move(equations));
-
+    const QJsonObject recent = root.value("recentExport").toObject();      // absent in version 3 files
+    if (!recent.isEmpty()) {
+        ExportRecord e;
+        e.path = str(recent, "path", false);
+        e.format = str(recent, "format", false);
+        e.series = str(recent, "series", false);
+        e.when = str(recent, "when", false);
+        e.rows = recent.value("rows").toInt();
+        e.columns = recent.value("columns").toInt();
+        log.setLastExport(std::move(e));
+    }
     return true;
+}
+
+std::vector<KeyboardGroup> JsonKeyboardRepository::loadAll() const {
+    std::vector<KeyboardGroup> result;
+    for (const auto& item : JsonLoader::loadObject(m_path).value("groups").toArray()) {
+        const QJsonObject o = item.toObject();
+        result.push_back({str(o, "name"), strList(o.value("keys"))});
+    }
+    return result;
+}
+
+} // namespace phy104
+
+namespace phy104 {
+
+std::vector<ScientificPage> JsonKeyboardRepository::scientific() const {
+    std::vector<ScientificPage> pages;
+    for (const auto& pv : JsonLoader::loadObject(m_path).value("scientific").toArray()) {
+        const QJsonObject po = pv.toObject();
+        ScientificPage page;
+        page.name = po.value("name").toString().toStdString();
+        for (const auto& rv : po.value("rows").toArray()) {
+            std::vector<ScientificKey> row;
+            for (const auto& kv : rv.toArray()) {
+                const QJsonObject k = kv.toObject();
+                ScientificKey key;
+                key.legend = k.value("legend").toString().toStdString();
+                key.latex = k.value("latex").toString().toStdString();
+                key.shiftLegend = k.value("shiftLegend").toString().toStdString();
+                key.shiftLatex = k.value("shiftLatex").toString().toStdString();
+                key.control = k.value("control").toString().toStdString();
+                row.push_back(std::move(key));
+            }
+            page.rows.push_back(std::move(row));
+        }
+        pages.push_back(std::move(page));
+    }
+    return pages;
 }
 
 } // namespace phy104

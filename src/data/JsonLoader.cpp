@@ -4,35 +4,32 @@
 #include <QJsonDocument>
 #include <stdexcept>
 
-// استخدام using في ملف .cpp للراحة (مسموح)
-using std::string;
-using std::to_string;
-using std::runtime_error;
-
 namespace phy104 {
 
 QJsonObject JsonLoader::loadObject(const QString& path) {
-    // تحويل المسار إلى std::string مرة واحدة لاستخدامه في رسائل الخطأ (تحسين أداء)
-    const string pathStr = path.toStdString();
-
-    // 1. فتح الملف
     QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) {
-        throw runtime_error("Cannot open data file: " + pathStr);
-    }
+    if (!file.open(QIODevice::ReadOnly))
+        throw std::runtime_error("Cannot open data file: " + path.toStdString());
 
-    // 2. قراءة وتحليل محتوى الملف
     QJsonParseError error;
     const QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &error);
-    
-    // 3. التحقق من وجود أخطاء في الصيغة أو إذا لم يكن الكائن الجذري كائناً
-    if (error.error != QJsonParseError::NoError || !doc.isObject()) {
-        throw runtime_error("Invalid JSON in " + pathStr + " (offset " +
-                            to_string(error.offset) + "): " + error.errorString().toStdString());
-    }
-    
-    // 4. إرجاع الكائن الجذري
+    if (error.error != QJsonParseError::NoError || !doc.isObject())
+        throw std::runtime_error("Invalid JSON in " + path.toStdString() + " (offset " +
+                                 std::to_string(error.offset) + "): " + error.errorString().toStdString());
     return doc.object();
+}
+
+QJsonArray JsonLoader::loadArray(const QString& path) {
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly))
+        throw std::runtime_error("Cannot open data file: " + path.toStdString());
+
+    QJsonParseError error;
+    const QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &error);
+    if (error.error != QJsonParseError::NoError || !doc.isArray())
+        throw std::runtime_error("Invalid JSON in " + path.toStdString() + " (offset " +
+                                 std::to_string(error.offset) + "): " + error.errorString().toStdString());
+    return doc.array();
 }
 
 } // namespace phy104

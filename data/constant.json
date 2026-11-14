@@ -1,104 +1,52 @@
-
 {
   "constants": [
     {
       "id": "c",
       "symbol": "c",
-      "name": "Speed of Light in Vacuum",
-      "category": "Fundamental Physical Constants",
-      "unit": "m/s",
+      "name": "Speed of light in vacuum",
       "value": 299792458,
-      "description": "Exact speed of all electromagnetic waves propagating through a vacuum."
+      "unit": "m/s",
+      "description": "Speed of all electromagnetic waves in vacuum."
     },
     {
       "id": "epsilon0",
       "symbol": "ε₀",
-      "name": "Vacuum Permittivity",
-      "category": "Fundamental Physical Constants",
-      "unit": "F/m",
+      "name": "Vacuum permittivity",
       "value": 8.8541878128e-12,
-      "description": "Electric constant describing the capability of a vacuum to permit electric field lines."
+      "unit": "F/m",
+      "description": "Electric constant: how easily electric field lines pass through vacuum."
     },
     {
       "id": "mu0",
       "symbol": "μ₀",
-      "name": "Vacuum Permeability",
-      "category": "Fundamental Physical Constants",
-      "unit": "H/m",
+      "name": "Vacuum permeability",
       "value": 1.25663706212e-06,
-      "description": "Magnetic constant (4π × 10⁻⁷ H/m) relating magnetic flux density to electric current; c² = 1 / (ε₀μ₀)."
+      "unit": "H/m",
+      "description": "Magnetic constant (about 4π×10⁻⁷). Related to c by c² = 1/(ε₀μ₀)."
     },
     {
       "id": "h",
       "symbol": "h",
-      "name": "Planck Constant",
-      "category": "Fundamental Physical Constants",
-      "unit": "J·s",
+      "name": "Planck constant",
       "value": 6.62607015e-34,
-      "description": "Fundamental quantum constant relating photon energy to wave frequency: E = hf."
-    },
-    {
-      "id": "hbar",
-      "symbol": "ℏ",
-      "name": "Reduced Planck Constant",
-      "category": "Fundamental Physical Constants",
       "unit": "J·s",
-      "value": 1.054571817e-34,
-      "description": "Dirac constant equal to h / (2π), used in angular frequency and phase calculations."
+      "description": "Relates photon energy and frequency: E = hf."
     },
     {
       "id": "qe",
       "symbol": "e",
-      "name": "Elementary Charge",
-      "category": "Fundamental Physical Constants",
-      "unit": "C",
+      "name": "Elementary charge",
       "value": 1.602176634e-19,
-      "description": "Fundamental magnitude of electric charge carried by a single proton or electron."
+      "unit": "C",
+      "description": "Magnitude of the charge of a proton or electron."
     },
     {
       "id": "pi",
       "symbol": "π",
       "name": "Pi",
-      "category": "Mathematical Constants",
-      "unit": "dimensionless",
-      "value": 3.141592653589793,
-      "description": "Ratio of a circle's circumference to its diameter; represents a 180° angular phase shift."
-    },
-    {
-      "id": "n_air",
-      "symbol": "n_air",
-      "name": "Refractive Index of Air",
-      "category": "Refractive Indices (n)",
-      "unit": "dimensionless",
-      "value": 1.000293,
-      "description": "Standard refractive index of air at STP (approximated as 1.00 in general optics calculations)."
-    },
-    {
-      "id": "n_water",
-      "symbol": "n_water",
-      "name": "Refractive Index of Water",
-      "category": "Refractive Indices (n)",
-      "unit": "dimensionless",
-      "value": 1.333,
-      "description": "Standard optical refractive index of pure liquid water at 20°C."
-    },
-    {
-      "id": "lambda_visible_min",
-      "symbol": "λ_min",
-      "name": "Minimum Visible Wavelength (Violet)",
-      "category": "Wavelength Spectrum (λ₀)",
-      "unit": "m",
-      "value": 4e-07,
-      "description": "Lower wavelength limit of the human visible optical spectrum (400 nm)."
-    },
-    {
-      "id": "lambda_visible_max",
-      "symbol": "λ_max",
-      "name": "Maximum Visible Wavelength (Red)",
-      "category": "Wavelength Spectrum (λ₀)",
-      "unit": "m",
-      "value": 7e-07,
-      "description": "Upper wavelength limit of the human visible optical spectrum (700 nm)."
+      "value": 3.14159265358979,
+      "unit": "",
+      "description": "Ratio of a circle's circumference to its diameter."
     }
   ]
 }

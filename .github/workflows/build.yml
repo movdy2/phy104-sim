@@ -1,0 +1,203 @@
+name: build
+
+on:
+  push:
+    branches: [new-v2.1, main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      publish_screenshots:
+        description: Commit the captured screenshots to the selected branch
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ------------------------------------------------------------------ Linux: apt Qt 6, Ninja, ctest
+  linux:
+    name: Linux · Qt 6 · ctest
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt 6 and build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build qt6-base-dev qt6-svg-dev \
+            libgl1-mesa-dev libegl1-mesa-dev
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: |
+          set -o pipefail
+          cmake --build build --parallel 2>&1 | tee build.log
+
+      - name: Annotate compiler warnings
+        if: always()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          log = Path("build.log")
+          if log.exists():
+              warnings = list(dict.fromkeys(line.strip() for line in log.read_text(errors="replace").splitlines()
+                                            if "warning:" in line))
+              if warnings:
+                  message = " | ".join(warnings).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+                  print(f"::warning title=compiler warnings::{message}")
+          PY
+
+      - name: Test
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          set -o pipefail
+          ctest --test-dir build --output-on-failure 2>&1 | tee ctest.log
+
+      - name: Capture UI screenshots
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          ./build/src/PHY104OpticalAssistant --screenshots build/screenshots
+          test -s build/screenshots/dashboard_updated_header.png
+
+      - name: Upload UI screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-screenshots
+          path: build/screenshots/*.png
+          if-no-files-found: error
+
+      - name: Publish refreshed screenshots
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_screenshots
+        run: |
+          cp build/screenshots/dashboard_updated_header.png docs/screenshots/
+          cp build/screenshots/00_dark.png docs/screenshots/dashboard.png
+          cp build/screenshots/01_dark.png docs/screenshots/refraction_tir.png
+          cp build/screenshots/02_dark.png docs/screenshots/lenses_mirrors.png
+          cp build/screenshots/03_dark.png docs/screenshots/prisms.png
+          cp build/screenshots/04_dark.png docs/screenshots/wave_interference.png
+          cp build/screenshots/state_calculator.png docs/screenshots/calculator_keypad.png
+          cp build/screenshots/state_mirror.png docs/screenshots/convex_mirror.png
+          cp build/screenshots/00_light.png docs/screenshots/light_theme.png
+          cp build/screenshots/12_dark.png docs/screenshots/notes_workspace.png
+          cp build/screenshots/state_paused.png docs/screenshots/paused_invalid_input.png
+          cp build/screenshots/state_tir.png docs/screenshots/tir_mode.png
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots
+          if git diff --cached --quiet; then
+            echo "Screenshots are already current."
+            exit 0
+          fi
+          git commit -m "Refresh UI screenshots"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      # a failing test shows up in the PR page, not only in the (large) job log
+      - name: Annotate failing tests
+        if: failure()
+        run: |
+          log=ctest.log
+          [ -f "$log" ] || exit 0
+          grep -aE "FAIL:|FAIL!|QFATAL|Segmentation|Aborted|Test #[0-9]+: .*Failed|The following tests FAILED|Errors while running CTest" "$log" | head -30 | while read -r line; do
+            echo "::error title=failing test::${line}"
+          done
+
+      - name: Upload test logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-test-logs
+          path: |
+            ctest.log
+            build/Testing/**/LastTest.log
+          if-no-files-found: ignore
+
+  # ------------------------------------------------------------------ Windows: MSVC + aqt Qt 6
+  windows:
+    name: Windows · MSVC · ctest
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      # aqtinstall breaks on the (very new) default Python of the runner: pin a known interpreter first
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # aqtinstall directly (the action used to hide the real error); the log lines become annotations if it fails
+      - name: Install Qt 6
+        shell: pwsh
+        run: |
+          python -m pip install --quiet --disable-pip-version-check "aqtinstall==3.3.*" py7zr
+          # no -m qtsvg: QtSvg lives inside qtbase since Qt 6
+          python -m aqt install-qt windows desktop 6.8.3 win64_msvc2022_64 --outputdir C:/Qt 2>&1 |
+            Tee-Object -FilePath qtinstall.log
+          if ($LASTEXITCODE -ne 0) {
+            Get-Content qtinstall.log -Tail 15 | ForEach-Object { Write-Host "::error title=aqt::$_" }
+            exit 1
+          }
+          "QT_ROOT_DIR=C:/Qt/6.8.3/msvc2022_64" >> $env:GITHUB_ENV
+          "C:/Qt/6.8.3/msvc2022_64/bin" >> $env:GITHUB_PATH
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        shell: pwsh
+        run: |
+          cmake --build build --config Release --parallel 2>&1 | Tee-Object -FilePath build.log
+          if ($LASTEXITCODE -ne 0) {
+            Select-String -Path build.log -Pattern ": error|error C[0-9]|error LNK" | Select-Object -First 25 |
+              ForEach-Object { Write-Host "::error title=build::$($_.Line)" }
+            exit 1
+          }
+
+      - name: Annotate compiler warnings
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path build.log) {
+            $warnings = @(Select-String -Path build.log -Pattern "warning C[0-9]+:" |
+              ForEach-Object { $_.Line.Trim() } | Select-Object -Unique)
+            if ($warnings.Count -gt 0) {
+              $message = [string]::Join(" | ", $warnings).Replace("%", "%25").Replace("`r", "%0D").Replace("`n", "%0A")
+              Write-Host "::warning title=compiler warnings::$message"
+            }
+          }
+
+      - name: Test
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          ctest --test-dir build -C Release --output-on-failure 2>&1 | Tee-Object -FilePath ctest.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Annotate failing tests
+        if: failure()
+        shell: pwsh
+        run: |
+          $log = "ctest.log"
+          if (Test-Path $log) {
+            Select-String -Path $log -Pattern "FAIL:|FAIL!|QFATAL|Segmentation|Aborted|Test #[0-9]+: .*Failed|The following tests FAILED|Errors while running CTest" | Select-Object -First 30 |
+              ForEach-Object { Write-Host "::error title=failing test::$($_.Line)" }
+          }
+
+  # ------------------------------------------------------------------ the business layer alone, no Qt needed
+  core-only:
+    name: Core · g++ · no Qt
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and run the core tests
+        run: |
+          g++ -std=c++20 -Isrc/core tests/test_core.cpp src/core/*.cpp -o test_core
+          ./test_core

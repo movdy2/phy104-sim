@@ -5,33 +5,30 @@
 
 namespace phy104 {
 
-// نوع مختصر لخريطة المتغيرات (اسم المتغير -> قيمته)
 using VariableMap = std::map<std::string, double>;
 
-/// وحدة الزاوية المستخدمة في الدوال المثلثية (sin, cos, tan, ...)
-/// الدوال المثلثية تستخدم الراديان افتراضياً. الآلة الحاسبة تمرر Degree
+/// Unit used by sin/cos/tan/... (inputs) and asin/acos/atan (outputs).
 enum class AngleUnit { Radians, Degrees };
 
-/// محلل ومقيّم التعبيرات الرياضية (Recursive-descent parser).
-/// يدعم: + - * / ^ ( )، الأرقام (3e8)، المتغيرات، الثوابت (pi, e)،
-/// والدوال: sin cos tan sec csc cot asin acos atan sqrt abs ln log.
-/// الوحدات المدمجة: nm um mm cm km  ->  "550*nm" يعمل.
-/// ترمي std::runtime_error إذا كان التعبير غير صالح.
+/// Recursive-descent parser for math text such as "1+1+1+2-4/24" or "sqrt(abs(-16))+cos(0)".
+/// Supports + - * / ^ ( ), numbers (3e8), variables, constants (pi, e) and the functions
+/// sin cos tan sec csc cot asin acos atan sqrt abs ln log.
+/// ANGLES: trigonometric functions use RADIANS by default (the formula solver converts degree
+/// variables itself). The free calculator passes AngleUnit::Degrees for DEG mode.
+/// Built-in length units: nm um mm cm km  ->  "550*nm" works.
+/// Throws std::runtime_error with a readable message on bad input.
 class ExpressionEvaluator {
 public:
-    /// تقييم تعبير رياضي وإرجاع النتيجة.
-    /// ترمي std::runtime_error إذا كان التعبير غير صالح.
     static double evaluate(const std::string& expression, const VariableMap& variables = {},
                            AngleUnit angleUnit = AngleUnit::Radians);
 
-    /// إرجاع قائمة بأسماء المتغيرات المستخدمة في التعبير.
-    /// (أسماء الدوال و "pi" لا تُعد متغيرات).
+    /// Variable names used in an expression, in order of first appearance
+    /// (function names and "pi" are not variables).
     static std::vector<std::string> identifiers(const std::string& expression);
 
-    /// التحقق مما إذا كان الاسم هو دالة رياضية معروفة (مثل sin, cos).
     static bool isFunctionName(const std::string& name);
 
-    /// تحويل الرموز التعبيرية (مثل ×, ÷, −, π, √, [ ] { }) إلى رموز يفهمها المحلل.
+    /// Converts keyboard symbols (× ÷ − π √ [ ] { }) into plain ASCII.
     static std::string normalize(std::string text);
 };
 

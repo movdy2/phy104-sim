@@ -9,7 +9,10 @@ namespace {
 
 struct Part { std::string name; std::string data; };
 
-void put16(std::vector<std::uint8_t>& out, std::uint16_t v) { out.push_back(v & 0xFF); out.push_back(v >> 8); }
+void put16(std::vector<std::uint8_t>& out, std::uint16_t v) {
+    out.push_back(static_cast<std::uint8_t>(v & 0xFFu));
+    out.push_back(static_cast<std::uint8_t>(v >> 8));
+}
 void put32(std::vector<std::uint8_t>& out, std::uint32_t v) { put16(out, v & 0xFFFF); put16(out, static_cast<std::uint16_t>(v >> 16)); }
 
 std::vector<std::uint8_t> zipStore(const std::vector<Part>& parts) {

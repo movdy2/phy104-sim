@@ -7,37 +7,37 @@
 
 namespace phy104 {
 
-/// صفحة واحدة من نتائج البحث.
+/// One page of search results.
 struct FormulaPage {
     std::vector<const Formula*> items;
-    int pageIndex = 0;           // يبدأ من 0، ومقيد بصفحة صالحة
+    int pageIndex = 0;           // 0-based, already clamped to a valid page
     int pageCount = 1;
-    std::size_t total = 0;       // عدد المعادلات قبل التقسيم
+    std::size_t total = 0;       // number of formulas before paging
 };
 
-/// إدارة البحث، تصفية الفصول، ترتيب الفصول، والتقسيم إلى صفحات لمتصفح المعادلات.
-/// C++ خالص (بدون Qt)، لذا تبقى الواجهة بسيطة وكل شيء هنا قابل للاختبار.
+/// Search, chapter filtering, chapter sorting and paging for the formula browser.
+/// Pure C++ (no Qt), so the UI stays thin and everything here is unit tested.
 class FormulaManager {
 public:
-    /// `engine` يجب أن يبقى حياً طالما المدير موجود (لأنه يملك كائنات Formula التي نشير إليها).
+    /// `engine` must outlive the manager (it owns the Formula objects we point to).
     FormulaManager(const FormulaEngine& engine, std::vector<Chapter> chapters);
 
-    /// الفصول مرتبة حسب ترتيب الدورة.
+    /// Chapters in course order.
     const std::vector<Chapter>& chapters() const { return m_chapters; }
     std::string chapterTitle(const std::string& chapterId) const;
 
-    /// بحث غير حساس لحالة الأحرف في اسم المعادلة ومعرفها ("snell law" يجد id snell_law؛ كل الكلمات يجب أن تطابق).
-    /// استعلام فارغ = كل شيء. `chapterId` فارغ = كل الفصول.
-    /// النتيجة مرتبة حسب ترتيب الفصل ثم حسب الاسم.
+    /// Case-insensitive search in formula NAME and ID ("snell law" finds id snell_law; all words
+    /// must match). Empty query = everything. `chapterId` empty = all chapters.
+    /// Result is sorted by chapter order, then by name.
     std::vector<const Formula*> search(const std::string& query, const std::string& chapterId = "") const;
 
-    /// عدد المعادلات في كل فصل تطابق `query` (للتسميات مثل "Diffraction (6)").
+    /// How many formulas of each chapter match `query` (for "Diffraction (6)" style labels).
     std::map<std::string, int> countByChapter(const std::string& query) const;
 
-    /// تقسم `results` إلى صفحات بحجم `pageSize` (الحد الأدنى 1). يتم تقييد `pageIndex`.
+    /// Cuts `results` into pages of `pageSize` (minimum 1). pageIndex is clamped.
     static FormulaPage paginate(const std::vector<const Formula*>& results, int pageIndex, int pageSize);
 
-    /// تحويل إلى أحرف صغيرة، '_' -> ' '، مسافات فردية. تُستخدم للمطابقة.
+    /// Lower-case, '_' -> ' ', single spaces. Used for matching.
     static std::string normalize(const std::string& text);
 
 private:
