@@ -19,6 +19,7 @@ target_link_libraries(phy104_ui PUBLIC phy104_data phy104_core Qt6::Widgets Qt6:
 phy104_enable_warnings(phy104_ui STRICT)
 
 add_executable(PHY104OpticalAssistant main.cpp ../assets/assets.qrc)
+target_compile_definitions(PHY104OpticalAssistant PRIVATE "PHY104_APP_VERSION=\"${PROJECT_VERSION}\"")
 target_link_libraries(PHY104OpticalAssistant PRIVATE phy104_ui)
 phy104_enable_warnings(PHY104OpticalAssistant STRICT)
 

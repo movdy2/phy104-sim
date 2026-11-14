@@ -65,13 +65,48 @@ int main() {
         {
             const QString path = QDir::tempPath() + "/phy104_study_hub_notes_test.json";
             QFile::remove(path);
-            QMap<QString, QString> notes{{"refraction", "Snell's law notes"}, {"prisms", "δ = i₁ + i₂ − A"}};
+            QMap<QString, StudyHubNote> notes{
+                {"refraction", {"Snell's law notes", "Angles are measured from the normal."}},
+                {"prisms", {"δ = i₁ + i₂ − A", "Minimum deviation gives the refractive index."}}
+            };
             QString error;
             auto expectNotes = [&](bool ok, const std::string& what) {
                 if (!ok) { ++failures; std::cerr << "FAIL: " << what << "\n"; }
             };
-            expectNotes(saveStudyHubNotes(path, notes, &error) && error.isEmpty(), "Study Hub notes JSON saves atomically");
-            expectNotes(loadStudyHubNotes(path) == notes, "Study Hub chapter notes round-trip through JSON");
+            expectNotes(saveStudyHubNotes(path, notes, &error) && error.isEmpty(), "Study Hub notes and summaries save atomically");
+            QMap<QString, StudyHubNote> loaded;
+            expectNotes(loadStudyHubNotes(path, loaded, &error) && loaded == notes,
+                        "Study Hub note and summary round-trip through JSON");
+
+            // Existing version-1 files stored only a string for each chapter; keep those notes intact.
+            const QJsonObject legacyRoot{{"format", "phy104-study-hub-notes"}, {"version", 1},
+                                         {"notes", QJsonObject{{"refraction", "legacy note"}}}};
+            QFile legacy(path);
+            expectNotes(legacy.open(QIODevice::WriteOnly | QIODevice::Truncate), "legacy Study Hub notes file opens");
+            if (legacy.isOpen()) {
+                legacy.write(QJsonDocument(legacyRoot).toJson());
+                legacy.close();
+                QMap<QString, StudyHubNote> migrated;
+                expectNotes(loadStudyHubNotes(path, migrated, &error) &&
+                            migrated.value("refraction").text == "legacy note" && migrated.value("refraction").summary.empty(),
+                            "version-1 Study Hub notes load with an empty summary");
+            }
+
+            const QByteArray damagedJson("{not valid JSON");
+            QFile damaged(path);
+            expectNotes(damaged.open(QIODevice::WriteOnly | QIODevice::Truncate), "damaged notes fixture opens");
+            if (damaged.isOpen()) {
+                damaged.write(damagedJson);
+                damaged.close();
+                QMap<QString, StudyHubNote> preserved{{"keep", {"retain", "existing in-memory data"}}};
+                const auto beforeLoad = preserved;
+                expectNotes(!loadStudyHubNotes(path, preserved, &error) && preserved == beforeLoad && !error.isEmpty(),
+                            "malformed notes JSON is reported without changing loaded notes");
+                expectNotes(!saveStudyHubNotes(path, notes, &error), "saving refuses to overwrite malformed notes JSON");
+                const bool intact = damaged.open(QIODevice::ReadOnly) && damaged.readAll() == damagedJson;
+                damaged.close();
+                expectNotes(intact, "malformed notes JSON remains intact after a rejected save");
+            }
             QFile::remove(path);
         }
 
@@ -121,6 +156,7 @@ int main() {
             first.series.headers = {"d_o (mm)", "d_i (mm)"};
             first.series.rows = {{10, 15.2}, {20, 12.4}, {30, kNaN}};      // a gap survives the round trip
             first.series.analysis = {{"Fit", "Weighted least squares"}, {"Slope uncertainty (1σ)", "0.015"}};
+            const auto expectedAnalysis = first.series.analysis;
             log.addRun("Wave Interference", "532 nm", "β = 3.1920 mm", false);
             log.setNotes("# Notes\nunicode: θ₂ ≥ θc");
             LcdRegister reg; reg.title = "CALCULATION REGISTER"; reg.lines = {"01  n₁ sin θ₁ = n₂ sin θ₂"}; reg.resultLabel = "θ₂"; reg.resultValue = "48.5904°";
@@ -147,7 +183,7 @@ int main() {
             const RunRecord& kept = back.runs()[0];
             expect(kept.series.id == "prism_sweep" && kept.series.headers.size() == 2 && kept.series.rows.size() == 3,
                    "the sweep of a saved run survives the .phy file (version 6)");
-            expect(kept.series.analysis == first.series.analysis,
+            expect(kept.series.analysis == expectedAnalysis,
                    "fit and uncertainty metadata survive the saved-series JSON round trip");
             expect(kept.series.rows[2][1] != kept.series.rows[2][1], "a missing cell comes back as NaN, not 0");
             expect(back.runs()[1].series.rows.empty(), "a run without a sweep stays empty");

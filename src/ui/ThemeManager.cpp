@@ -273,8 +273,8 @@ QLabel#statusError { background: @errorBg@; color: @error@; border: 1px solid @e
 QTableWidget { background: transparent; border: none; gridline-color: transparent; color: @text@; font-family: 'JetBrains Mono'; font-size: 11px; selection-background-color: transparent; }
 QTableWidget::item { border-bottom: 1px solid @border@; padding: 0 4px; }
 QHeaderView::section { background: transparent; color: @dim@; font-family: 'JetBrains Mono'; font-size: 9px; padding: 6px 4px; border: none; border-bottom: 1px solid @border@; text-align: left; }
-QPlainTextEdit#mdEditor, QTextBrowser#mdPreview { background: @canvas@; color: @text@; border: 1px solid @border@; border-radius: 4px; padding: 8px; selection-background-color: @amber@; selection-color: @bg@; }
-QPlainTextEdit#mdEditor:focus { border: 2px solid @amber@; padding: 7px; }
+QPlainTextEdit#mdEditor, QPlainTextEdit#studyHubNoteEditor, QPlainTextEdit#studyHubNoteSummaryEditor, QTextBrowser#mdPreview { background: @canvas@; color: @text@; border: 1px solid @border@; border-radius: 4px; padding: 8px; selection-background-color: @amber@; selection-color: @bg@; }
+QPlainTextEdit#mdEditor:focus, QPlainTextEdit#studyHubNoteEditor:focus, QPlainTextEdit#studyHubNoteSummaryEditor:focus { border: 2px solid @amber@; padding: 7px; }
 QToolButton#fmtAccent { background: @amberTint@; border: 1px solid @amber@; border-radius: 3px; padding: 3px 10px; color: @amber@; font-family: 'Inter'; font-weight: 600; }
 QToolButton#fmtAccent { background: transparent; border: 1px solid @border@; border-radius: 3px; padding: 3px 10px; color: @text@; font-family: 'Inter'; font-weight: 600; }
 QToolButton#fmtAccent:checked { background: @amberTint@; border-color: @amber@; color: @amber@; }

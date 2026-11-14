@@ -10,6 +10,7 @@ class QComboBox;
 class QLabel;
 class QListWidget;
 class QPlainTextEdit;
+class QPushButton;
 class QStackedWidget;
 class QTableWidget;
 class QTimer;
@@ -33,6 +34,8 @@ public:
     QTableWidget* constantTable() const { return m_constants; }              // constants for the selected chapter
     QLabel* summaryLabel() const { return m_summary; }
     QPlainTextEdit* notesEditor() const { return m_notesEditor; }
+    QPlainTextEdit* noteSummaryEditor() const { return m_noteSummaryEditor; }
+    QPushButton* summarizeNoteButton() const { return m_summarizeNoteButton; }
     QString notesFilePath() const { return m_notesFilePath; }
     void flushStudyNotes();
     int topicCount() const { return int(m_topics.size()); }
@@ -54,11 +57,15 @@ private:
     QTableWidget* m_constants = nullptr;
     QComboBox* m_noteChapter = nullptr;
     QPlainTextEdit* m_notesEditor = nullptr;
+    QPlainTextEdit* m_noteSummaryEditor = nullptr;
+    QPushButton* m_summarizeNoteButton = nullptr;
     QLabel* m_noteStatus = nullptr;
     QTimer* m_noteSaveTimer = nullptr;
     QString m_notesFilePath;
     QString m_loadedNoteKey;
-    QMap<QString, QString> m_studyNotes;
+    QString m_notesLoadError;
+    QMap<QString, StudyHubNote> m_studyNotes;
+    bool m_notesLoadFailed = false;
     bool m_loadingNote = false;
     bool m_notesDirty = false;
     Panel* m_rulesPanel = nullptr;

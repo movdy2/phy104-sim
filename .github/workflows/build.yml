@@ -50,15 +50,17 @@ jobs:
       - name: Test
         env:
           QT_QPA_PLATFORM: offscreen
-        run: ctest --test-dir build --output-on-failure
+        run: |
+          set -o pipefail
+          ctest --test-dir build --output-on-failure 2>&1 | tee ctest.log
 
       # a failing test shows up in the PR page, not only in the (large) job log
       - name: Annotate failing tests
         if: failure()
         run: |
-          log=build/Testing/Temporary/LastTest.log
+          log=ctest.log
           [ -f "$log" ] || exit 0
-          grep -aE "FAIL!|QFATAL|Segmentation|Aborted|Failed +\*?[a-zA-Z]" "$log" | head -20 | while read -r line; do
+          grep -aE "FAIL:|FAIL!|QFATAL|Segmentation|Aborted|Test #[0-9]+: .*Failed|The following tests FAILED|Errors while running CTest" "$log" | head -30 | while read -r line; do
             echo "::error title=failing test::${line}"
           done
 
@@ -67,7 +69,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-test-logs
-          path: build/Testing/**/LastTest.log
+          path: |
+            ctest.log
+            build/Testing/**/LastTest.log
           if-no-files-found: ignore
 
   # ------------------------------------------------------------------ Windows: MSVC + aqt Qt 6
@@ -126,15 +130,17 @@ jobs:
       - name: Test
         env:
           QT_QPA_PLATFORM: offscreen
-        run: ctest --test-dir build -C Release --output-on-failure
+        run: |
+          ctest --test-dir build -C Release --output-on-failure 2>&1 | Tee-Object -FilePath ctest.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Annotate failing tests
         if: failure()
         shell: pwsh
         run: |
-          $log = "build/Testing/Temporary/LastTest.log"
+          $log = "ctest.log"
           if (Test-Path $log) {
-            Select-String -Path $log -Pattern "FAIL!|QFATAL|Segmentation" | Select-Object -First 20 |
+            Select-String -Path $log -Pattern "FAIL:|FAIL!|QFATAL|Segmentation|Aborted|Test #[0-9]+: .*Failed|The following tests FAILED|Errors while running CTest" | Select-Object -First 30 |
               ForEach-Object { Write-Host "::error title=failing test::$($_.Line)" }
           }
 

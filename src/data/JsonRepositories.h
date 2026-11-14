@@ -64,9 +64,11 @@ private:
     QString m_path;
 };
 
-/// Separate user-writable JSON file: chapter key -> plain-text Study Hub notes.
-QMap<QString, QString> loadStudyHubNotes(const QString& path);
-bool saveStudyHubNotes(const QString& path, const QMap<QString, QString>& notes, QString* error = nullptr);
+/// Separate user-writable JSON file: chapter key -> full note text and its optional summary.
+/// Returns false for malformed/unsupported files without modifying `notes`, so user data is not silently discarded.
+bool loadStudyHubNotes(const QString& path, QMap<QString, StudyHubNote>& notes, QString* error = nullptr);
+/// Refuses to overwrite an existing malformed/unsupported notes file.
+bool saveStudyHubNotes(const QString& path, const QMap<QString, StudyHubNote>& notes, QString* error = nullptr);
 
 /// The ".phy" session file: JSON with the saved runs and the session notes.
 class JsonSessionStore : public ISessionStore {

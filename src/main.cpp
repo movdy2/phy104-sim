@@ -85,6 +85,7 @@ static void takeScreenshots(QApplication& app, phy104::App& application, const Q
 
 int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
+    QCoreApplication::setApplicationVersion(QStringLiteral(PHY104_APP_VERSION));
     phy104::ThemeManager::loadFonts();
     phy104::ThemeManager::instance().apply(app, phy104::ThemeManager::storedDarkTheme());   // as last time
 
